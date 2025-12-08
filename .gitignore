@@ -1,0 +1,13 @@
+.DS_Store
+node_modules
+.next
+dist
+.turbo
+.vercel
+/apps/**/.next
+/apps/**/out
+/apps/**/.turbo
+*.log
+.env*
+.idea
+.vscode

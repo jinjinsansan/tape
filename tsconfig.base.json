@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tape/ui": ["packages/ui/src"],
+      "@tape/ui/*": ["packages/ui/src/*"],
+      "@tape/supabase": ["packages/supabase/src"],
+      "@tape/supabase/*": ["packages/supabase/src/*"],
+      "@tape/rag": ["packages/rag/src"],
+      "@tape/rag/*": ["packages/rag/src/*"]
+    }
+  }
+}

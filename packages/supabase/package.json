@@ -1,0 +1,21 @@
+{
+  "name": "@tape/supabase",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1"
+  },
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json --emitDeclarationOnly false",
+    "lint": "echo 'No lint configured for @tape/supabase yet'",
+    "test": "echo 'No tests for @tape/supabase yet'"
+  }
+}
