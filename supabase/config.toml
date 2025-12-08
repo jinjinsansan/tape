@@ -1,0 +1,14 @@
+# Supabase CLI configuration. project_id can be any identifier for the local setup.
+project_id = "tape-phase1"
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = ["./migrations"]
+
+[db.seed]
+enabled = false

@@ -1,0 +1,52 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { MICHELLE_AI_ENABLED } from "@/lib/feature-flags";
+import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import type { Database } from "@tape/supabase";
+
+const paramsSchema = z.object({
+  sessionId: z.string().uuid()
+});
+
+export async function DELETE(_: Request, context: { params: { sessionId: string } }) {
+  if (!MICHELLE_AI_ENABLED) {
+    return NextResponse.json({ error: "Michelle AI is currently disabled" }, { status: 503 });
+  }
+
+  const { sessionId } = paramsSchema.parse(context.params);
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient<Database>(cookieStore);
+
+  let user;
+  try {
+    user = await getRouteUser(supabase, "Michelle session delete");
+  } catch (error) {
+    if (error instanceof SupabaseAuthUnavailableError) {
+      return NextResponse.json(
+        { error: "Authentication service is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { error } = await supabase
+    .from("michelle_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("auth_user_id", user.id);
+
+  if (error) {
+    console.error("Failed to delete michelle session", error);
+    return NextResponse.json({ error: "Failed to delete session" }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

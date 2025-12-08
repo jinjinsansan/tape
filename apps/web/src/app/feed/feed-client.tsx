@@ -1,0 +1,291 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type FeedEntry = {
+  id: string;
+  content: string;
+  publishedAt: string;
+  journalDate: string;
+  author: {
+    id: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  moodScore: number | null;
+  moodLabel: string | null;
+  moodColor: string | null;
+  feelings: { label: string; intensity: number }[];
+  reactions: {
+    counts: Record<string, number>;
+    viewerReaction: string | null;
+    total: number;
+  };
+};
+
+type FeedResponse = {
+  entries: FeedEntry[];
+  nextCursor: string | null;
+};
+
+const reactionOptions = [
+  { id: "cheer", label: "👏" },
+  { id: "hug", label: "🤗" },
+  { id: "empathy", label: "💞" },
+  { id: "insight", label: "💡" },
+  { id: "support", label: "🤝" }
+];
+
+export function FeedPageClient() {
+  const [entries, setEntries] = useState<FeedEntry[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [composerContent, setComposerContent] = useState("今日の気持ちを書いてみませんか？");
+  const [composerVisibility, setComposerVisibility] = useState<"public" | "private">("public");
+  const [composerSubmitting, setComposerSubmitting] = useState(false);
+  const [composerError, setComposerError] = useState<string | null>(null);
+
+  const fetchFeed = useCallback(
+    async (mode: "initial" | "append") => {
+      if (mode === "append" && (!hasMore || loadingMore)) {
+        return;
+      }
+      mode === "initial" ? setLoading(true) : setLoadingMore(true);
+      try {
+        const params = new URLSearchParams();
+        if (mode === "append" && cursor) {
+          params.set("cursor", cursor);
+        }
+        const res = await fetch(`/api/feed?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error("フィードの取得に失敗しました");
+        }
+        const data = (await res.json()) as FeedResponse;
+        setEntries((prev) => (mode === "append" ? [...prev, ...data.entries] : data.entries));
+        setCursor(data.nextCursor);
+        setHasMore(Boolean(data.nextCursor));
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "フィードの取得に失敗しました");
+      } finally {
+        mode === "initial" ? setLoading(false) : setLoadingMore(false);
+      }
+    },
+    [cursor, hasMore, loadingMore]
+  );
+
+  useEffect(() => {
+    fetchFeed("initial");
+  }, [fetchFeed]);
+
+  const handleReactionToggle = async (entryId: string, reactionId: string) => {
+    const entry = entries.find((item) => item.id === entryId);
+    if (!entry) return;
+    const isSameReaction = entry.reactions.viewerReaction === reactionId;
+    const method = isSameReaction ? "DELETE" : "POST";
+    const body = isSameReaction ? undefined : JSON.stringify({ reactionType: reactionId });
+
+    setEntries((prev) =>
+      prev.map((item) => {
+        if (item.id !== entryId) return item;
+        const counts = { ...item.reactions.counts };
+        let viewerReaction = item.reactions.viewerReaction;
+        if (isSameReaction) {
+          if (viewerReaction) {
+            counts[viewerReaction] = Math.max((counts[viewerReaction] ?? 1) - 1, 0);
+            if (counts[viewerReaction] === 0) delete counts[viewerReaction];
+          }
+          viewerReaction = null;
+        } else {
+          if (viewerReaction && counts[viewerReaction]) {
+            counts[viewerReaction] = Math.max(counts[viewerReaction] - 1, 0);
+            if (counts[viewerReaction] === 0) delete counts[viewerReaction];
+          }
+          counts[reactionId] = (counts[reactionId] ?? 0) + 1;
+          viewerReaction = reactionId;
+        }
+        const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+        return { ...item, reactions: { counts, viewerReaction, total } };
+      })
+    );
+
+    try {
+      const res = await fetch(`/api/feed/${entryId}/reactions`, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body
+      });
+      if (!res.ok) {
+        throw new Error("リアクションの更新に失敗しました");
+      }
+    } catch (err) {
+      console.error(err);
+      fetchFeed("initial");
+    }
+  };
+
+  const handleReport = async (entryId: string) => {
+    const reason = prompt("問題がある内容を報告できます。理由を入力してください。", "スパムの可能性があるため");
+    if (!reason) return;
+    try {
+      const res = await fetch(`/api/feed/${entryId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason })
+      });
+      if (!res.ok) {
+        throw new Error("報告に失敗しました");
+      }
+      alert("ご報告ありがとうございます。モデレーターが確認します。");
+    } catch (err) {
+      console.error(err);
+      alert("報告に失敗しました。");
+    }
+  };
+
+  const timeline = useMemo(() => entries, [entries]);
+
+  const handleComposerSubmit = async () => {
+    if (!composerContent.trim()) {
+      setComposerError("内容を入力してください");
+      return;
+    }
+    setComposerSubmitting(true);
+    setComposerError(null);
+    try {
+      const res = await fetch("/api/diary/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: composerContent.trim(), visibility: composerVisibility })
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error ?? "投稿に失敗しました");
+      }
+      setComposerContent("");
+      fetchFeed("initial");
+    } catch (err) {
+      console.error(err);
+      setComposerError(err instanceof Error ? err.message : "投稿に失敗しました");
+    } finally {
+      setComposerSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10">
+      <header className="text-center">
+        <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">PUBLIC DIARY FEED</p>
+        <h1 className="text-3xl font-black text-slate-900">みんなの Tape式 かんじょうにっき</h1>
+        <p className="text-sm text-slate-500">公開日記から気づきを共有しあうSNS型フィードです。</p>
+      </header>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <p className="text-sm font-semibold text-slate-700">いまの気持ちを記録</p>
+        <textarea
+          value={composerContent}
+          onChange={(event) => setComposerContent(event.target.value)}
+          className="mt-3 h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-rose-200 focus:outline-none"
+          placeholder="公開したい日記を入力してください"
+        />
+        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="feed-visibility"
+              checked={composerVisibility === "public"}
+              onChange={() => setComposerVisibility("public")}
+            />
+            公開フィード
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="feed-visibility"
+              checked={composerVisibility === "private"}
+              onChange={() => setComposerVisibility("private")}
+            />
+            下書き（非公開）
+          </label>
+          <button
+            type="button"
+            onClick={handleComposerSubmit}
+            disabled={composerSubmitting}
+            className="ml-auto rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-rose-300"
+          >
+            {composerSubmitting ? "投稿中..." : "投稿"}
+          </button>
+        </div>
+        {composerError && <p className="mt-2 text-xs text-rose-500">{composerError}</p>}
+      </section>
+
+      {loading ? (
+        <p className="rounded-3xl border border-slate-100 bg-white/80 p-6 text-center text-sm text-slate-500">読み込み中...</p>
+      ) : error ? (
+        <p className="rounded-3xl border border-rose-100 bg-rose-50 p-6 text-center text-sm text-rose-500">{error}</p>
+      ) : timeline.length === 0 ? (
+        <p className="rounded-3xl border border-slate-100 bg-white/80 p-6 text-center text-sm text-slate-500">まだ公開日記がありません。</p>
+      ) : (
+        <div className="space-y-5">
+          {timeline.map((entry) => (
+            <article key={entry.id} className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-lg shadow-slate-200/60">
+              <div className="flex items-center gap-3">
+                <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48"} alt={entry.author.displayName ?? "匿名"} className="h-12 w-12 rounded-full object-cover" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{entry.author.displayName ?? "匿名ユーザー"}</p>
+                  <p className="text-xs text-slate-400">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
+                </div>
+              </div>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{entry.content}</p>
+              {entry.feelings.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  {entry.feelings.map((feeling) => (
+                    <span key={`${entry.id}-${feeling.label}`} className="rounded-full bg-rose-50 px-3 py-1 text-rose-600">
+                      {feeling.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                {reactionOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleReactionToggle(entry.id, option.id)}
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      entry.reactions.viewerReaction === option.id
+                        ? "border-rose-200 bg-rose-50 text-rose-600"
+                        : "border-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {option.label} {entry.reactions.counts[option.id] ? ` ${entry.reactions.counts[option.id]}` : ""}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleReport(entry.id)}
+                  className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400 hover:border-rose-200 hover:text-rose-500"
+                >
+                  通報
+                </button>
+              </div>
+            </article>
+          ))}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => fetchFeed("append")}
+              disabled={loadingMore}
+              className="w-full rounded-full border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600"
+            >
+              {loadingMore ? "読み込み中..." : "もっと見る"}
+            </button>
+          )}
+        </div>
+      )}
+    </main>
+  );
+}

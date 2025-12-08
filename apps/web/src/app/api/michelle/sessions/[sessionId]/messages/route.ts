@@ -1,0 +1,64 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { MICHELLE_AI_ENABLED } from "@/lib/feature-flags";
+import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import type { Database } from "@tape/supabase";
+
+const paramsSchema = z.object({
+  sessionId: z.string().uuid()
+});
+
+export async function GET(_: Request, context: { params: { sessionId: string } }) {
+  if (!MICHELLE_AI_ENABLED) {
+    return NextResponse.json({ error: "Michelle AI is currently disabled" }, { status: 503 });
+  }
+
+  const { sessionId } = paramsSchema.parse(context.params);
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient<Database>(cookieStore);
+
+  let user;
+  try {
+    user = await getRouteUser(supabase, "Michelle session messages");
+  } catch (error) {
+    if (error instanceof SupabaseAuthUnavailableError) {
+      return NextResponse.json(
+        { error: "Authentication service is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: session, error: sessionError } = await supabase
+    .from("michelle_sessions")
+    .select("id, title, category")
+    .eq("id", sessionId)
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (sessionError || !session) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  const { data: messages, error } = await supabase
+    .from("michelle_messages")
+    .select("id, role, content, created_at")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    console.error("Failed to load michelle messages", error);
+    return NextResponse.json({ error: "Failed to load messages" }, { status: 500 });
+  }
+
+  return NextResponse.json({ session, messages: messages ?? [] });
+}
