@@ -131,7 +131,12 @@ function AuthenticatedHome({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
       <main className="w-full max-w-2xl space-y-10 text-center">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Link href="/set-password">
+            <Button variant="outline" size="sm" className="text-tape-brown">
+              パスワード設定
+            </Button>
+          </Link>
           <Link href="/auth/signout?redirectTo=/login">
             <Button variant="ghost" size="sm" className="text-tape-light-brown">
               ログアウト
