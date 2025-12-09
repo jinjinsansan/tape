@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
@@ -130,6 +131,13 @@ function AuthenticatedHome({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
       <main className="w-full max-w-2xl space-y-10 text-center">
+        <div className="flex justify-end">
+          <Link href="/auth/signout?redirectTo=/login">
+            <Button variant="ghost" size="sm" className="text-tape-light-brown">
+              ログアウト
+            </Button>
+          </Link>
+        </div>
         <div className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-widest text-tape-light-brown">TAPE PSYCHOLOGY</p>
           <h1 className="font-sans text-4xl font-bold tracking-tight text-tape-brown md:text-5xl">テープ式心理学</h1>
