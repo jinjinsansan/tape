@@ -58,7 +58,7 @@ export default function Home() {
             TAPE PSYCHOLOGY
           </p>
           <h1 className="font-sans text-4xl font-bold tracking-tight text-tape-brown md:text-5xl">
-            Tape式心理学
+            テープ式心理学
           </h1>
           <p className="mx-auto max-w-md text-lg text-tape-light-brown">
             あなたの心にそっと寄り添う、<br className="md:hidden" />

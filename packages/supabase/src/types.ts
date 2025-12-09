@@ -334,6 +334,11 @@ export interface Database {
           mood_label: string | null;
           mood_color: string | null;
           energy_level: number | null;
+          emotion_label: string | null;
+          event_summary: string | null;
+          realization: string | null;
+          self_esteem_score: number | null;
+          worthlessness_score: number | null;
           visibility: DiaryVisibility;
           ai_comment_status: DiaryAiCommentStatus;
           ai_summary: string | null;
@@ -353,6 +358,11 @@ export interface Database {
           mood_label?: string | null;
           mood_color?: string | null;
           energy_level?: number | null;
+          emotion_label?: string | null;
+          event_summary?: string | null;
+          realization?: string | null;
+          self_esteem_score?: number | null;
+          worthlessness_score?: number | null;
           visibility?: DiaryVisibility;
           ai_comment_status?: DiaryAiCommentStatus;
           ai_summary?: string | null;
@@ -371,6 +381,11 @@ export interface Database {
           mood_label?: string | null;
           mood_color?: string | null;
           energy_level?: number | null;
+          emotion_label?: string | null;
+          event_summary?: string | null;
+          realization?: string | null;
+          self_esteem_score?: number | null;
+          worthlessness_score?: number | null;
           visibility?: DiaryVisibility;
           ai_comment_status?: DiaryAiCommentStatus;
           ai_summary?: string | null;
@@ -380,6 +395,34 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+        };
+      };
+      diary_initial_scores: {
+        Row: {
+          id: string;
+          user_id: string;
+          self_esteem_score: number;
+          worthlessness_score: number;
+          measured_on: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          self_esteem_score: number;
+          worthlessness_score: number;
+          measured_on: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          self_esteem_score?: number;
+          worthlessness_score?: number;
+          measured_on?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       emotion_diary_entry_feelings: {

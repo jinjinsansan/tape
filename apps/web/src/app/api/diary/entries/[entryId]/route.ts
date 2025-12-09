@@ -118,6 +118,11 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
         mood_label: payload.moodLabel,
         mood_color: payload.moodColor,
         energy_level: payload.energyLevel,
+        emotion_label: payload.emotionLabel,
+        event_summary: payload.eventSummary,
+        realization: payload.realization,
+        self_esteem_score: payload.selfEsteemScore,
+        worthlessness_score: payload.worthlessnessScore,
         visibility,
         journal_date: payload.journalDate,
         published_at

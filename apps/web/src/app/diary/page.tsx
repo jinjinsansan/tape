@@ -1,7 +1,47 @@
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, BookOpenCheck, LineChart, Sparkles, Layers } from "lucide-react";
+
+const resourceLinks = [
+  {
+    title: "かんじょうにっきの使い方",
+    description: "動画と図解で3ステップの書き方を確認",
+    href: "/diary/how-to",
+    icon: Sparkles
+  },
+  {
+    title: "最初にやること",
+    description: "自己肯定感・無価値感の初期スコアを計測",
+    href: "/diary/first-steps",
+    icon: BookOpenCheck
+  },
+  {
+    title: "次にやること",
+    description: "毎日の感情の分類とスコア調整のコツ",
+    href: "/diary/next-steps",
+    icon: Layers
+  },
+  {
+    title: "感情の種類",
+    description: "8つのネガティブ・4つのポジティブを整理",
+    href: "/diary/emotion-types",
+    icon: Sparkles
+  },
+  {
+    title: "過去の日記",
+    description: "検索・フィルタでこれまでの気持ちを振り返り",
+    href: "/diary/history",
+    icon: BookOpenCheck
+  },
+  {
+    title: "無価値感の推移",
+    description: "スコアのグラフと感情の傾向をチェック",
+    href: "/diary/worthlessness",
+    icon: LineChart
+  }
+];
 
 export default function DiaryPage() {
   return (
@@ -20,7 +60,25 @@ export default function DiaryPage() {
         </p>
       </header>
 
-      <main className="mx-auto max-w-4xl">
+      <main className="mx-auto max-w-5xl space-y-10">
+        <section className="grid gap-4 md:grid-cols-2">
+          {resourceLinks.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Card className="border-none bg-white/70 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+                <CardContent className="flex items-start gap-4 p-6">
+                  <div className="rounded-2xl bg-tape-beige p-3 text-tape-brown">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-tape-brown">{item.title}</h3>
+                    <p className="mt-1 text-sm text-tape-light-brown">{item.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </section>
+
         <DiaryDashboard />
       </main>
     </div>

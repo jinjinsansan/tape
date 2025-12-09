@@ -21,6 +21,11 @@ export type DiaryEntryInput = {
   mood_label?: string | null;
   mood_color?: string | null;
   energy_level?: number | null;
+  emotion_label?: string | null;
+  event_summary?: string | null;
+  realization?: string | null;
+  self_esteem_score?: number | null;
+  worthlessness_score?: number | null;
   visibility?: DiaryVisibility;
   journal_date?: string;
   published_at?: string | null;
@@ -32,6 +37,8 @@ export type DiaryEntryWithRelations = Database["public"]["Tables"]["emotion_diar
   reactions: Database["public"]["Tables"]["emotion_diary_reactions"]["Row"][];
 };
 
+export type DiaryInitialScore = Database["public"]["Tables"]["diary_initial_scores"]["Row"];
+
 const diarySelect = `
   id,
   user_id,
@@ -41,6 +48,11 @@ const diarySelect = `
   mood_label,
   mood_color,
   energy_level,
+  emotion_label,
+  event_summary,
+  realization,
+  self_esteem_score,
+  worthlessness_score,
   visibility,
   ai_comment_status,
   ai_summary,
@@ -110,6 +122,11 @@ export const createDiaryEntry = async (
       mood_label: payload.mood_label ?? null,
       mood_color: payload.mood_color ?? null,
       energy_level: payload.energy_level ?? null,
+      emotion_label: payload.emotion_label ?? null,
+      event_summary: payload.event_summary ?? null,
+      realization: payload.realization ?? null,
+      self_esteem_score: payload.self_esteem_score ?? null,
+      worthlessness_score: payload.worthlessness_score ?? null,
       visibility: payload.visibility ?? "private",
       journal_date: payload.journal_date ?? undefined,
       published_at: payload.published_at ?? null,
@@ -142,6 +159,11 @@ export const updateDiaryEntry = async (
       mood_label: payload.mood_label ?? undefined,
       mood_color: payload.mood_color ?? undefined,
       energy_level: payload.energy_level ?? undefined,
+      emotion_label: payload.emotion_label ?? undefined,
+      event_summary: payload.event_summary ?? undefined,
+      realization: payload.realization ?? undefined,
+      self_esteem_score: payload.self_esteem_score ?? undefined,
+      worthlessness_score: payload.worthlessness_score ?? undefined,
       visibility: payload.visibility ?? undefined,
       journal_date: payload.journal_date ?? undefined,
       published_at: payload.published_at ?? undefined,
@@ -239,4 +261,123 @@ export const deleteDiaryEntry = async (supabase: Supabase, entryId: string, user
   if (error) {
     throw error;
   }
+};
+
+type DiaryHistoryFilters = {
+  userId: string;
+  startDate?: string;
+  endDate?: string;
+  emotion?: string;
+  keyword?: string;
+  limit?: number;
+  page?: number;
+};
+
+export const searchDiaryEntries = async (
+  supabase: Supabase,
+  filters: DiaryHistoryFilters
+) => {
+  const limit = filters.limit ?? 20;
+  const page = filters.page ?? 0;
+  const from = page * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("emotion_diary_entries")
+    .select(diarySelect, { count: "exact" })
+    .eq("user_id", filters.userId)
+    .is("deleted_at", null);
+
+  if (filters.startDate) {
+    query = query.gte("journal_date", filters.startDate);
+  }
+  if (filters.endDate) {
+    query = query.lte("journal_date", filters.endDate);
+  }
+  if (filters.emotion) {
+    query = query.eq("emotion_label", filters.emotion);
+  }
+  if (filters.keyword) {
+    const escaped = filters.keyword.replace(/%/g, "\\%").replace(/,/g, "\\,");
+    const pattern = `%${escaped}%`;
+    query = query.or(
+      [
+        `title.ilike.${pattern}`,
+        `content.ilike.${pattern}`,
+        `event_summary.ilike.${pattern}`,
+        `realization.ilike.${pattern}`
+      ].join(",")
+    );
+  }
+
+  const { data, error, count } = await query
+    .order("journal_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    throw error;
+  }
+
+  const entries = (data ?? []).map((entry) => withRelations(entry as unknown as DiaryEntryWithRelations));
+  return { entries, count: count ?? entries.length };
+};
+
+export const getInitialScore = async (supabase: Supabase, userId: string) => {
+  const { data, error } = await supabase
+    .from("diary_initial_scores")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? null;
+};
+
+export const upsertInitialScore = async (
+  supabase: Supabase,
+  userId: string,
+  payload: { self_esteem_score: number; worthlessness_score: number; measured_on: string }
+) => {
+  const { data, error } = await supabase
+    .from("diary_initial_scores")
+    .upsert(
+      {
+        user_id: userId,
+        self_esteem_score: payload.self_esteem_score,
+        worthlessness_score: payload.worthlessness_score,
+        measured_on: payload.measured_on
+      },
+      { onConflict: "user_id" }
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+export const listEntriesForTrend = async (supabase: Supabase, userId: string) => {
+  const { data, error } = await supabase
+    .from("emotion_diary_entries")
+    .select(
+      `id, journal_date, self_esteem_score, worthlessness_score, emotion_label, created_at`
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("journal_date", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(5000);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
 };

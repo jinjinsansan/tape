@@ -96,6 +96,11 @@ export async function POST(request: Request) {
       mood_label: data.moodLabel ?? null,
       mood_color: data.moodColor ?? null,
       energy_level: data.energyLevel,
+      emotion_label: data.emotionLabel ?? null,
+      event_summary: data.eventSummary ?? null,
+      realization: data.realization ?? null,
+      self_esteem_score: data.selfEsteemScore ?? null,
+      worthlessness_score: data.worthlessnessScore ?? null,
       visibility,
       journal_date: data.journalDate,
       published_at

@@ -24,6 +24,11 @@ type DiaryEntry = {
   mood_label: string | null;
   mood_color: string | null;
   energy_level: number | null;
+  emotion_label: string | null;
+  event_summary: string | null;
+  realization: string | null;
+  self_esteem_score: number | null;
+  worthlessness_score: number | null;
   visibility: DiaryVisibility;
   published_at: string | null;
   journal_date: string;
@@ -44,6 +49,27 @@ const defaultForm = {
 
 type FeelingDraft = DiaryFeeling;
 
+type InitialScore = {
+  self_esteem_score: number;
+  worthlessness_score: number;
+  measured_on: string;
+};
+
+const emotionOptions = [
+  { label: "恐怖", tone: "bg-purple-100 text-purple-800 border-purple-200" },
+  { label: "悲しみ", tone: "bg-blue-100 text-blue-800 border-blue-200" },
+  { label: "怒り", tone: "bg-red-100 text-red-800 border-red-200" },
+  { label: "悔しい", tone: "bg-green-100 text-green-800 border-green-200" },
+  { label: "無価値感", tone: "bg-gray-100 text-gray-800 border-gray-300" },
+  { label: "罪悪感", tone: "bg-orange-100 text-orange-800 border-orange-200" },
+  { label: "寂しさ", tone: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  { label: "恥ずかしさ", tone: "bg-pink-100 text-pink-800 border-pink-200" },
+  { label: "嬉しい", tone: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  { label: "感謝", tone: "bg-teal-100 text-teal-800 border-teal-200" },
+  { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200" },
+  { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200" }
+];
+
 export function DiaryDashboard() {
   const [scope, setScope] = useState<DiaryScope>("me");
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -55,6 +81,13 @@ export function DiaryDashboard() {
   const [form, setForm] = useState(defaultForm);
   const [feelings, setFeelings] = useState<FeelingDraft[]>([]);
   const [newFeeling, setNewFeeling] = useState<FeelingDraft>({ label: "", intensity: 50 });
+  const [eventSummary, setEventSummary] = useState("");
+  const [realization, setRealization] = useState("");
+  const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
+  const [selfEsteemScore, setSelfEsteemScore] = useState(50);
+  const [worthlessnessScore, setWorthlessnessScore] = useState(50);
+  const [initialScore, setInitialScore] = useState<InitialScore | null>(null);
+  const [initialError, setInitialError] = useState<string | null>(null);
 
   const fetchEntries = useCallback(
     async (targetScope: DiaryScope) => {
@@ -92,6 +125,30 @@ export function DiaryDashboard() {
     fetchEntries(scope);
   }, [scope, fetchEntries]);
 
+  useEffect(() => {
+    const loadInitialScore = async () => {
+      try {
+        const res = await fetch("/api/diary/initial-score", { cache: "no-store" });
+        if (res.status === 401) {
+          return;
+        }
+        if (!res.ok) {
+          throw new Error("failed");
+        }
+        const data = await res.json();
+        if (data.initialScore) {
+          setInitialScore(data.initialScore);
+          setSelfEsteemScore(data.initialScore.self_esteem_score);
+          setWorthlessnessScore(data.initialScore.worthlessness_score);
+        }
+      } catch (err) {
+        console.error(err);
+        setInitialError("初期スコアの取得に失敗しました");
+      }
+    };
+    loadInitialScore();
+  }, []);
+
   const addFeeling = () => {
     if (!newFeeling.label.trim()) return;
     if (feelings.find((feeling) => feeling.label === newFeeling.label.trim())) {
@@ -105,9 +162,29 @@ export function DiaryDashboard() {
     setFeelings((prev) => prev.filter((feeling) => feeling.label !== label));
   };
 
+  const handleSelfScoreChange = (value: number) => {
+    const clamped = Math.min(Math.max(value, 0), 100);
+    setSelfEsteemScore(clamped);
+    setWorthlessnessScore(100 - clamped);
+  };
+
+  const handleWorthScoreChange = (value: number) => {
+    const clamped = Math.min(Math.max(value, 0), 100);
+    setWorthlessnessScore(clamped);
+    setSelfEsteemScore(100 - clamped);
+  };
+
   const handleCreate = async () => {
     if (!form.content.trim()) {
       setSaveError("本文を入力してください");
+      return;
+    }
+    if (!eventSummary.trim()) {
+      setSaveError("出来事を入力してください");
+      return;
+    }
+    if (!emotionLabel) {
+      setSaveError("感情を選択してください");
       return;
     }
 
@@ -124,6 +201,11 @@ export function DiaryDashboard() {
           content: form.content,
           moodScore: form.moodScore,
           energyLevel: form.energyLevel,
+          emotionLabel,
+          eventSummary,
+          realization: realization || null,
+          selfEsteemScore,
+          worthlessnessScore,
           visibility: form.visibility,
           journalDate: form.journalDate,
           feelings
@@ -146,6 +228,9 @@ export function DiaryDashboard() {
       }
       setForm({ ...defaultForm, journalDate: today(), visibility: form.visibility });
       setFeelings([]);
+      setEventSummary("");
+      setRealization("");
+      setEmotionLabel(null);
     } catch (err) {
       console.error(err);
       setSaveError("保存に失敗しました");
@@ -214,12 +299,51 @@ export function DiaryDashboard() {
                 placeholder="タイトル (任意)"
                 className="w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
               />
+              <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
+                出来事・状況
+                <textarea
+                  value={eventSummary}
+                  onChange={(event) => setEventSummary(event.target.value)}
+                  placeholder="印象に残った出来事を具体的に"
+                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                />
+              </label>
               <textarea
                 value={form.content}
                 onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
                 placeholder="出来事・感情・身体感覚を自由にメモ"
                 className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
               />
+              <div>
+                <p className="text-xs font-semibold text-tape-light-brown">今日感じた感情を選ぶ</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {emotionOptions.map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => setEmotionLabel(option.label)}
+                      className={cn(
+                        "rounded-2xl border px-3 py-2 text-left text-sm transition-all",
+                        option.tone,
+                        emotionLabel === option.label
+                          ? "ring-2 ring-tape-pink"
+                          : "opacity-80 hover:opacity-100"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
+                気づき・意味づけ
+                <textarea
+                  value={realization}
+                  onChange={(event) => setRealization(event.target.value)}
+                  placeholder="なぜそう感じたのか、どんな発見があったか"
+                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                />
+              </label>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="flex flex-col text-xs font-semibold text-tape-light-brown">
@@ -251,6 +375,44 @@ export function DiaryDashboard() {
                   <span className="mt-1 text-sm text-tape-brown">{form.energyLevel}</span>
                 </label>
               </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-tape-beige bg-white/70 p-4">
+                  <div className="flex items-center justify-between text-xs font-semibold text-tape-light-brown">
+                    <span>自己肯定感</span>
+                    <span className="text-tape-brown">{selfEsteemScore}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={selfEsteemScore}
+                    onChange={(event) => handleSelfScoreChange(Number(event.target.value))}
+                    className="accent-tape-green mt-3 w-full"
+                  />
+                  <p className="mt-2 text-[11px] text-tape-light-brown">上げると無価値感が自動で下がります。</p>
+                </div>
+                <div className="rounded-2xl border border-tape-beige bg-white/70 p-4">
+                  <div className="flex items-center justify-between text-xs font-semibold text-tape-light-brown">
+                    <span>無価値感</span>
+                    <span className="text-tape-brown">{worthlessnessScore}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={worthlessnessScore}
+                    onChange={(event) => handleWorthScoreChange(Number(event.target.value))}
+                    className="accent-tape-pink mt-3 w-full"
+                  />
+                  <p className="mt-2 text-[11px] text-tape-light-brown">下げると自己肯定感が上がります。</p>
+                </div>
+              </div>
+              {initialScore && (
+                <p className="text-xs text-tape-light-brown">
+                  初期計測: {initialScore.self_esteem_score}/{initialScore.worthlessness_score} ( {initialScore.measured_on} )
+                </p>
+              )}
+              {initialError && <p className="text-xs text-tape-pink">{initialError}</p>}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-xs font-semibold text-tape-light-brown">
@@ -411,6 +573,11 @@ export function DiaryDashboard() {
                       ムード: {entry.mood_score ?? "-"}
                     </span>
                     <span>エネルギー: {entry.energy_level ?? "-"}</span>
+                    {entry.emotion_label && (
+                      <span className="rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-pink">
+                        {entry.emotion_label}
+                      </span>
+                    )}
                     <span
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-semibold",
@@ -428,8 +595,42 @@ export function DiaryDashboard() {
                         : "非公開"}
                     </span>
                   </div>
+                  {entry.event_summary && (
+                    <div className="mt-3 rounded-2xl border border-tape-beige bg-white/70 p-3 text-sm text-tape-brown">
+                      <p className="text-xs font-semibold text-tape-light-brown">出来事</p>
+                      <p className="mt-1 whitespace-pre-wrap">{entry.event_summary}</p>
+                    </div>
+                  )}
                   <h3 className="mt-3 text-lg font-bold text-tape-brown">{entry.title ?? "(タイトルなし)"}</h3>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
+                  {entry.realization && (
+                    <div className="mt-3 rounded-2xl border border-dashed border-tape-beige p-3 text-sm text-tape-brown">
+                      <p className="text-xs font-semibold text-tape-light-brown">気づき</p>
+                      <p className="mt-1 whitespace-pre-wrap">{entry.realization}</p>
+                    </div>
+                  )}
+                  {(entry.self_esteem_score != null || entry.worthlessness_score != null) && (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-tape-beige bg-white/60 p-3">
+                        <p className="text-xs font-semibold text-tape-light-brown">自己肯定感</p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <div className="flex-1 rounded-full bg-tape-beige">
+                            <div className="h-2 rounded-full bg-tape-green" style={{ width: `${(entry.self_esteem_score ?? 0)}%` }} />
+                          </div>
+                          <span className="text-sm font-semibold text-tape-brown">{entry.self_esteem_score ?? "-"}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-tape-beige bg-white/60 p-3">
+                        <p className="text-xs font-semibold text-tape-light-brown">無価値感</p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <div className="flex-1 rounded-full bg-tape-beige">
+                            <div className="h-2 rounded-full bg-tape-pink" style={{ width: `${(entry.worthlessness_score ?? 0)}%` }} />
+                          </div>
+                          <span className="text-sm font-semibold text-tape-brown">{entry.worthlessness_score ?? "-"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {entry.feelings?.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
