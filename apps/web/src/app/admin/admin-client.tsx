@@ -400,4 +400,69 @@ export function AdminClient() {
                   <span>{new Date(report.created_at).toLocaleString("ja-JP")}</span>
                 </div>
                 <p className="mt-2 text-xs text-rose-500">理由: {report.reason}</p>
-                <p className="mt-3 whitespace-pre-wrap rounded-2xls***EOF
+                <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-white p-3 text-xs text-slate-600">
+                  {report.entry?.content ?? "(削除された日記)"}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => resolveReport(report.id)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs hover:bg-slate-50"
+                  >
+                    解決済みにする
+                  </button>
+                  <button
+                    onClick={() => updateVisibility(report.entry!.id, "private")}
+                    disabled={!report.entry}
+                    className="rounded-full bg-rose-500 px-3 py-1 text-xs text-white hover:bg-rose-600 disabled:opacity-50"
+                  >
+                    日記を非公開にする
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <h2 className="text-xl font-black text-slate-900">ユーザー管理</h2>
+        <input 
+          value={userSearch} 
+          onChange={(e) => { setUserSearch(e.target.value); loadUsers(e.target.value); }} 
+          placeholder="名前やIDで検索" 
+          className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+        />
+        <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+          {users.map(user => (
+            <div key={user.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3 text-sm">
+              <div>
+                <p className="font-bold">{user.displayName ?? "No Name"}</p>
+                <p className="text-xs text-slate-400">{user.id} / {user.role}</p>
+                <p className="text-xs text-slate-500">Wallet: {user.wallet?.balanceCents} JPY ({user.wallet?.status})</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleRoleChange(user.id, "admin")} className="text-xs text-blue-500">Admin化</button>
+                <button onClick={() => handleWalletAdjust(user.id, "credit")} className="text-xs text-green-500">付与</button>
+                <button onClick={() => handleWalletStatus(user.id, user.wallet?.status === "active" ? "locked" : "active")} className="text-xs text-red-500">凍結/解除</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <h2 className="text-xl font-black text-slate-900">システム状態</h2>
+        {health && (
+          <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+            <div className={`p-3 rounded-xl ${health.supabase ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              Supabase: {health.supabase ? 'OK' : 'Error'}
+            </div>
+            <div className={`p-3 rounded-xl ${health.openaiConfigured ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+              OpenAI: {health.openaiConfigured ? 'Configured' : 'Not Configured'}
+            </div>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
