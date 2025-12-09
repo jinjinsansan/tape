@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import type { DiaryVisibility } from "@tape/supabase";
@@ -41,8 +41,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 const defaultForm = {
   title: "",
   content: "",
-  moodScore: 3,
-  energyLevel: 3,
   visibility: "private" as DiaryVisibility,
   journalDate: today()
 };
@@ -70,6 +68,39 @@ const emotionOptions = [
   { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200" }
 ];
 
+const GUEST_STORAGE_KEY = "tape_diary_guest_entries";
+
+const generateGuestId = () => {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return `guest-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const readGuestEntriesFromStorage = (): DiaryEntry[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    const raw = window.localStorage.getItem(GUEST_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as DiaryEntry[]) : [];
+  } catch (error) {
+    console.error("Failed to parse guest diary entries", error);
+    return [];
+  }
+};
+
+const writeGuestEntriesToStorage = (entries: DiaryEntry[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(entries));
+};
+
 export function DiaryDashboard() {
   const [scope, setScope] = useState<DiaryScope>("me");
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -88,18 +119,97 @@ export function DiaryDashboard() {
   const [worthlessnessScore, setWorthlessnessScore] = useState(50);
   const [initialScore, setInitialScore] = useState<InitialScore | null>(null);
   const [initialError, setInitialError] = useState<string | null>(null);
+  const [guestMode, setGuestMode] = useState(false);
+  const [guestEntries, setGuestEntries] = useState<DiaryEntry[]>([]);
 
-  const fetchEntries = useCallback(
-    async (targetScope: DiaryScope) => {
+  const persistGuestEntries = useCallback(
+    (data: DiaryEntry[], force = false) => {
+      setGuestEntries(data);
+      if (scope === "me" || force) {
+        setEntries(data);
+      }
+      writeGuestEntriesToStorage(data);
+    },
+    [scope]
+  );
+
+  const enableGuestMode = useCallback((): DiaryEntry[] => {
+    const stored = readGuestEntriesFromStorage();
+    setGuestMode(true);
+    setNeedsAuth(false);
+    persistGuestEntries(stored, true);
+    return stored;
+  }, [persistGuestEntries]);
+
+  const ensureGuestEntries = () => {
+    if (guestEntries.length > 0) {
+      return guestEntries;
+    }
+    return enableGuestMode();
+  };
+
+  const appendGuestEntry = (entry: DiaryEntry, force = false) => {
+    const base = ensureGuestEntries();
+    const updated = [entry, ...base];
+    if (scope !== "me") {
+      setScope("me");
+    }
+    persistGuestEntries(updated, force || scope !== "me");
+    setGuestMode(true);
+  };
+
+  const removeGuestEntry = (entryId: string) => {
+    const base = ensureGuestEntries();
+    const updated = base.filter((entry) => entry.id !== entryId);
+    persistGuestEntries(updated);
+  };
+
+  const updateGuestEntryVisibility = (entryId: string, visibility: DiaryVisibility) => {
+    const base = ensureGuestEntries();
+    const updated = base.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            visibility,
+            published_at: visibility === "public" ? entry.published_at ?? new Date().toISOString() : null
+          }
+        : entry
+    );
+    persistGuestEntries(updated);
+  };
+
+  const resetComposer = (visibility: DiaryVisibility = form.visibility) => {
+    setForm({ ...defaultForm, journalDate: today(), visibility });
+    setFeelings([]);
+    setEventSummary("");
+    setRealization("");
+    setEmotionLabel(null);
+  };
+
+  useEffect(() => {
+    if (scope === "me" && guestMode) {
+      setEntries(guestEntries);
+      setLoading(false);
+      setNeedsAuth(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
       setLoading(true);
       setError(null);
       setNeedsAuth(false);
       try {
-        const res = await fetch(`/api/diary/entries?scope=${targetScope}`, {
+        const res = await fetch(`/api/diary/entries?scope=${scope}`, {
           cache: "no-store"
         });
 
-        if (res.status === 401 && targetScope === "me") {
+        if (res.status === 401) {
+          if (scope === "me") {
+            enableGuestMode();
+            return;
+          }
           setNeedsAuth(true);
           setEntries([]);
           return;
@@ -110,20 +220,27 @@ export function DiaryDashboard() {
         }
 
         const data = (await res.json()) as { entries: DiaryEntry[] };
-        setEntries(data.entries ?? []);
+        if (!cancelled) {
+          setEntries(data.entries ?? []);
+        }
       } catch (err) {
         console.error(err);
-        setError("にっきの取得に失敗しました");
+        if (!cancelled) {
+          setError("にっきの取得に失敗しました");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    },
-    []
-  );
+    };
 
-  useEffect(() => {
-    fetchEntries(scope);
-  }, [scope, fetchEntries]);
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, guestMode, guestEntries, enableGuestMode]);
 
   useEffect(() => {
     const loadInitialScore = async () => {
@@ -199,8 +316,6 @@ export function DiaryDashboard() {
         body: JSON.stringify({
           title: form.title || null,
           content: form.content,
-          moodScore: form.moodScore,
-          energyLevel: form.energyLevel,
           emotionLabel,
           eventSummary,
           realization: realization || null,
@@ -213,6 +328,31 @@ export function DiaryDashboard() {
       });
 
       if (res.status === 401) {
+        if (scope === "me") {
+          const guestEntry: DiaryEntry = {
+            id: generateGuestId(),
+            user_id: "guest",
+            title: form.title || null,
+            content: form.content,
+            mood_score: null,
+            mood_label: null,
+            mood_color: null,
+            energy_level: null,
+            emotion_label: emotionLabel,
+            event_summary: eventSummary,
+            realization: realization || null,
+            self_esteem_score: selfEsteemScore,
+            worthlessness_score: worthlessnessScore,
+            visibility: form.visibility,
+            published_at: form.visibility === "public" ? new Date().toISOString() : null,
+            journal_date: form.journalDate,
+            created_at: new Date().toISOString(),
+            feelings
+          };
+          appendGuestEntry(guestEntry, true);
+          resetComposer(form.visibility);
+          return;
+        }
         setNeedsAuth(true);
         setSaveError("ログインが必要です");
         return;
@@ -226,11 +366,7 @@ export function DiaryDashboard() {
       if (scope === "me") {
         setEntries((prev) => [data.entry, ...prev]);
       }
-      setForm({ ...defaultForm, journalDate: today(), visibility: form.visibility });
-      setFeelings([]);
-      setEventSummary("");
-      setRealization("");
-      setEmotionLabel(null);
+      resetComposer(form.visibility);
     } catch (err) {
       console.error(err);
       setSaveError("保存に失敗しました");
@@ -241,6 +377,10 @@ export function DiaryDashboard() {
 
   const handleDelete = async (entryId: string) => {
     if (!confirm("この日記を削除しますか？")) return;
+    if (guestMode) {
+      removeGuestEntry(entryId);
+      return;
+    }
     try {
       const res = await fetch(`/api/diary/entries/${entryId}`, {
         method: "DELETE"
@@ -256,6 +396,10 @@ export function DiaryDashboard() {
   };
 
   const handleVisibilityChange = async (entryId: string, visibility: DiaryVisibility) => {
+    if (guestMode) {
+      updateGuestEntryVisibility(entryId, visibility);
+      return;
+    }
     try {
       const res = await fetch(`/api/diary/entries/${entryId}`, {
         method: "PATCH",
@@ -275,20 +419,9 @@ export function DiaryDashboard() {
     }
   };
 
-  const moodTrend = useMemo(() => {
-    return entries
-      .filter((entry) => entry.mood_score)
-      .map((entry) => ({
-        date: entry.journal_date,
-        score: entry.mood_score ?? 0
-      }))
-      .slice(0, 10)
-      .reverse();
-  }, [entries]);
-
   return (
     <div className="space-y-10">
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-6">
         <Card className="border-none shadow-md">
           <CardContent className="p-6">
             <p className="mb-4 text-xs font-semibold text-tape-pink">今日の記録</p>
@@ -345,36 +478,6 @@ export function DiaryDashboard() {
                 />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="flex flex-col text-xs font-semibold text-tape-light-brown">
-                  気分 (1-5)
-                  <input
-                    type="range"
-                    min={1}
-                    max={5}
-                    value={form.moodScore}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, moodScore: Number(event.target.value) }))
-                    }
-                    className="accent-tape-pink mt-2"
-                  />
-                  <span className="mt-1 text-sm text-tape-brown">{form.moodScore}</span>
-                </label>
-                <label className="flex flex-col text-xs font-semibold text-tape-light-brown">
-                  体力/エネルギー
-                  <input
-                    type="range"
-                    min={1}
-                    max={5}
-                    value={form.energyLevel}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, energyLevel: Number(event.target.value) }))
-                    }
-                    className="accent-tape-orange mt-2"
-                  />
-                  <span className="mt-1 text-sm text-tape-brown">{form.energyLevel}</span>
-                </label>
-              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-tape-beige bg-white/70 p-4">
                   <div className="flex items-center justify-between text-xs font-semibold text-tape-light-brown">
@@ -495,36 +598,6 @@ export function DiaryDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="h-fit border-none shadow-sm">
-          <CardContent className="p-6">
-            <p className="text-xs font-semibold text-tape-light-brown">最近のムードトレンド</p>
-            {moodTrend.length === 0 ? (
-              <p className="mt-6 text-sm text-tape-light-brown">まだ十分なデータがありません。</p>
-            ) : (
-              <div className="mt-6 space-y-4">
-                {moodTrend.map((item) => (
-                  <div key={item.date} className="flex items-center gap-4 text-sm">
-                    <span className="w-20 text-xs text-tape-light-brown">{item.date}</span>
-                    <div className="flex-1 rounded-full bg-tape-beige">
-                      <div
-                        className="h-3 rounded-full bg-tape-pink"
-                        style={{ width: `${(item.score / 5) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-8 text-right font-semibold text-tape-brown">{item.score}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <p className="mt-8 text-xs font-semibold text-tape-light-brown">公開設定メモ</p>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-tape-light-brown">
-              <li>「全体公開」でSNSフィードに流れます</li>
-              <li>後から非公開に戻すこともできます</li>
-              <li>AIコメントは今後この画面に表示予定です</li>
-            </ul>
-          </CardContent>
-        </Card>
       </section>
 
       <section className="space-y-4">
@@ -544,7 +617,12 @@ export function DiaryDashboard() {
               </button>
             ))}
           </div>
-          {needsAuth && scope === "me" && (
+          {guestMode && scope === "me" && (
+            <span className="rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-pink">
+              ゲストモード（この端末に保存）
+            </span>
+          )}
+          {needsAuth && scope === "me" && !guestMode && (
             <p className="text-xs text-tape-pink">ログインすると自分の日記が確認できます。</p>
           )}
         </div>
@@ -568,11 +646,6 @@ export function DiaryDashboard() {
                 <CardContent className="p-6">
                   <div className="flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
                     <span>{entry.journal_date}</span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-tape-pink" />
-                      ムード: {entry.mood_score ?? "-"}
-                    </span>
-                    <span>エネルギー: {entry.energy_level ?? "-"}</span>
                     {entry.emotion_label && (
                       <span className="rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-pink">
                         {entry.emotion_label}
