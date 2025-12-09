@@ -21,7 +21,8 @@ export function GoogleSignInButton() {
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}${DEFAULT_REDIRECT_PATH}`
+          redirectTo: `${window.location.origin}${DEFAULT_REDIRECT_PATH}`,
+          flowType: "pkce"
         }
       });
     } catch (error) {
