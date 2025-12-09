@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { createSupabaseBrowserClient } from "@tape/supabase";
@@ -15,6 +15,14 @@ const safeNextPath = (value: string | null) => {
 };
 
 export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <CallbackClient />
+    </Suspense>
+  );
+}
+
+function CallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "error">("loading");
@@ -54,14 +62,22 @@ export default function AuthCallbackPage() {
     run();
   }, [nextPath, router]);
 
+  return <LoadingState status={status} errorMessage={errorMessage} />;
+}
+
+function LoadingState({
+  status = "loading",
+  errorMessage
+}: {
+  status?: "loading" | "error";
+  errorMessage?: string | null;
+}) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
       <div className="space-y-3">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE AUTH</p>
         <h1 className="text-2xl font-bold text-tape-brown">ログイン処理を完了しています</h1>
-        {status === "loading" && (
-          <p className="text-sm text-tape-light-brown">しばらくお待ちください...</p>
-        )}
+        {status === "loading" && <p className="text-sm text-tape-light-brown">しばらくお待ちください...</p>}
         {status === "error" && errorMessage && (
           <p className="text-sm text-tape-pink">{errorMessage}</p>
         )}
