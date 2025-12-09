@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { CalendarDays, MessageSquare, Video, Clock } from "lucide-react";
 
 type Counselor = {
   id: string;
@@ -187,7 +190,7 @@ export function CounselorPage({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-slate-500">
+      <main className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-tape-light-brown">
         プロフィールを読み込んでいます...
       </main>
     );
@@ -195,136 +198,191 @@ export function CounselorPage({ slug }: { slug: string }) {
 
   if (!counselor || error && !booking) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-rose-500">
+      <main className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-tape-pink">
         {error ?? "カウンセラー情報が見つかりませんでした。"}
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-10">
-      <section className="rounded-3xl border border-slate-100 bg-white/90 p-8 shadow-xl shadow-slate-200/70">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-4">
-              <img src={counselor.avatar_url ?? "https://placehold.co/100x100"} alt={counselor.display_name} className="h-20 w-20 rounded-2xl object-cover" />
-              <div>
-                <p className="text-xs font-semibold text-rose-500">Tape認定カウンセラー</p>
-                <h1 className="text-3xl font-black text-slate-900">{counselor.display_name}</h1>
-                <p className="text-sm text-slate-500">{counselor.specialties?.join(" / ")}</p>
-              </div>
-            </div>
-            <p className="text-sm leading-relaxed text-slate-600">{counselor.bio}</p>
-            <div className="flex flex-wrap gap-3 text-xs">
-              <span className="rounded-full bg-slate-100 px-3 py-1">初回セッション {yen(counselor.hourly_rate_cents)} / 60分</span>
-              <span className="rounded-full bg-slate-100 px-3 py-1">オンライン / Tapeチャット</span>
-            </div>
-            {counselor.intro_video_url && (
-              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-100 shadow-inner">
-                <iframe
-                  src={counselor.intro_video_url}
-                  className="h-full w-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="紹介動画"
+    <main className="mx-auto max-w-5xl space-y-8">
+      <Card className="border-tape-beige shadow-sm">
+        <CardContent className="p-8">
+          <div className="flex flex-col gap-8 lg:flex-row">
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-6">
+                <img
+                  src={counselor.avatar_url ?? "https://placehold.co/100x100/F5F2EA/5C554F?text=User"}
+                  alt={counselor.display_name}
+                  className="h-24 w-24 rounded-full object-cover border border-tape-beige"
                 />
+                <div>
+                  <p className="text-xs font-semibold text-tape-green mb-1 tracking-wider">TAPE COUNSELOR</p>
+                  <h1 className="text-3xl font-bold text-tape-brown">{counselor.display_name}</h1>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {counselor.specialties?.map((spec) => (
+                      <span key={spec} className="inline-flex items-center rounded-full bg-tape-cream px-2.5 py-0.5 text-xs font-medium text-tape-brown">
+                        {spec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
-            <h2 className="text-sm font-semibold text-slate-600">空き枠</h2>
-            <div className="mt-3 space-y-2 text-sm">
-              {slots.slice(0, 6).map((slot) => (
-                <button
-                  key={slot.id}
-                  type="button"
-                  onClick={() => setSelectedSlotId(slot.id)}
-                  className={`w-full rounded-2xl border px-3 py-2 text-left ${selectedSlotId === slot.id ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}
-                >
-                  <p className="font-semibold text-slate-700">{formatDateTime(slot.start_time)}</p>
-                  <p className="text-xs text-slate-500">{formatDateTime(slot.end_time)} まで</p>
-                </button>
-              ))}
+              
+              <p className="text-sm leading-relaxed text-tape-brown/90 whitespace-pre-wrap">{counselor.bio}</p>
+              
+              <div className="flex flex-wrap gap-3 text-xs text-tape-light-brown font-medium">
+                <span className="flex items-center gap-1 rounded-full bg-tape-beige/50 px-3 py-1">
+                  <Clock className="h-3 w-3" /> 初回 {yen(counselor.hourly_rate_cents)} / 60分
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-tape-beige/50 px-3 py-1">
+                  <Video className="h-3 w-3" /> オンライン / Tapeチャット
+                </span>
+              </div>
+
+              {counselor.intro_video_url && (
+                <div className="aspect-video w-full overflow-hidden rounded-3xl border border-tape-beige shadow-inner bg-black/5">
+                  <iframe
+                    src={counselor.intro_video_url}
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="紹介動画"
+                  />
+                </div>
+              )}
             </div>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="mt-3 h-24 w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:border-rose-200 focus:outline-none"
-              placeholder="ご相談内容や目的を入力"
-              disabled={!isAuthenticated}
-            />
-            {!isAuthenticated && (
-              <p className="mt-2 text-xs text-rose-500">ログインすると予約できます。</p>
-            )}
-            <button
-              type="button"
-              onClick={handleBook}
-              disabled={!selectedSlot || !isAuthenticated || pendingAction}
-              className="mt-4 w-full rounded-full bg-slate-900 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              予約リクエスト
-            </button>
-            {booking && booking.status === "pending" && (
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={pendingAction}
-                className="mt-2 w-full rounded-full border border-slate-300 py-2 text-sm font-semibold text-slate-600"
-              >
-                ウォレットで支払う
-              </button>
-            )}
+
+            <div className="w-full lg:max-w-sm space-y-4">
+              <div className="rounded-3xl border border-tape-beige bg-tape-cream/30 p-6">
+                <h2 className="flex items-center gap-2 text-sm font-bold text-tape-brown mb-4">
+                  <CalendarDays className="h-4 w-4 text-tape-orange" />
+                  予約可能な日時
+                </h2>
+                
+                <div className="space-y-2 mb-4">
+                  {slots.slice(0, 6).map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => setSelectedSlotId(slot.id)}
+                      className={cn(
+                        "w-full rounded-xl border px-4 py-3 text-left transition-all",
+                        selectedSlotId === slot.id
+                          ? "border-tape-orange bg-tape-orange/10 text-tape-brown shadow-sm"
+                          : "border-tape-beige bg-white hover:bg-white/80 text-tape-brown"
+                      )}
+                    >
+                      <p className="font-bold text-sm">{formatDateTime(slot.start_time)}</p>
+                      <p className="text-xs text-tape-light-brown mt-0.5">{formatDateTime(slot.end_time)} まで</p>
+                    </button>
+                  ))}
+                  {slots.length === 0 && (
+                    <p className="text-xs text-tape-light-brown text-center py-4">現在、予約可能な枠がありません。</p>
+                  )}
+                </div>
+
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="w-full h-24 rounded-xl border border-tape-beige bg-white px-4 py-3 text-xs text-tape-brown focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
+                  placeholder="ご相談内容や目的を入力"
+                  disabled={!isAuthenticated}
+                />
+
+                {!isAuthenticated && (
+                  <p className="mt-3 text-xs text-tape-pink text-center font-medium">ログインすると予約できます。</p>
+                )}
+
+                <Button
+                  onClick={handleBook}
+                  disabled={!selectedSlot || !isAuthenticated || pendingAction}
+                  className="mt-4 w-full bg-tape-brown text-white hover:bg-tape-brown/90"
+                >
+                  予約リクエスト
+                </Button>
+
+                {booking && booking.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    onClick={handleConfirm}
+                    disabled={pendingAction}
+                    className="mt-2 w-full border-tape-brown text-tape-brown hover:bg-tape-beige"
+                  >
+                    ウォレットで支払う
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        {error && <p className="mt-4 text-xs text-rose-500">{error}</p>}
-        {success && <p className="mt-4 text-xs text-emerald-600">{success}</p>}
-      </section>
+          {error && <p className="mt-4 text-xs text-tape-pink text-center font-medium">{error}</p>}
+          {success && <p className="mt-4 text-xs text-tape-green text-center font-medium">{success}</p>}
+        </CardContent>
+      </Card>
 
       {chatId && (
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
-          <header className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-rose-500">INTRO CHAT</p>
-              <h2 className="text-xl font-black text-slate-900">初回チャット</h2>
-            </div>
-            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadChatMessages}>
-              更新
-            </button>
-          </header>
-          <div className="mt-4 space-y-3">
-            {chatMessages.map((message) => (
-              <article key={message.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-700">
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span>{message.sender_profile?.display_name ?? (message.role === "counselor" ? counselor.display_name : "あなた")}</span>
-                  <span>{new Date(message.created_at).toLocaleString("ja-JP")}</span>
+        <Card className="border-tape-beige shadow-sm">
+          <CardContent className="p-6">
+            <header className="flex items-center justify-between mb-6 border-b border-tape-beige pb-4">
+              <div>
+                <p className="text-xs font-semibold text-tape-orange mb-1">INTRO CHAT</p>
+                <h2 className="text-xl font-bold text-tape-brown">初回チャット</h2>
+              </div>
+              <Button variant="outline" size="sm" onClick={loadChatMessages} className="text-tape-light-brown">
+                更新
+              </Button>
+            </header>
+            
+            <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2">
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex flex-col gap-1",
+                    message.role === "counselor" ? "items-start" : "items-end"
+                  )}
+                >
+                  <div className="flex items-center gap-2 text-[10px] text-tape-light-brown px-1">
+                    <span>{message.sender_profile?.display_name ?? (message.role === "counselor" ? counselor.display_name : "あなた")}</span>
+                    <span>{new Date(message.created_at).toLocaleString("ja-JP")}</span>
+                  </div>
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+                      message.role === "counselor"
+                        ? "bg-white border border-tape-beige text-tape-brown"
+                        : "bg-tape-orange/10 text-tape-brown border border-tape-orange/20"
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap">{message.body}</p>
+                  </div>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
-              </article>
-            ))}
-          </div>
-          <div className="mt-4 flex gap-3">
-            <textarea
-              value={chatInput}
-              onChange={(event) => setChatInput(event.target.value)}
-              placeholder="挨拶や相談内容を送ってください"
-              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-rose-200 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleSendMessage}
-              disabled={pendingAction || !chatInput.trim()}
-              className="w-32 rounded-2xl bg-rose-500 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-rose-300"
-            >
-              送信
-            </button>
-          </div>
-        </section>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <textarea
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                placeholder="挨拶や相談内容を送ってください"
+                className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-14"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={pendingAction || !chatInput.trim()}
+                className="h-14 px-6 bg-tape-orange text-white hover:bg-tape-orange/90 rounded-2xl"
+              >
+                送信
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <section className="rounded-3xl border border-slate-100 bg-gradient-to-br from-rose-50 to-white p-6 text-xs text-slate-500">
+      <div className="rounded-3xl border border-tape-beige bg-white/50 p-6 text-xs text-tape-light-brown text-center">
         <p>※ 予約確定後の24時間以内キャンセルは50%のキャンセル料が発生します。ウォレット残高が不足している場合は事前にチャージしてください。</p>
-        <p className="mt-2">※ カウンセラー都合でキャンセルになった場合は自動的に全額返金されます。</p>
-      </section>
+        <p className="mt-1">※ カウンセラー都合でキャンセルになった場合は自動的に全額返金されます。</p>
+      </div>
     </main>
   );
 }
