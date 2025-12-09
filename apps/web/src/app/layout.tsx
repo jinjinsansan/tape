@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SiteHeader } from "@/components/site-header";
 
 const zenMaru = Zen_Maru_Gothic({
   weight: ["300", "400", "500", "700"],
@@ -24,11 +25,14 @@ export default function RootLayout({
     <html lang="ja">
       <body
         className={cn(
-          "min-h-screen bg-[#FFFBF5] font-sans text-[#5C554F] antialiased",
+          "min-h-screen bg-[#FFFBF5] font-sans text-[#5C554F] antialiased flex flex-col",
           zenMaru.variable
         )}
       >
-        {children}
+        <SiteHeader />
+        <div className="flex-1">
+          {children}
+        </div>
       </body>
     </html>
   );
