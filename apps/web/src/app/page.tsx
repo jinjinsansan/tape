@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AuthGate } from "@/components/auth-gate";
+import { SignOutButton } from "@/components/signout-button";
 import { BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings } from "lucide-react";
 
 export default function Home() {
+  return (
+    <AuthGate>
+      <HomePage />
+    </AuthGate>
+  );
+}
+
+function HomePage() {
   const features = [
     {
       title: "感情日記",
@@ -52,6 +61,9 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
       <main className="w-full max-w-2xl space-y-10 text-center">
+        <div className="flex justify-end">
+          <SignOutButton />
+        </div>
         {/* Hero Section */}
         <div className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-widest text-tape-light-brown">
