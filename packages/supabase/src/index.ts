@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient, createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 export type { Database } from "./types";
 export type {
@@ -41,7 +42,7 @@ export const createSupabaseBrowserClient = (
       process.env.SUPABASE_ANON_KEY
   );
 
-  return createClient<Database>(url, key, {
+  return createBrowserClient<Database>(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -58,7 +59,7 @@ export const createSupabaseServerClient = (
     options.supabaseKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  return createClient<Database>(url, key, {
+  return createServerClient<Database>(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
