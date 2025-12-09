@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { Send, Trash2, PlusCircle, MessageSquare } from "lucide-react";
 
 type SessionSummary = {
   id: string;
@@ -126,96 +130,119 @@ export function MichelleChatClient() {
 
   return (
     <div className="mx-auto flex h-[calc(100vh-80px)] max-w-5xl gap-6 px-4 py-6">
-      <aside className="hidden w-64 flex-shrink-0 flex-col rounded-3xl border border-slate-100 bg-white/80 p-4 shadow-lg shadow-slate-200/60 md:flex">
+      <aside className="hidden w-64 flex-shrink-0 flex-col rounded-3xl border border-tape-beige bg-white p-4 shadow-sm md:flex">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-700">会話履歴</p>
-          <button
-            type="button"
-            className="text-xs font-semibold text-rose-500"
+          <p className="text-sm font-semibold text-tape-brown">会話履歴</p>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setActiveSessionId(null);
               setMessages([]);
             }}
+            title="新規チャット"
           >
-            新規
-          </button>
+            <PlusCircle className="h-5 w-5 text-tape-green" />
+          </Button>
         </div>
-        <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
-          {sessions.length === 0 && <p className="text-xs text-slate-400">まだ会話はありません</p>}
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-2">
+          {sessions.length === 0 && <p className="text-xs text-tape-light-brown">まだ会話はありません</p>}
           {sessions.map((session) => (
-            <button
+            <div
               key={session.id}
-              type="button"
               onClick={() => loadMessages(session.id)}
-              className={`w-full rounded-2xl border px-3 py-2 text-left text-sm transition ${
+              className={cn(
+                "group relative w-full cursor-pointer rounded-2xl border px-3 py-3 text-left text-sm transition-all",
                 session.id === activeSessionId
-                  ? "border-rose-200 bg-rose-50/80 text-rose-600"
-                  : "border-slate-100 bg-white hover:border-rose-100"
-              }`}
+                  ? "border-tape-green/50 bg-tape-green/10"
+                  : "border-transparent bg-tape-cream hover:bg-tape-beige"
+              )}
             >
-              <p className="line-clamp-2 font-semibold">{session.title ?? "無題のセッション"}</p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                {new Date(session.updated_at).toLocaleString("ja-JP")}
-              </p>
+              <div className="flex items-start gap-2">
+                <MessageSquare className={cn("mt-0.5 h-4 w-4 shrink-0", session.id === activeSessionId ? "text-tape-green" : "text-tape-light-brown")} />
+                <div className="flex-1 overflow-hidden">
+                  <p className="truncate font-medium text-tape-brown">{session.title ?? "無題のセッション"}</p>
+                  <p className="mt-1 text-[10px] text-tape-light-brown">
+                    {new Date(session.updated_at).toLocaleString("ja-JP")}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
                   handleDeleteSession(session.id);
                 }}
-                className="mt-1 text-[10px] text-rose-400"
+                className="absolute right-2 top-2 hidden text-tape-light-brown hover:text-tape-pink group-hover:block"
               >
-                削除
+                <Trash2 className="h-4 w-4" />
               </button>
-            </button>
+            </div>
           ))}
         </div>
       </aside>
 
-      <section className="flex flex-1 flex-col rounded-3xl border border-slate-100 bg-white/80 shadow-xl shadow-slate-200/50">
-        <header className="border-b border-slate-100 px-6 py-4">
-          <p className="text-sm font-semibold text-slate-600">ミシェルAIカウンセリング</p>
-          <p className="text-xs text-slate-400">Tape式心理学の知識を元に回答します</p>
+      <section className="flex flex-1 flex-col rounded-3xl border border-tape-beige bg-white shadow-sm">
+        <header className="border-b border-tape-beige px-6 py-4 bg-tape-cream/30 rounded-t-3xl">
+          <p className="text-sm font-bold text-tape-brown">ミシェルAIカウンセリング</p>
+          <p className="text-xs text-tape-light-brown">Tape式心理学の知識を元に回答します</p>
         </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
           {messages.length === 0 && (
-            <p className="text-sm text-slate-400">メッセージを送ると会話が始まります。</p>
+            <div className="flex h-full items-center justify-center text-center">
+              <div>
+                <p className="text-lg font-bold text-tape-brown">こんにちは</p>
+                <p className="text-sm text-tape-light-brown">今日のお気持ちをお聞かせください。</p>
+              </div>
+            </div>
           )}
           {messages.map((message) => (
             <article
               key={message.id}
-              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
-                message.role === "assistant"
-                  ? "bg-slate-50 text-slate-700"
-                  : "bg-rose-50 text-rose-700"
-              }`}
+              className={cn(
+                "flex w-full flex-col gap-1",
+                message.role === "user" ? "items-end" : "items-start"
+              )}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-wide">
+              <p className="ml-1 text-[10px] font-semibold text-tape-light-brown">
                 {message.role === "assistant" ? "Michelle" : "You"}
               </p>
-              <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
+              <div
+                className={cn(
+                  "max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-sm",
+                  message.role === "assistant"
+                    ? "bg-white border border-tape-beige text-tape-brown"
+                    : "bg-tape-orange text-white"
+                )}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
             </article>
           ))}
         </div>
 
-        <footer className="border-t border-slate-100 px-6 py-4">
-          {error && <p className="mb-2 text-xs text-rose-500">{error}</p>}
+        <footer className="border-t border-tape-beige p-4 bg-tape-cream/30 rounded-b-3xl">
+          {error && <p className="mb-2 text-xs text-tape-pink font-semibold">{error}</p>}
           <div className="flex gap-3">
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="今感じていることを入力してください"
-              className="h-24 flex-1 resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-700 outline-none focus:border-rose-200"
+              placeholder="ここに入力..."
+              className="h-14 flex-1 resize-none rounded-2xl border border-tape-beige bg-white px-4 py-4 text-sm text-tape-brown outline-none focus:border-tape-green focus:ring-1 focus:ring-tape-green"
             />
-            <button
+            <Button
               type="button"
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              className="h-24 w-28 rounded-2xl bg-rose-500 text-sm font-semibold text-white shadow-lg transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-slate-200"
+              className="h-14 w-14 rounded-full bg-tape-green text-tape-brown hover:bg-tape-green/90 p-0 flex items-center justify-center"
             >
-              {isLoading ? "送信中" : "送信"}
-            </button>
+              {isLoading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-tape-brown border-t-transparent"/>
+              ) : (
+                <Send className="h-5 w-5 ml-0.5" />
+              )}
+            </Button>
           </div>
         </footer>
       </section>

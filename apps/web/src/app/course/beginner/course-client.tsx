@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { PlayCircle, CheckCircle, Lock, FileText, ChevronRight, ChevronLeft } from "lucide-react";
 
 type Lesson = {
   id: string;
@@ -249,7 +253,7 @@ export function CourseClient({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-slate-500">
+      <main className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-tape-light-brown">
         コース情報を読み込んでいます...
       </main>
     );
@@ -258,14 +262,10 @@ export function CourseClient({ slug }: { slug: string }) {
   if (error && !course) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <p className="text-sm text-rose-500">{error}</p>
-        <button
-          type="button"
-          onClick={fetchCourse}
-          className="mt-4 rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white"
-        >
+        <p className="text-sm text-tape-pink">{error}</p>
+        <Button onClick={fetchCourse} className="mt-4">
           再読み込み
-        </button>
+        </Button>
       </main>
     );
   }
@@ -274,66 +274,72 @@ export function CourseClient({ slug }: { slug: string }) {
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-10">
-      <section className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-rose-50/60 p-8 shadow-xl shadow-rose-100/60">
+      <section className="rounded-3xl border border-tape-beige bg-gradient-to-br from-white to-tape-orange/10 p-8 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
           <div className="flex-1 space-y-4">
-            <p className="text-xs font-semibold tracking-[0.4em] text-rose-500">BEGINNER COURSE</p>
-            <h1 className="text-3xl font-black text-slate-900">{course.title}</h1>
-            <p className="text-sm text-slate-600">{course.subtitle ?? course.description}</p>
+            <p className="text-xs font-semibold tracking-[0.4em] text-tape-orange">BEGINNER COURSE</p>
+            <h1 className="text-3xl font-bold text-tape-brown">{course.title}</h1>
+            <p className="text-sm text-tape-brown/80">{course.subtitle ?? course.description}</p>
             <div className="flex flex-wrap gap-3">
               {course.tags?.map((tag) => (
-                <span key={tag} className="rounded-full bg-white/70 px-3 py-1 text-xs text-rose-500 shadow">
+                <span key={tag} className="rounded-full bg-white/70 px-3 py-1 text-xs text-tape-orange shadow">
                   {tag}
                 </span>
               ))}
             </div>
           </div>
           <div className="grid flex-shrink-0 grid-cols-2 gap-4 text-center text-xs">
-            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-              <p className="text-slate-400">完了レッスン</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{course.stats.completedLessons}</p>
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-tape-beige">
+              <p className="text-tape-light-brown">完了レッスン</p>
+              <p className="mt-1 text-2xl font-bold text-tape-brown">{course.stats.completedLessons}</p>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-              <p className="text-slate-400">進捗率</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{course.stats.percentage}%</p>
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-tape-beige">
+              <p className="text-tape-light-brown">進捗率</p>
+              <p className="mt-1 text-2xl font-bold text-tape-brown">{course.stats.percentage}%</p>
             </div>
           </div>
         </div>
         {authWarning && (
-          <p className="mt-4 rounded-2xl bg-white/80 px-4 py-2 text-xs text-rose-500">
+          <p className="mt-4 rounded-2xl bg-white/80 px-4 py-2 text-xs text-tape-pink">
             ログインするとレッスンの視聴・進捗管理・ノート作成ができます。
           </p>
         )}
         {error && (
-          <p className="mt-3 text-xs text-rose-500">{error}</p>
+          <p className="mt-3 text-xs text-tape-pink">{error}</p>
         )}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[280px,1fr]">
-        <aside className="space-y-4 rounded-3xl border border-slate-100 bg-white/80 p-4 shadow-lg shadow-slate-200/60">
+      <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
+        <aside className="h-fit space-y-4 rounded-3xl border border-tape-beige bg-white p-4 shadow-sm">
           {course.modules.map((module) => (
             <div key={module.id}>
-              <p className="text-xs font-semibold text-slate-500">{module.title}</p>
-              <p className="text-[11px] text-slate-400">{module.summary}</p>
-              <div className="mt-3 space-y-2">
+              <p className="text-xs font-semibold text-tape-light-brown mb-2">{module.title}</p>
+              <div className="space-y-2">
                 {module.lessons.map((lesson) => (
                   <button
                     key={lesson.id}
                     type="button"
                     onClick={() => handleLessonSelect(lesson)}
-                    className={`w-full rounded-2xl border px-3 py-2 text-left text-xs transition ${
+                    className={cn(
+                      "w-full rounded-xl border px-3 py-2 text-left text-xs transition-all",
                       lesson.id === activeLessonId
-                        ? "border-rose-200 bg-rose-50 text-rose-600"
+                        ? "border-tape-orange bg-tape-orange/10 text-tape-brown shadow-sm"
                         : lesson.isUnlocked
-                        ? "border-slate-200 bg-white hover:border-rose-200"
-                        : "border-slate-100 bg-slate-50 text-slate-400"
-                    }`}
+                        ? "border-transparent hover:bg-tape-cream text-tape-brown"
+                        : "border-transparent text-tape-light-brown/60 cursor-not-allowed"
+                    )}
                   >
-                    <span className="font-semibold">{lesson.title}</span>
-                    <span className="ml-2 text-[10px] text-slate-400">{formatDuration(lesson.videoDurationSeconds)}</span>
-                    <div className="mt-1 text-[10px] text-slate-400">
-                      {lesson.status === "completed" ? "✓ 完了済み" : lesson.isUnlocked ? "進行中" : "ロック中"}
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold line-clamp-1">{lesson.title}</span>
+                      {lesson.status === "completed" ? (
+                        <CheckCircle className="h-3 w-3 text-tape-green shrink-0" />
+                      ) : !lesson.isUnlocked ? (
+                        <Lock className="h-3 w-3 shrink-0" />
+                      ) : (
+                        <PlayCircle className="h-3 w-3 text-tape-orange shrink-0" />
+                      )}
                     </div>
+                    <span className="text-[10px] opacity-70">{formatDuration(lesson.videoDurationSeconds)}</span>
                   </button>
                 ))}
               </div>
@@ -341,138 +347,138 @@ export function CourseClient({ slug }: { slug: string }) {
           ))}
         </aside>
 
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <section className="space-y-6">
           {activeLesson ? (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-rose-500">LESSON</p>
-                <h2 className="text-2xl font-black text-slate-900">{activeLesson.title}</h2>
-                <p className="text-sm text-slate-500">{activeLesson.summary}</p>
-              </div>
-
-              {activeLesson.videoUrl ? (
-                <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-100 shadow-inner">
-                  {activeLesson.videoUrl.includes("youtube.com") ? (
-                    <iframe
-                      src={activeLesson.videoUrl}
-                      className="h-full w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={activeLesson.title}
-                    />
-                  ) : (
-                    <video controls className="h-full w-full" src={activeLesson.videoUrl} />
-                  )}
+            <>
+              <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+                <div className="space-y-3 mb-6">
+                  <p className="text-xs font-semibold text-tape-orange">LESSON</p>
+                  <h2 className="text-2xl font-bold text-tape-brown">{activeLesson.title}</h2>
+                  <p className="text-sm text-tape-brown/80">{activeLesson.summary}</p>
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-400">
-                  動画は準備中です。
-                </div>
-              )}
 
-              <div className="flex flex-wrap gap-3 text-xs">
-                {prevLesson && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveLessonId(prevLesson.id)}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-slate-500"
-                  >
-                    ← 前のレッスン
-                  </button>
+                {activeLesson.videoUrl ? (
+                  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-tape-beige shadow-inner bg-black/5">
+                    {activeLesson.videoUrl.includes("youtube.com") ? (
+                      <iframe
+                        src={activeLesson.videoUrl}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={activeLesson.title}
+                      />
+                    ) : (
+                      <video controls className="h-full w-full" src={activeLesson.videoUrl} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-tape-beige p-6 text-sm text-tape-light-brown text-center">
+                    動画は準備中です。
+                  </div>
                 )}
-                {nextLesson && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveLessonId(nextLesson.id)}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-slate-500"
-                  >
-                    次のレッスン →
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={!viewerCanInteract || !activeLesson.isUnlocked || pendingAction !== null}
-                  onClick={handleCompleteLesson}
-                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  レッスン完了にする
-                </button>
-              </div>
 
-              <div className="rounded-2xl border border-slate-100 p-4">
-                <h3 className="text-sm font-semibold text-slate-700">セルフノート</h3>
-                <textarea
-                  value={noteDrafts[activeLesson.id] ?? ""}
-                  onChange={(event) =>
-                    setNoteDrafts((prev) => ({
-                      ...prev,
-                      [activeLesson.id]: event.target.value
-                    }))
-                  }
-                  placeholder="気づきや次のアクションをメモ"
-                  className="mt-3 h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-rose-200 focus:outline-none"
-                  disabled={!viewerCanInteract || !activeLesson.isUnlocked}
-                />
-                <div className="mt-3 text-right">
-                  <button
-                    type="button"
-                    onClick={handleSaveNote}
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex gap-2">
+                    {prevLesson && (
+                      <Button variant="outline" size="sm" onClick={() => setActiveLessonId(prevLesson.id)}>
+                        <ChevronLeft className="h-3 w-3 mr-1" /> 前へ
+                      </Button>
+                    )}
+                    {nextLesson && (
+                      <Button variant="outline" size="sm" onClick={() => setActiveLessonId(nextLesson.id)}>
+                        次へ <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleCompleteLesson}
                     disabled={!viewerCanInteract || !activeLesson.isUnlocked || pendingAction !== null}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 disabled:cursor-not-allowed disabled:text-slate-300"
+                    className="bg-tape-brown text-white hover:bg-tape-brown/90"
                   >
-                    ノートを保存
-                  </button>
+                    レッスン完了にする
+                  </Button>
                 </div>
               </div>
 
-              {activeLesson.quiz && (
-                <div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4">
-                  <h3 className="text-sm font-semibold text-rose-600">理解度チェック</h3>
-                  <p className="text-xs text-rose-500">合格ライン: {activeLesson.quiz.passingScore}%</p>
-                  <div className="mt-4 space-y-4 text-sm text-slate-700">
-                    {activeLesson.quiz.questions.map((question, index) => (
-                      <div key={question.id} className="space-y-2 rounded-2xl bg-white/80 p-3">
-                        <p className="font-semibold text-slate-700">
-                          Q{index + 1}. {question.question}
-                        </p>
-                        <div className="space-y-2">
-                          {question.choices.map((choice) => (
-                            <label key={choice.id} className="flex cursor-pointer items-center gap-2 text-xs">
-                              <input
-                                type="radio"
-                                name={`${activeLesson.id}-${question.id}`}
-                                value={choice.id}
-                                checked={quizDrafts[activeLesson.id]?.[question.id] === choice.id}
-                                onChange={() => handleQuizSelect(activeLesson.id, question.id, choice.id)}
-                                disabled={!viewerCanInteract || !activeLesson.isUnlocked || Boolean(activeLesson.quiz?.attempt?.passed)}
-                              />
-                              <span>{choice.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {activeLesson.quiz.attempt && (
-                    <p className="mt-3 text-xs font-semibold text-slate-600">
-                      最終スコア: {activeLesson.quiz.attempt.score}% / {activeLesson.quiz.attempt.passed ? "合格" : "未合格"}
-                    </p>
-                  )}
-                  <div className="mt-4 text-right">
-                    <button
-                      type="button"
-                      onClick={handleSubmitQuiz}
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-tape-brown mb-4">
+                    <FileText className="h-4 w-4" /> セルフノート
+                  </h3>
+                  <textarea
+                    value={noteDrafts[activeLesson.id] ?? ""}
+                    onChange={(event) =>
+                      setNoteDrafts((prev) => ({
+                        ...prev,
+                        [activeLesson.id]: event.target.value
+                      }))
+                    }
+                    placeholder="気づきや次のアクションをメモ"
+                    className="h-40 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
+                    disabled={!viewerCanInteract || !activeLesson.isUnlocked}
+                  />
+                  <div className="mt-3 text-right">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSaveNote}
                       disabled={!viewerCanInteract || !activeLesson.isUnlocked || pendingAction !== null}
-                      className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-rose-300"
                     >
-                      クイズを送信
-                    </button>
+                      ノートを保存
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {activeLesson.quiz && (
+                  <div className="rounded-3xl border border-tape-orange/20 bg-tape-orange/5 p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold text-tape-brown mb-4">理解度チェック</h3>
+                    <div className="space-y-4 text-sm">
+                      {activeLesson.quiz.questions.map((question, index) => (
+                        <div key={question.id} className="space-y-2 rounded-2xl bg-white p-4 shadow-sm border border-tape-beige">
+                          <p className="font-semibold text-tape-brown text-xs">
+                            Q{index + 1}. {question.question}
+                          </p>
+                          <div className="space-y-1.5">
+                            {question.choices.map((choice) => (
+                              <label key={choice.id} className="flex cursor-pointer items-center gap-2 text-xs p-1 rounded hover:bg-tape-cream">
+                                <input
+                                  type="radio"
+                                  name={`${activeLesson.id}-${question.id}`}
+                                  value={choice.id}
+                                  checked={quizDrafts[activeLesson.id]?.[question.id] === choice.id}
+                                  onChange={() => handleQuizSelect(activeLesson.id, question.id, choice.id)}
+                                  disabled={!viewerCanInteract || !activeLesson.isUnlocked || Boolean(activeLesson.quiz?.attempt?.passed)}
+                                  className="accent-tape-orange"
+                                />
+                                <span className="text-tape-brown/90">{choice.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {activeLesson.quiz.attempt && (
+                      <p className="mt-4 text-xs font-semibold text-tape-brown text-right">
+                        スコア: {activeLesson.quiz.attempt.score}% - {activeLesson.quiz.attempt.passed ? "合格 🎉" : "再挑戦"}
+                      </p>
+                    )}
+                    <div className="mt-4 text-right">
+                      <Button
+                        onClick={handleSubmitQuiz}
+                        disabled={!viewerCanInteract || !activeLesson.isUnlocked || pendingAction !== null}
+                        className="bg-tape-orange text-white hover:bg-tape-orange/90"
+                      >
+                        クイズを送信
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
-            <p className="text-sm text-slate-500">表示するレッスンを選択してください。</p>
+            <Card className="flex items-center justify-center p-10 bg-white/50 border-dashed">
+              <p className="text-sm text-tape-light-brown">左のリストからレッスンを選択してください。</p>
+            </Card>
           )}
         </section>
       </div>

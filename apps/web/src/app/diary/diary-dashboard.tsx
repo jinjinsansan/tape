@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import type { DiaryVisibility } from "@tape/supabase";
 
@@ -200,265 +203,276 @@ export function DiaryDashboard() {
 
   return (
     <div className="space-y-10">
-      <section className="grid gap-6 rounded-3xl border border-slate-100 bg-white/70 p-6 shadow-xl shadow-slate-200/50 lg:grid-cols-2">
-        <div>
-          <p className="text-xs font-semibold text-rose-500">今日の記録</p>
-          <div className="mt-4 space-y-4">
-            <input
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="タイトル (任意)"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-rose-200 focus:outline-none"
-            />
-            <textarea
-              value={form.content}
-              onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-              placeholder="出来事・感情・身体感覚を自由にメモ"
-              className="h-32 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-rose-200 focus:outline-none"
-            />
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-none shadow-md">
+          <CardContent className="p-6">
+            <p className="mb-4 text-xs font-semibold text-tape-pink">今日の記録</p>
+            <div className="space-y-4">
+              <input
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="タイトル (任意)"
+                className="w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+              />
+              <textarea
+                value={form.content}
+                onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+                placeholder="出来事・感情・身体感覚を自由にメモ"
+                className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+              />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col text-xs font-semibold text-slate-500">
-                気分 (1-5)
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
-                  value={form.moodScore}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, moodScore: Number(event.target.value) }))
-                  }
-                  className="mt-2"
-                />
-                <span className="mt-1 text-sm text-slate-700">{form.moodScore}</span>
-              </label>
-              <label className="flex flex-col text-xs font-semibold text-slate-500">
-                体力/エネルギー
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
-                  value={form.energyLevel}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, energyLevel: Number(event.target.value) }))
-                  }
-                  className="mt-2"
-                />
-                <span className="mt-1 text-sm text-slate-700">{form.energyLevel}</span>
-              </label>
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col text-xs font-semibold text-tape-light-brown">
+                  気分 (1-5)
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={form.moodScore}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, moodScore: Number(event.target.value) }))
+                    }
+                    className="accent-tape-pink mt-2"
+                  />
+                  <span className="mt-1 text-sm text-tape-brown">{form.moodScore}</span>
+                </label>
+                <label className="flex flex-col text-xs font-semibold text-tape-light-brown">
+                  体力/エネルギー
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={form.energyLevel}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, energyLevel: Number(event.target.value) }))
+                    }
+                    className="accent-tape-orange mt-2"
+                  />
+                  <span className="mt-1 text-sm text-tape-brown">{form.energyLevel}</span>
+                </label>
+              </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-slate-500">
-                記録日
-                <input
-                  type="date"
-                  value={form.journalDate}
-                  onChange={(event) => setForm((prev) => ({ ...prev, journalDate: event.target.value }))}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-rose-200 focus:outline-none"
-                />
-              </label>
-              <label className="text-xs font-semibold text-slate-500">
-                公開設定
-                <select
-                  value={form.visibility}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, visibility: event.target.value as DiaryVisibility }))
-                  }
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-rose-200 focus:outline-none"
-                >
-                  <option value="private">非公開</option>
-                  <option value="followers">ゆる公開</option>
-                  <option value="public">全体公開</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="rounded-2xl border border-dashed border-slate-200 p-4">
-              <p className="text-xs font-semibold text-slate-500">感情タグ (最大6個)</p>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {feelings.map((feeling) => (
-                  <button
-                    key={feeling.label}
-                    type="button"
-                    onClick={() => removeFeeling(feeling.label)}
-                    className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600"
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-xs font-semibold text-tape-light-brown">
+                  記録日
+                  <input
+                    type="date"
+                    value={form.journalDate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, journalDate: event.target.value }))}
+                    className="mt-2 w-full rounded-2xl border border-tape-beige px-4 py-2 text-sm focus:border-tape-pink focus:outline-none"
+                  />
+                </label>
+                <label className="text-xs font-semibold text-tape-light-brown">
+                  公開設定
+                  <select
+                    value={form.visibility}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, visibility: event.target.value as DiaryVisibility }))
+                    }
+                    className="mt-2 w-full rounded-2xl border border-tape-beige bg-white px-4 py-2 text-sm focus:border-tape-pink focus:outline-none"
                   >
-                    {feeling.label}
-                    <span className="ml-2 text-[10px] text-rose-400">{feeling.intensity}</span>
-                  </button>
+                    <option value="private">非公開</option>
+                    <option value="followers">ゆる公開</option>
+                    <option value="public">全体公開</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-dashed border-tape-beige bg-tape-beige/30 p-4">
+                <p className="text-xs font-semibold text-tape-light-brown">感情タグ (最大6個)</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {feelings.map((feeling) => (
+                    <button
+                      key={feeling.label}
+                      type="button"
+                      onClick={() => removeFeeling(feeling.label)}
+                      className="inline-flex items-center rounded-full bg-tape-pink/20 px-3 py-1 text-xs font-semibold text-tape-brown"
+                    >
+                      {feeling.label}
+                      <span className="ml-2 text-[10px] text-tape-brown/70">{feeling.intensity}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[2fr,1fr,auto]">
+                  <input
+                    value={newFeeling.label}
+                    onChange={(event) => setNewFeeling((prev) => ({ ...prev, label: event.target.value }))}
+                    placeholder="例: 不安 / 期待"
+                    className="rounded-2xl border border-tape-beige px-3 py-2 text-sm focus:border-tape-pink focus:outline-none"
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={newFeeling.intensity}
+                    onChange={(event) => setNewFeeling((prev) => ({ ...prev, intensity: Number(event.target.value) }))}
+                    className="accent-tape-pink"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={addFeeling}
+                  >
+                    追加
+                  </Button>
+                </div>
+              </div>
+
+              {saveError && <p className="text-xs text-tape-pink">{saveError}</p>}
+
+              <Button
+                type="button"
+                onClick={handleCreate}
+                disabled={isSaving}
+                className="w-full bg-tape-brown text-white hover:bg-tape-brown/90"
+              >
+                {isSaving ? "保存中..." : "かんじょうを記録"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="h-fit border-none shadow-sm">
+          <CardContent className="p-6">
+            <p className="text-xs font-semibold text-tape-light-brown">最近のムードトレンド</p>
+            {moodTrend.length === 0 ? (
+              <p className="mt-6 text-sm text-tape-light-brown">まだ十分なデータがありません。</p>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {moodTrend.map((item) => (
+                  <div key={item.date} className="flex items-center gap-4 text-sm">
+                    <span className="w-20 text-xs text-tape-light-brown">{item.date}</span>
+                    <div className="flex-1 rounded-full bg-tape-beige">
+                      <div
+                        className="h-3 rounded-full bg-tape-pink"
+                        style={{ width: `${(item.score / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right font-semibold text-tape-brown">{item.score}</span>
+                  </div>
                 ))}
               </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[2fr,1fr,auto]">
-                <input
-                  value={newFeeling.label}
-                  onChange={(event) => setNewFeeling((prev) => ({ ...prev, label: event.target.value }))}
-                  placeholder="例: 不安 / 期待"
-                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-rose-200 focus:outline-none"
-                />
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={newFeeling.intensity}
-                  onChange={(event) => setNewFeeling((prev) => ({ ...prev, intensity: Number(event.target.value) }))}
-                />
-                <button
-                  type="button"
-                  onClick={addFeeling}
-                  className="rounded-2xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-rose-600"
-                >
-                  追加
-                </button>
-              </div>
-            </div>
+            )}
 
-            {saveError && <p className="text-xs text-rose-500">{saveError}</p>}
-
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={isSaving}
-              className="w-full rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-400/30 disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              {isSaving ? "保存中..." : "かんじょうを記録"}
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-slate-50/80 p-5 shadow-inner">
-          <p className="text-xs font-semibold text-slate-500">最近のムードトレンド</p>
-          {moodTrend.length === 0 ? (
-            <p className="mt-6 text-sm text-slate-400">まだ十分なデータがありません。</p>
-          ) : (
-            <div className="mt-6 space-y-4">
-              {moodTrend.map((item) => (
-                <div key={item.date} className="flex items-center gap-4 text-sm">
-                  <span className="w-20 text-xs text-slate-500">{item.date}</span>
-                  <div className="flex-1 rounded-full bg-white">
-                    <div
-                      className="h-3 rounded-full bg-rose-400"
-                      style={{ width: `${(item.score / 5) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-8 text-right font-semibold text-slate-700">{item.score}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <p className="mt-8 text-xs font-semibold text-slate-500">公開設定メモ</p>
-          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-500">
-            <li>「全体公開」でSNSフィードに流れます</li>
-            <li>後から非公開に戻すこともできます</li>
-            <li>AIコメントは今後この画面に表示予定です</li>
-          </ul>
-        </div>
+            <p className="mt-8 text-xs font-semibold text-tape-light-brown">公開設定メモ</p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-tape-light-brown">
+              <li>「全体公開」でSNSフィードに流れます</li>
+              <li>後から非公開に戻すこともできます</li>
+              <li>AIコメントは今後この画面に表示予定です</li>
+            </ul>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-500">
+          <div className="rounded-full bg-tape-beige p-1 text-xs font-semibold text-tape-light-brown">
             {["me", "public"].map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setScope(tab as DiaryScope)}
-                className={`rounded-full px-4 py-2 transition ${
-                  scope === tab ? "bg-white shadow text-slate-900" : "text-slate-500"
-                }`}
+                className={cn(
+                  "rounded-full px-4 py-2 transition-all",
+                  scope === tab ? "bg-white shadow text-tape-brown" : "text-tape-light-brown hover:text-tape-brown"
+                )}
               >
                 {tab === "me" ? "マイ日記" : "公開フィード"}
               </button>
             ))}
           </div>
           {needsAuth && scope === "me" && (
-            <p className="text-xs text-rose-500">ログインすると自分の日記が確認できます。</p>
+            <p className="text-xs text-tape-pink">ログインすると自分の日記が確認できます。</p>
           )}
         </div>
 
         {loading ? (
-          <p className="rounded-2xl border border-slate-100 bg-white/70 px-4 py-6 text-sm text-slate-500">
+          <p className="rounded-2xl border border-tape-beige bg-white/70 px-4 py-6 text-sm text-tape-light-brown">
             読み込み中...
           </p>
         ) : error ? (
-          <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-600">
+          <p className="rounded-2xl border border-tape-pink/30 bg-tape-pink/10 px-4 py-6 text-sm text-tape-pink">
             {error}
           </p>
         ) : entries.length === 0 ? (
-          <p className="rounded-2xl border border-slate-100 bg-white/70 px-4 py-6 text-sm text-slate-500">
+          <p className="rounded-2xl border border-tape-beige bg-white/70 px-4 py-6 text-sm text-tape-light-brown">
             まだ日記がありません。
           </p>
         ) : (
           <div className="space-y-4">
             {entries.map((entry) => (
-              <article
-                key={entry.id}
-                className="rounded-3xl border border-slate-100 bg-white/80 p-5 shadow-md shadow-slate-200/50"
-              >
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  <span>{entry.journal_date}</span>
-                  <span>ムード: {entry.mood_score ?? "-"}</span>
-                  <span>エネルギー: {entry.energy_level ?? "-"}</span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      entry.visibility === "public"
-                        ? "bg-green-100 text-green-600"
+              <Card key={entry.id} className="border-none shadow-sm transition-all hover:shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
+                    <span>{entry.journal_date}</span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-tape-pink" />
+                      ムード: {entry.mood_score ?? "-"}
+                    </span>
+                    <span>エネルギー: {entry.energy_level ?? "-"}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-semibold",
+                        entry.visibility === "public"
+                          ? "bg-tape-green/20 text-tape-brown"
+                          : entry.visibility === "followers"
+                          ? "bg-tape-orange/20 text-tape-brown"
+                          : "bg-tape-beige text-tape-brown"
+                      )}
+                    >
+                      {entry.visibility === "public"
+                        ? "全体公開"
                         : entry.visibility === "followers"
-                        ? "bg-amber-100 text-amber-600"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {entry.visibility === "public"
-                      ? "全体公開"
-                      : entry.visibility === "followers"
-                      ? "ゆる公開"
-                      : "非公開"}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-lg font-semibold text-slate-900">{entry.title ?? "(タイトルなし)"}</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{entry.content}</p>
+                        ? "ゆる公開"
+                        : "非公開"}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-lg font-bold text-tape-brown">{entry.title ?? "(タイトルなし)"}</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
 
-                {entry.feelings?.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {entry.feelings.map((feeling) => (
-                      <span
-                        key={`${entry.id}-${feeling.label}`}
-                        className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600"
+                  {entry.feelings?.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {entry.feelings.map((feeling) => (
+                        <span
+                          key={`${entry.id}-${feeling.label}`}
+                          className="inline-flex items-center rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-brown"
+                        >
+                          {feeling.label}
+                          <span className="ml-1 text-[10px] opacity-70">{feeling.intensity}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {scope === "me" && (
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVisibilityChange(entry.id, "public")}
                       >
-                        {feeling.label}
-                        <span className="ml-1 text-[10px] text-rose-400">{feeling.intensity}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {scope === "me" && (
-                  <div className="mt-4 flex flex-wrap gap-3 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => handleVisibilityChange(entry.id, "public")}
-                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-500 hover:border-rose-200 hover:text-rose-600"
-                    >
-                      公開する
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleVisibilityChange(entry.id, "private")}
-                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-500 hover:border-rose-200 hover:text-rose-600"
-                    >
-                      非公開に戻す
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(entry.id)}
-                      className="rounded-full border border-rose-200 px-3 py-1 text-rose-500 hover:bg-rose-50"
-                    >
-                      削除
-                    </button>
-                  </div>
-                )}
-              </article>
+                        公開する
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVisibilityChange(entry.id, "private")}
+                      >
+                        非公開
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-tape-pink hover:bg-tape-pink/10 hover:text-tape-pink"
+                        onClick={() => handleDelete(entry.id)}
+                      >
+                        削除
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

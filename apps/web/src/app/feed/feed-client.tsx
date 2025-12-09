@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { Flag, MessageCircle } from "lucide-react";
 
 type FeedEntry = {
   id: string;
@@ -176,116 +180,124 @@ export function FeedPageClient() {
   };
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10">
-      <header className="text-center">
-        <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">PUBLIC DIARY FEED</p>
-        <h1 className="text-3xl font-black text-slate-900">みんなの Tape式 かんじょうにっき</h1>
-        <p className="text-sm text-slate-500">公開日記から気づきを共有しあうSNS型フィードです。</p>
-      </header>
-
-      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
-        <p className="text-sm font-semibold text-slate-700">いまの気持ちを記録</p>
-        <textarea
-          value={composerContent}
-          onChange={(event) => setComposerContent(event.target.value)}
-          className="mt-3 h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-rose-200 focus:outline-none"
-          placeholder="公開したい日記を入力してください"
-        />
-        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name="feed-visibility"
-              checked={composerVisibility === "public"}
-              onChange={() => setComposerVisibility("public")}
-            />
-            公開フィード
-          </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name="feed-visibility"
-              checked={composerVisibility === "private"}
-              onChange={() => setComposerVisibility("private")}
-            />
-            下書き（非公開）
-          </label>
-          <button
-            type="button"
-            onClick={handleComposerSubmit}
-            disabled={composerSubmitting}
-            className="ml-auto rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-rose-300"
-          >
-            {composerSubmitting ? "投稿中..." : "投稿"}
-          </button>
-        </div>
-        {composerError && <p className="mt-2 text-xs text-rose-500">{composerError}</p>}
-      </section>
+    <div className="flex flex-col gap-6">
+      <Card className="border-tape-beige shadow-sm">
+        <CardContent className="p-6">
+          <p className="text-sm font-bold text-tape-brown">いまの気持ちを記録</p>
+          <textarea
+            value={composerContent}
+            onChange={(event) => setComposerContent(event.target.value)}
+            className="mt-3 h-24 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
+            placeholder="公開したい日記を入力してください"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="feed-visibility"
+                checked={composerVisibility === "public"}
+                onChange={() => setComposerVisibility("public")}
+                className="accent-tape-pink"
+              />
+              公開フィード
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="feed-visibility"
+                checked={composerVisibility === "private"}
+                onChange={() => setComposerVisibility("private")}
+                className="accent-tape-pink"
+              />
+              下書き（非公開）
+            </label>
+            <Button
+              onClick={handleComposerSubmit}
+              disabled={composerSubmitting}
+              className="ml-auto bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
+              size="sm"
+            >
+              {composerSubmitting ? "投稿中..." : "投稿"}
+            </Button>
+          </div>
+          {composerError && <p className="mt-2 text-xs text-tape-pink">{composerError}</p>}
+        </CardContent>
+      </Card>
 
       {loading ? (
-        <p className="rounded-3xl border border-slate-100 bg-white/80 p-6 text-center text-sm text-slate-500">読み込み中...</p>
+        <Card className="border-tape-beige bg-white/80">
+          <CardContent className="p-10 text-center text-sm text-tape-light-brown">読み込み中...</CardContent>
+        </Card>
       ) : error ? (
-        <p className="rounded-3xl border border-rose-100 bg-rose-50 p-6 text-center text-sm text-rose-500">{error}</p>
+        <Card className="border-tape-pink/20 bg-tape-pink/5">
+          <CardContent className="p-10 text-center text-sm text-tape-pink">{error}</CardContent>
+        </Card>
       ) : timeline.length === 0 ? (
-        <p className="rounded-3xl border border-slate-100 bg-white/80 p-6 text-center text-sm text-slate-500">まだ公開日記がありません。</p>
+        <Card className="border-tape-beige bg-white/80">
+          <CardContent className="p-10 text-center text-sm text-tape-light-brown">まだ公開日記がありません。</CardContent>
+        </Card>
       ) : (
         <div className="space-y-5">
           {timeline.map((entry) => (
-            <article key={entry.id} className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-lg shadow-slate-200/60">
-              <div className="flex items-center gap-3">
-                <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48"} alt={entry.author.displayName ?? "匿名"} className="h-12 w-12 rounded-full object-cover" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{entry.author.displayName ?? "匿名ユーザー"}</p>
-                  <p className="text-xs text-slate-400">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
+            <Card key={entry.id} className="border-tape-beige bg-white shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"} alt={entry.author.displayName ?? "匿名"} className="h-10 w-10 rounded-full object-cover border border-tape-beige" />
+                  <div>
+                    <p className="text-sm font-bold text-tape-brown">{entry.author.displayName ?? "匿名ユーザー"}</p>
+                    <p className="text-xs text-tape-light-brown">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
+                  </div>
                 </div>
-              </div>
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{entry.content}</p>
-              {entry.feelings.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  {entry.feelings.map((feeling) => (
-                    <span key={`${entry.id}-${feeling.label}`} className="rounded-full bg-rose-50 px-3 py-1 text-rose-600">
-                      {feeling.label}
-                    </span>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
+                {entry.feelings.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    {entry.feelings.map((feeling) => (
+                      <span key={`${entry.id}-${feeling.label}`} className="rounded-full bg-tape-pink/10 px-3 py-1 text-tape-brown">
+                        {feeling.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
+                  {reactionOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleReactionToggle(entry.id, option.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-all",
+                        entry.reactions.viewerReaction === option.id
+                          ? "border-tape-pink bg-tape-pink/20 text-tape-brown"
+                          : "border-tape-beige text-tape-light-brown hover:bg-tape-cream"
+                      )}
+                    >
+                      {option.label} {entry.reactions.counts[option.id] ? ` ${entry.reactions.counts[option.id]}` : ""}
+                    </button>
                   ))}
-                </div>
-              )}
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-                {reactionOptions.map((option) => (
                   <button
-                    key={option.id}
                     type="button"
-                    onClick={() => handleReactionToggle(entry.id, option.id)}
-                    className={`rounded-full border px-3 py-1 text-xs ${
-                      entry.reactions.viewerReaction === option.id
-                        ? "border-rose-200 bg-rose-50 text-rose-600"
-                        : "border-slate-200 text-slate-500"
-                    }`}
+                    onClick={() => handleReport(entry.id)}
+                    className="ml-auto text-tape-light-brown hover:text-tape-pink"
+                    title="通報"
                   >
-                    {option.label} {entry.reactions.counts[option.id] ? ` ${entry.reactions.counts[option.id]}` : ""}
+                    <Flag className="h-4 w-4" />
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleReport(entry.id)}
-                  className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400 hover:border-rose-200 hover:text-rose-500"
-                >
-                  通報
-                </button>
-              </div>
-            </article>
+                </div>
+              </CardContent>
+            </Card>
           ))}
           {hasMore && (
-            <button
-              type="button"
+            <Button
               onClick={() => fetchFeed("append")}
               disabled={loadingMore}
-              className="w-full rounded-full border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600"
+              variant="outline"
+              className="w-full text-tape-light-brown"
             >
               {loadingMore ? "読み込み中..." : "もっと見る"}
-            </button>
+            </Button>
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
