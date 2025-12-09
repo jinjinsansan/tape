@@ -35,15 +35,40 @@ function CallbackClient() {
       const supabase = createSupabaseBrowserClient();
 
       try {
-        const { error } = await supabase.auth.getSessionFromUrl({
-          storeSession: true,
-          url: window.location.href
-        });
+        const url = new URL(window.location.href);
+        const queryParams = url.searchParams;
+        const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : "");
 
-        if (error) {
-          throw error;
+        const reportedError = queryParams.get("error") ?? hashParams.get("error");
+        const errorDescription = queryParams.get("error_description") ?? hashParams.get("error_description");
+
+        if (reportedError || errorDescription) {
+          throw new Error(errorDescription ?? reportedError ?? "認証がキャンセルされました。");
         }
 
+        const code = queryParams.get("code");
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            throw error;
+          }
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            throw error;
+          }
+        } else {
+          throw new Error("認証レスポンスに code または access_token が含まれていませんでした。");
+        }
+
+        window.history.replaceState({}, "", nextPath);
         router.replace(nextPath);
       } catch (error) {
         console.error("Failed to complete OAuth callback", error);
