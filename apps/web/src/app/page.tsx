@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Suspense } from "react";
 
-import { MagicLinkForm } from "@/components/auth/magic-link-form";
-import { AuthCodeHandler } from "@/components/auth/auth-code-handler";
+import { EmailPasswordAuth } from "@/components/auth/email-password-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
@@ -100,15 +98,12 @@ export default async function Home() {
 function LoginGate({ showServiceError }: { showServiceError: boolean }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
-      <Suspense fallback={null}>
-        <AuthCodeHandler />
-      </Suspense>
       <main className="w-full max-w-md space-y-6">
         <div className="space-y-3 text-center">
           <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE PSYCHOLOGY</p>
-          <h1 className="text-3xl font-bold text-tape-brown">ログインしてください</h1>
+          <h1 className="text-3xl font-bold text-tape-brown">ログイン / 新規登録</h1>
           <p className="text-sm text-tape-light-brown">
-            Tape式心理学のコンテンツをご利用いただくには、メールアドレスでのログインが必要です。
+            Tape式心理学のコンテンツをご利用いただくには、アカウント登録が必要です。
           </p>
         </div>
 
@@ -119,11 +114,11 @@ function LoginGate({ showServiceError }: { showServiceError: boolean }) {
         )}
 
         <section className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-          <MagicLinkForm />
+          <EmailPasswordAuth />
         </section>
 
         <p className="text-center text-xs text-tape-light-brown">
-          ログイン後、感情日記やMichelle AIなどすべての機能をご利用いただけます。
+          登録後、感情日記やMichelle AIなどすべての機能をご利用いただけます。
         </p>
       </main>
     </div>

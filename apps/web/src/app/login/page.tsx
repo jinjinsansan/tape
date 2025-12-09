@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { EmailPasswordAuth } from "@/components/auth/email-password-auth";
 import { Button } from "@/components/ui/button";
 
 type LoginPageProps = {
@@ -16,8 +16,8 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
     <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col gap-6 px-4 py-10">
       <div className="space-y-3 text-center">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE AUTH</p>
-        <h1 className="text-3xl font-bold text-tape-brown">ログイン</h1>
-        <p className="text-sm text-tape-light-brown">メールアドレスでログインして、Tape式心理学の各サービスをご利用ください。</p>
+        <h1 className="text-3xl font-bold text-tape-brown">ログイン / 新規登録</h1>
+        <p className="text-sm text-tape-light-brown">メールアドレスとパスワードでログインして、Tape式心理学の各サービスをご利用ください。</p>
       </div>
 
       {errorMessage && (
@@ -27,7 +27,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       )}
 
       <section className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-        <MagicLinkForm />
+        <EmailPasswordAuth />
       </section>
 
       <div className="text-center text-xs text-tape-light-brown">
