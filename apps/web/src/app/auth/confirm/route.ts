@@ -7,6 +7,11 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/'
 
+  console.log('[Auth Confirm] URL:', request.url)
+  console.log('[Auth Confirm] token_hash:', token_hash)
+  console.log('[Auth Confirm] type:', type)
+  console.log('[Auth Confirm] All params:', Object.fromEntries(searchParams.entries()))
+
   if (token_hash && type) {
     const response = NextResponse.redirect(new URL(next, request.url))
 
@@ -32,11 +37,18 @@ export async function GET(request: NextRequest) {
       token_hash,
     })
 
+    console.log('[Auth Confirm] verifyOtp error:', error)
+
     if (!error) {
+      console.log('[Auth Confirm] Success, redirecting to:', next)
       return response
     }
+    
+    console.error('[Auth Confirm] verifyOtp failed:', error.message)
+    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, request.url))
   }
 
-  // エラーの場合はログインページへリダイレクト
-  return NextResponse.redirect(new URL('/?error=認証に失敗しました', request.url))
+  // パラメータ不足の場合
+  console.error('[Auth Confirm] Missing parameters')
+  return NextResponse.redirect(new URL('/?error=認証パラメータが不足しています', request.url))
 }
