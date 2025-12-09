@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AuthGate } from "@/components/auth-gate";
 import { cn } from "@/lib/utils";
 
 type DiaryEntry = {
@@ -42,6 +43,14 @@ const emotionOptions: EmotionOption[] = [
 ];
 
 export default function DiaryHistoryPage() {
+  return (
+    <AuthGate>
+      <DiaryHistoryContent />
+    </AuthGate>
+  );
+}
+
+function DiaryHistoryContent() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);

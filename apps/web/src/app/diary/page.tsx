@@ -1,6 +1,7 @@
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AuthGate } from "@/components/auth-gate";
 import Link from "next/link";
 import { ChevronLeft, BookOpenCheck, LineChart, Sparkles, Layers } from "lucide-react";
 
@@ -45,7 +46,8 @@ const resourceLinks = [
 
 export default function DiaryPage() {
   return (
-    <div className="min-h-screen bg-tape-cream p-4 pb-20 md:p-8">
+    <AuthGate>
+      <div className="min-h-screen bg-tape-cream p-4 pb-20 md:p-8">
       <header className="mx-auto mb-8 max-w-4xl space-y-4 text-center">
         <Link href="/" className="inline-block">
           <Button variant="ghost" size="sm" className="mb-2">
@@ -82,5 +84,6 @@ export default function DiaryPage() {
         <DiaryDashboard />
       </main>
     </div>
+    </AuthGate>
   );
 }
