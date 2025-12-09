@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
-import { ensureAdmin } from "../../../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { updateUserRole } from "@/server/services/admin";
 
 const paramsSchema = z.object({ userId: z.string().uuid() });

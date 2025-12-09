@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { updateCoursePublished } from "@/server/services/admin";
-import { ensureAdmin } from "../../../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const paramsSchema = z.object({ courseId: z.string().uuid() });
 const bodySchema = z.object({ published: z.boolean() });

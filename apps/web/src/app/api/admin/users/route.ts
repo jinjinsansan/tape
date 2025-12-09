@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
-import { ensureAdmin } from "../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { listUsersForAdmin } from "@/server/services/admin";
 
 export async function GET(request: Request) {

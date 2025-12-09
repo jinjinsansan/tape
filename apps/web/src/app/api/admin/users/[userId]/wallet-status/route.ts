@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import type { Database } from "@tape/supabase";
 import { updateWalletStatus } from "@/server/services/admin";
-import { ensureAdmin } from "../../../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const paramsSchema = z.object({ userId: z.string().uuid() });
 const bodySchema = z.object({ status: z.enum(["active", "locked"]) });

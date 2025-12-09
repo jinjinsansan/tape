@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getSupabaseAdminClient } from "@/server/supabase";
-import { ensureAdmin } from "../../../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const paramsSchema = z.object({ entryId: z.string().uuid() });
 const bodySchema = z.object({ visibility: z.enum(["public", "private"]) });

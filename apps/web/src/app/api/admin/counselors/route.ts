@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { listCounselorsForAdmin } from "@/server/services/admin";
-import { ensureAdmin } from "../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 export async function GET() {
   const cookieStore = cookies();

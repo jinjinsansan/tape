@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { Database } from "@tape/supabase";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getSupabaseAdminClient } from "@/server/supabase";
-import { ensureAdmin } from "../_lib/ensure-admin";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const countRows = async (
   supabase: ReturnType<typeof getSupabaseAdminClient>,
