@@ -18,6 +18,7 @@ type DiaryEntry = {
   self_esteem_score: number | null;
   worthlessness_score: number | null;
   visibility: string;
+  hasCounselorComment?: boolean;
 };
 
 const emotionOptions = [
@@ -170,8 +171,17 @@ export default function DiaryHistoryPage() {
                         : "bg-tape-beige text-tape-brown"
                     )}
                   >
-                    {entry.visibility === "public" ? "全体公開" : entry.visibility === "followers" ? "ゆる公開" : "非公開"}
+                    {entry.visibility === "public"
+                      ? "みんなの日記"
+                      : entry.visibility === "followers"
+                      ? "公開（カウンセラー共有）"
+                      : "非公開（下書き）"}
                   </span>
+                  {entry.hasCounselorComment && (
+                    <span className="rounded-full bg-tape-green/10 px-3 py-1 text-xs font-semibold text-tape-brown">
+                      カウンセラーコメントあり
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-lg font-bold text-tape-brown">{entry.title ?? "(タイトルなし)"}</h3>
                 {entry.event_summary && (

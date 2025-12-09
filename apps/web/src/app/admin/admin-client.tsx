@@ -234,7 +234,7 @@ export function AdminClient() {
     loadHealth
   ]);
 
-  const updateVisibility = async (entryId: string, visibility: "public" | "private") => {
+  const updateVisibility = async (entryId: string, visibility: "public" | "followers" | "private") => {
     try {
       await fetchJson(`/api/admin/diary/entries/${entryId}/visibility`, {
         method: "PATCH",
@@ -368,7 +368,7 @@ export function AdminClient() {
         {stats ? (
           <>
             <StatCard label="登録ユーザー" value={stats.users} />
-            <StatCard label="公開日記" value={stats.publicDiaries} />
+            <StatCard label="みんなの日記" value={stats.publicDiaries} />
             <StatCard label="未処理通報" value={stats.pendingReports} />
             <StatCard label="予約待ち" value={stats.pendingBookings} />
           </>
@@ -381,7 +381,7 @@ export function AdminClient() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-rose-500">通報キュー</p>
-            <h2 className="text-xl font-black text-slate-900">公開日記の通報一覧</h2>
+            <h2 className="text-xl font-black text-slate-900">みんなの日記の通報一覧</h2>
           </div>
           <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadReports}>
             再読み込み
@@ -409,6 +409,13 @@ export function AdminClient() {
                     className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs hover:bg-slate-50"
                   >
                     解決済みにする
+                  </button>
+                  <button
+                    onClick={() => updateVisibility(report.entry!.id, "followers")}
+                    disabled={!report.entry}
+                    className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    カウンセラー共有にする
                   </button>
                   <button
                     onClick={() => updateVisibility(report.entry!.id, "private")}

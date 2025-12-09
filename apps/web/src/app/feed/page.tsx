@@ -14,9 +14,9 @@ export default function FeedPage() {
               ホームに戻る
             </Button>
           </Link>
-          <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">PUBLIC DIARY FEED</p>
-          <h1 className="text-3xl font-bold text-tape-brown">みんなの Tape式 かんじょうにっき</h1>
-          <p className="text-sm text-tape-brown/80">公開日記から気づきを共有しあう広場です。</p>
+          <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">MINNA NO NIKKI</p>
+          <h1 className="text-3xl font-bold text-tape-brown">みんなの日記</h1>
+          <p className="text-sm text-tape-brown/80">公開された日記から気づきを共有しあう場所です。</p>
         </header>
 
         <FeedPageClient />

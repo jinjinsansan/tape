@@ -37,7 +37,19 @@ export type DiaryEntryWithRelations = Database["public"]["Tables"]["emotion_diar
   reactions: Database["public"]["Tables"]["emotion_diary_reactions"]["Row"][];
 };
 
+export type DiaryEntryWithExtras = DiaryEntryWithRelations & {
+  hasCounselorComment?: boolean;
+};
+
 export type DiaryInitialScore = Database["public"]["Tables"]["diary_initial_scores"]["Row"];
+
+export type PreviousWorthlessnessScore = {
+  source: "initial" | "entry";
+  date: string;
+  worthlessness_score: number;
+  self_esteem_score: number | null;
+  entry_id?: string;
+};
 
 const diarySelect = `
   id,
@@ -319,7 +331,31 @@ export const searchDiaryEntries = async (
     throw error;
   }
 
-  const entries = (data ?? []).map((entry) => withRelations(entry as unknown as DiaryEntryWithRelations));
+  let entries: DiaryEntryWithExtras[] = (data ?? []).map(
+    (entry) => withRelations(entry as unknown as DiaryEntryWithRelations)
+  );
+
+  const entryIds = entries.map((entry) => entry.id);
+  if (entryIds.length > 0) {
+    const { data: commentRows, error: commentError } = await supabase
+      .from("emotion_diary_comments")
+      .select("entry_id")
+      .in("entry_id", entryIds)
+      .eq("source", "counselor");
+
+    if (commentError) {
+      throw commentError;
+    }
+
+    const commentedIds = new Set((commentRows ?? []).map((row) => row.entry_id));
+    entries = entries.map((entry) => ({
+      ...entry,
+      hasCounselorComment: commentedIds.has(entry.id)
+    }));
+  } else {
+    entries = entries.map((entry) => ({ ...entry, hasCounselorComment: false }));
+  }
+
   return { entries, count: count ?? entries.length };
 };
 
@@ -361,6 +397,51 @@ export const upsertInitialScore = async (
   }
 
   return data;
+};
+
+export const getPreviousWorthlessnessScore = async (
+  supabase: Supabase,
+  userId: string,
+  options: { initialScore?: DiaryInitialScore | null } = {}
+): Promise<PreviousWorthlessnessScore | null> => {
+  const { initialScore } = options;
+
+  const { data: latestEntry, error } = await supabase
+    .from("emotion_diary_entries")
+    .select("id,journal_date,created_at,worthlessness_score,self_esteem_score")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .not("worthlessness_score", "is", null)
+    .order("journal_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (latestEntry && latestEntry.worthlessness_score != null) {
+    return {
+      source: "entry",
+      date: latestEntry.journal_date,
+      worthlessness_score: latestEntry.worthlessness_score,
+      self_esteem_score: latestEntry.self_esteem_score ?? null,
+      entry_id: latestEntry.id
+    };
+  }
+
+  const base = initialScore ?? (await getInitialScore(supabase, userId));
+  if (base) {
+    return {
+      source: "initial",
+      date: base.measured_on,
+      worthlessness_score: base.worthlessness_score,
+      self_esteem_score: base.self_esteem_score
+    };
+  }
+
+  return null;
 };
 
 export const listEntriesForTrend = async (supabase: Supabase, userId: string) => {

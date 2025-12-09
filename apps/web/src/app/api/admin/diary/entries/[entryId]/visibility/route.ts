@@ -7,7 +7,7 @@ import { getSupabaseAdminClient } from "@/server/supabase";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const paramsSchema = z.object({ entryId: z.string().uuid() });
-const bodySchema = z.object({ visibility: z.enum(["public", "private"]) });
+const bodySchema = z.object({ visibility: z.enum(["public", "followers", "private"]) });
 
 export async function PATCH(request: Request, context: { params: { entryId: string } }) {
   const { entryId } = paramsSchema.parse(context.params);

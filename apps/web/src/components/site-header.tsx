@@ -13,7 +13,7 @@ const navItems = [
   { href: "/michelle", label: "Michelle AI", icon: Bot },
   { href: "/course/beginner", label: "動画コース", icon: PlayCircle },
   { href: "/counselor", label: "カウンセリング", icon: CalendarHeart },
-  { href: "/feed", label: "みんなの広場", icon: Users },
+  { href: "/feed", label: "みんなの日記", icon: Users },
 ];
 
 export function SiteHeader() {

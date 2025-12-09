@@ -34,8 +34,8 @@ export default function Home() {
       color: "bg-tape-beige text-tape-brown",
     },
     {
-      title: "みんなの広場",
-      description: "気持ちを共有する",
+      title: "みんなの日記",
+      description: "公開された日記を読む",
       icon: Users,
       href: "/feed",
       color: "bg-tape-light-brown/10 text-tape-brown",

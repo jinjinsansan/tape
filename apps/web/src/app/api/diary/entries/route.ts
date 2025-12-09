@@ -42,6 +42,8 @@ export async function GET(request: Request) {
   const scopeParam = searchParams.get("scope");
   const parsedScope = scopeSchema.safeParse(scopeParam);
   const scope = parsedScope.success ? parsedScope.data : "me";
+  const limitParam = Number(searchParams.get("limit"));
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
 
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore);
@@ -59,7 +61,7 @@ export async function GET(request: Request) {
     const entries = await listDiaryEntries(supabase, {
       scope,
       userId,
-      limit: scope === "public" ? 30 : 50
+      limit: limit ?? (scope === "public" ? 30 : 50)
     });
     return NextResponse.json({ entries });
   } catch (error) {

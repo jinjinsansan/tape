@@ -48,7 +48,7 @@ export function FeedPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [composerContent, setComposerContent] = useState("今日の気持ちを書いてみませんか？");
-  const [composerVisibility, setComposerVisibility] = useState<"public" | "private">("public");
+  const [composerVisibility, setComposerVisibility] = useState<"public" | "followers" | "private">("public");
   const [composerSubmitting, setComposerSubmitting] = useState(false);
   const [composerError, setComposerError] = useState<string | null>(null);
 
@@ -188,7 +188,7 @@ export function FeedPageClient() {
             value={composerContent}
             onChange={(event) => setComposerContent(event.target.value)}
             className="mt-3 h-24 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
-            placeholder="公開したい日記を入力してください"
+            placeholder="共有したい日記を入力してください"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
             <label className="flex items-center gap-1 cursor-pointer">
@@ -199,7 +199,17 @@ export function FeedPageClient() {
                 onChange={() => setComposerVisibility("public")}
                 className="accent-tape-pink"
               />
-              公開フィード
+              みんなの日記に公開 (フィード掲載)
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="feed-visibility"
+                checked={composerVisibility === "followers"}
+                onChange={() => setComposerVisibility("followers")}
+                className="accent-tape-pink"
+              />
+              公開（カウンセラー共有）
             </label>
             <label className="flex items-center gap-1 cursor-pointer">
               <input
@@ -209,7 +219,7 @@ export function FeedPageClient() {
                 onChange={() => setComposerVisibility("private")}
                 className="accent-tape-pink"
               />
-              下書き（非公開）
+              非公開（下書き）
             </label>
             <Button
               onClick={handleComposerSubmit}
@@ -234,7 +244,7 @@ export function FeedPageClient() {
         </Card>
       ) : timeline.length === 0 ? (
         <Card className="border-tape-beige bg-white/80">
-          <CardContent className="p-10 text-center text-sm text-tape-light-brown">まだ公開日記がありません。</CardContent>
+          <CardContent className="p-10 text-center text-sm text-tape-light-brown">まだ「みんなの日記」への投稿がありません。</CardContent>
         </Card>
       ) : (
         <div className="space-y-5">

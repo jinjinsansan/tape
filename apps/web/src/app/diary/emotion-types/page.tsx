@@ -1,5 +1,21 @@
 import Link from "next/link";
 import { MessageCircle, Star, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const emotionToneMap: Record<string, string> = {
+  恐怖: "bg-purple-100 text-purple-800 border-purple-200",
+  悲しみ: "bg-blue-100 text-blue-800 border-blue-200",
+  怒り: "bg-red-100 text-red-800 border-red-200",
+  寂しさ: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  無価値感: "bg-gray-100 text-gray-800 border-gray-300",
+  罪悪感: "bg-orange-100 text-orange-800 border-orange-200",
+  悔しさ: "bg-green-100 text-green-800 border-green-200",
+  恥ずかしさ: "bg-pink-100 text-pink-800 border-pink-200",
+  嬉しい: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  感謝: "bg-teal-100 text-teal-800 border-teal-200",
+  達成感: "bg-lime-100 text-lime-800 border-lime-200",
+  幸せ: "bg-amber-100 text-amber-800 border-amber-200"
+};
 
 const negativeEmotions = [
   { name: "恐怖", description: "息苦しさ、震え、冷や汗など身体の反応が強く現れる状態。" },
@@ -17,20 +33,6 @@ const positiveEmotions = [
   { name: "感謝", description: "支えられた温かさや恩返ししたい気持ち。" },
   { name: "達成感", description: "やり切った誇らしさ、努力が報われた感覚。" },
   { name: "幸せ", description: "満たされて安心している穏やかな状態。" }
-];
-
-const negativeCardPalettes = [
-  "from-rose-100 via-white to-amber-100 border-rose-200",
-  "from-indigo-100 via-white to-sky-100 border-indigo-200",
-  "from-red-100 via-white to-orange-100 border-red-200",
-  "from-purple-100 via-white to-pink-100 border-purple-200"
-];
-
-const positiveCardPalettes = [
-  "from-emerald-100 via-white to-lime-100 border-emerald-200",
-  "from-yellow-100 via-white to-amber-100 border-yellow-200",
-  "from-teal-100 via-white to-cyan-100 border-teal-200",
-  "from-pink-100 via-white to-rose-100 border-pink-200"
 ];
 
 export default function EmotionTypesPage() {
@@ -62,13 +64,16 @@ export default function EmotionTypesPage() {
                 <h2 className="text-xl font-semibold">ネガティブな感情</h2>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                {negativeEmotions.map((emotion, index) => (
+                {negativeEmotions.map((emotion) => (
                   <div
                     key={emotion.name}
-                    className={`rounded-3xl border bg-gradient-to-br p-5 shadow-sm ${negativeCardPalettes[index % negativeCardPalettes.length]}`}
+                    className={cn(
+                      "rounded-3xl border p-5 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow",
+                      emotionToneMap[emotion.name] ?? "bg-white text-tape-brown border-tape-beige"
+                    )}
                   >
-                    <p className="text-lg font-semibold text-tape-brown">{emotion.name}</p>
-                    <p className="mt-2 text-sm text-tape-light-brown">{emotion.description}</p>
+                    <p className="text-lg font-semibold text-current">{emotion.name}</p>
+                    <p className="mt-2 text-sm text-tape-brown">{emotion.description}</p>
                   </div>
                 ))}
               </div>
@@ -80,13 +85,16 @@ export default function EmotionTypesPage() {
                 <h2 className="text-xl font-semibold">ポジティブな感情</h2>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                {positiveEmotions.map((emotion, index) => (
+                {positiveEmotions.map((emotion) => (
                   <div
                     key={emotion.name}
-                    className={`rounded-3xl border bg-gradient-to-br p-5 shadow-sm ${positiveCardPalettes[index % positiveCardPalettes.length]}`}
+                    className={cn(
+                      "rounded-3xl border p-5 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow",
+                      emotionToneMap[emotion.name] ?? "bg-white text-tape-brown border-tape-beige"
+                    )}
                   >
-                    <p className="text-lg font-semibold text-tape-brown">{emotion.name}</p>
-                    <p className="mt-2 text-sm text-tape-light-brown">{emotion.description}</p>
+                    <p className="text-lg font-semibold text-current">{emotion.name}</p>
+                    <p className="mt-2 text-sm text-tape-brown">{emotion.description}</p>
                   </div>
                 ))}
               </div>

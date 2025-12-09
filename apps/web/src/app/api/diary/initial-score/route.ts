@@ -4,7 +4,11 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
-import { getInitialScore, upsertInitialScore } from "@/server/services/diary";
+import {
+  getInitialScore,
+  getPreviousWorthlessnessScore,
+  upsertInitialScore
+} from "@/server/services/diary";
 
 const upsertSchema = z.object({
   selfEsteemScore: z.number().int().min(0).max(100),
@@ -48,7 +52,10 @@ export async function GET() {
 
   try {
     const record = await getInitialScore(supabase, user!.id);
-    return NextResponse.json({ initialScore: record });
+    const previousScore = await getPreviousWorthlessnessScore(supabase, user!.id, {
+      initialScore: record ?? undefined
+    });
+    return NextResponse.json({ initialScore: record, previousScore });
   } catch (error) {
     console.error("Failed to load initial score", error);
     return NextResponse.json({ error: "Failed to load initial score" }, { status: 500 });
@@ -80,7 +87,11 @@ export async function POST(request: Request) {
       measured_on: parsed.data.measuredOn
     });
 
-    return NextResponse.json({ initialScore: record });
+    const previousScore = await getPreviousWorthlessnessScore(supabase, user!.id, {
+      initialScore: record
+    });
+
+    return NextResponse.json({ initialScore: record, previousScore });
   } catch (error) {
     console.error("Failed to save initial score", error);
     return NextResponse.json({ error: "Failed to save initial score" }, { status: 500 });
