@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
-import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
@@ -103,7 +103,7 @@ function LoginGate({ showServiceError }: { showServiceError: boolean }) {
           <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE PSYCHOLOGY</p>
           <h1 className="text-3xl font-bold text-tape-brown">ログインしてください</h1>
           <p className="text-sm text-tape-light-brown">
-            Tape式心理学のコンテンツをご利用いただくには、Googleアカウントでのログインが必要です。
+            Tape式心理学のコンテンツをご利用いただくには、メールアドレスでのログインが必要です。
           </p>
         </div>
 
@@ -114,7 +114,7 @@ function LoginGate({ showServiceError }: { showServiceError: boolean }) {
         )}
 
         <section className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-          <GoogleSignInButton />
+          <MagicLinkForm />
         </section>
 
         <p className="text-center text-xs text-tape-light-brown">

@@ -244,6 +244,52 @@ export function DiaryDashboard() {
     persistGuestEntries(updated);
   };
 
+  const syncGuestEntriesToCloud = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const stored = readGuestEntriesFromStorage();
+    if (!stored.length) {
+      return false;
+    }
+
+    for (const entry of [...stored].reverse()) {
+      const payload = {
+        title: entry.title,
+        content: entry.content,
+        emotionLabel: entry.emotion_label,
+        eventSummary: entry.event_summary,
+        realization: entry.realization,
+        selfEsteemScore: entry.self_esteem_score ?? undefined,
+        worthlessnessScore: entry.worthlessness_score ?? undefined,
+        visibility: entry.visibility,
+        journalDate: entry.journal_date
+      };
+
+      const res = await fetch("/api/diary/entries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 401) {
+        console.warn("Cloud sync aborted: unauthorized");
+        return false;
+      }
+
+      if (!res.ok) {
+        console.error("Failed to sync guest entry", await res.text());
+        return false;
+      }
+    }
+
+    clearGuestEntriesFromStorage();
+    setGuestEntries([]);
+    return true;
+  }, []);
+
   const resetComposer = (visibility: DiaryVisibility = form.visibility) => {
     setForm({ ...defaultForm, journalDate: today(), visibility });
     setEventSummary("");
@@ -271,6 +317,9 @@ export function DiaryDashboard() {
       setLoading(true);
       setError(null);
       try {
+        // ゲストエントリーをクラウドに同期
+        const synced = await syncGuestEntriesToCloud();
+        
         const res = await fetch(`/api/diary/entries?scope=me&limit=50`, {
           cache: "no-store"
         });
@@ -307,7 +356,7 @@ export function DiaryDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [guestMode, enableGuestMode, syncPreviousFromEntries]);
+  }, [guestMode, enableGuestMode, syncPreviousFromEntries, syncGuestEntriesToCloud]);
 
   useEffect(() => {
     const loadInitialScore = async () => {
