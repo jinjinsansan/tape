@@ -13,7 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1"
   },
-  "scripts": {
+  "devDependencies": { "typescript": "^5.0.0" }, "scripts": {
     "build": "tsc -p ./tsconfig.json --emitDeclarationOnly false",
     "lint": "echo 'No lint configured for @tape/supabase yet'",
     "test": "echo 'No tests for @tape/supabase yet'"

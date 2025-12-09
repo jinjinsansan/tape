@@ -14,7 +14,7 @@
     "react": "^18.2.0 || ^19.0.0",
     "react-dom": "^18.2.0 || ^19.0.0"
   },
-  "scripts": {
+  "devDependencies": { "typescript": "^5.0.0" }, "scripts": {
     "build": "tsc -p ./tsconfig.json --emitDeclarationOnly false",
     "lint": "echo 'No lint configured for @tape/ui yet'",
     "test": "echo 'No tests for @tape/ui yet'"
