@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { Button } from "@/components/ui/button";
 
 type LoginPageProps = {
@@ -17,7 +17,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       <div className="space-y-3 text-center">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE AUTH</p>
         <h1 className="text-3xl font-bold text-tape-brown">ログイン</h1>
-        <p className="text-sm text-tape-light-brown">Googleアカウントでログインして、Tape式心理学の各サービスをご利用ください。</p>
+        <p className="text-sm text-tape-light-brown">メールアドレスでログインして、Tape式心理学の各サービスをご利用ください。</p>
       </div>
 
       {errorMessage && (
@@ -27,7 +27,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       )}
 
       <section className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-        <GoogleSignInButton />
+        <MagicLinkForm />
       </section>
 
       <div className="text-center text-xs text-tape-light-brown">
