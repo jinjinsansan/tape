@@ -51,6 +51,79 @@ export function SimpleAuth() {
     }
   };
 
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+
+  const handlePasswordReset = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+
+      if (error) throw error;
+
+      setSuccess("パスワードリセットメールを送信しました。メールボックスを確認してください。");
+      setShowPasswordReset(false);
+    } catch (err: any) {
+      setError(err.message || "エラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showPasswordReset) {
+    return (
+      <div className="w-full max-w-md mx-auto space-y-6">
+        <h2 className="text-xl font-bold text-center">パスワードリセット</h2>
+        <form onSubmit={handlePasswordReset} className="space-y-4">
+          <div>
+            <Input
+              type="email"
+              placeholder="メールアドレス"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-600">
+              {success}
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "送信中..." : "リセットメールを送信"}
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowPasswordReset(false);
+              setError(null);
+              setSuccess(null);
+            }}
+            className="w-full text-sm text-gray-600 hover:text-gray-900"
+          >
+            ログインに戻る
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -120,6 +193,16 @@ export function SimpleAuth() {
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "処理中..." : mode === "signup" ? "登録" : "ログイン"}
         </Button>
+
+        {mode === "signin" && (
+          <button
+            type="button"
+            onClick={() => setShowPasswordReset(true)}
+            className="w-full text-sm text-gray-600 hover:text-gray-900"
+          >
+            パスワードを忘れた場合
+          </button>
+        )}
       </form>
     </div>
   );
