@@ -1,47 +1,60 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 
 export function AuthCodeHandler() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    
-    if (!code) {
-      return;
-    }
+    const handleAuth = async () => {
+      // URLのハッシュとクエリパラメータをチェック
+      const hash = window.location.hash;
+      const search = window.location.search;
+      
+      // エラーがある場合は何もしない
+      if (search.includes("error=") || hash.includes("error=")) {
+        return;
+      }
 
-    const exchangeCode = async () => {
+      // codeパラメータまたはaccess_tokenがある場合のみ処理
+      const hasCode = search.includes("code=");
+      const hasToken = hash.includes("access_token=");
+      
+      if (!hasCode && !hasToken) {
+        return;
+      }
+
       try {
-        console.log("[AuthCodeHandler] Exchanging code for session...");
+        console.log("[AuthCodeHandler] Checking for session...");
         const supabase = createSupabaseBrowserClient();
         
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        // セッションを確認（自動的にURLからトークンを検出）
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("[AuthCodeHandler] Exchange failed:", error);
-          router.replace(`/?error=${encodeURIComponent("認証に失敗しました: " + error.message)}`);
+          console.error("[AuthCodeHandler] Session check failed:", error);
+          router.replace(`/?error=${encodeURIComponent("認証に失敗しました")}`);
           return;
         }
 
-        console.log("[AuthCodeHandler] Exchange successful, session:", !!data.session);
-        
-        // URLからcodeパラメータを削除してリロード
-        const url = new URL(window.location.href);
-        url.searchParams.delete("code");
-        router.replace(url.pathname + url.search);
+        if (data.session) {
+          console.log("[AuthCodeHandler] Session established successfully");
+          // URLをクリーンにしてリロード
+          router.replace("/");
+        } else {
+          console.log("[AuthCodeHandler] No session found, staying on login");
+        }
       } catch (err) {
         console.error("[AuthCodeHandler] Unexpected error:", err);
-        router.replace("/?error=認証処理中にエラーが発生しました");
       }
     };
 
-    exchangeCode();
-  }, [searchParams, router]);
+    // 少し遅延させて、URLが完全に更新されるのを待つ
+    const timer = setTimeout(handleAuth, 100);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return null;
 }

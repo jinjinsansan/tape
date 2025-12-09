@@ -15,13 +15,22 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // リクエストとレスポンスの両方にクッキーをセット
+            request.cookies.set(name, value)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              httpOnly: false, // ブラウザから読み取れるようにする
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+            })
+          })
         },
       },
     }
   )
 
-  // 重要: getUser()を呼び出してセッションをリフレッシュ
+  // セッションをリフレッシュ
   await supabase.auth.getUser()
 
   return supabaseResponse

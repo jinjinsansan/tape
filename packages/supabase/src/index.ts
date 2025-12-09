@@ -67,6 +67,11 @@ export const createSupabaseBrowserClient = (
           })
         },
       },
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
     });
   }
 
