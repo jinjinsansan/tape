@@ -14,11 +14,15 @@
     "@tape/rag": "file:../../packages/rag",
     "@tape/supabase": "file:../../packages/supabase",
     "@tape/ui": "file:../../packages/ui",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.446.0",
     "next": "14.2.11",
     "openai": "^4.78.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "resend": "^4.0.0",
+    "tailwind-merge": "^2.5.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
