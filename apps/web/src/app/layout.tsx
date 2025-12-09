@@ -12,7 +12,7 @@ const zenMaru = Zen_Maru_Gothic({
 });
 
 export const metadata: Metadata = {
-  title: "Tape式心理学",
+  title: "テープ式心理学",
   description: "心に寄り添う、やさしい場所",
 };
 

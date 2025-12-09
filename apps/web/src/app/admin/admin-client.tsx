@@ -359,7 +359,7 @@ export function AdminClient() {
       <header className="space-y-2">
         <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">ADMIN PANEL</p>
         <h1 className="text-3xl font-black text-slate-900">管理者ダッシュボード</h1>
-        <p className="text-sm text-slate-500">Tape式心理学プラットフォーム全体の状態を確認できます。</p>
+        <p className="text-sm text-slate-500">テープ式心理学プラットフォーム全体の状態を確認できます。</p>
       </header>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}

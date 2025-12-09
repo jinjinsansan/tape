@@ -65,7 +65,7 @@ export function SiteHeader() {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-tape-brown text-tape-cream">
             <span className="font-bold">Tp</span>
           </div>
-          <span className="text-lg font-bold tracking-tight text-tape-brown">Tape式心理学</span>
+          <span className="text-lg font-bold tracking-tight text-tape-brown">テープ式心理学</span>
         </Link>
 
         <div className="flex items-center gap-4">

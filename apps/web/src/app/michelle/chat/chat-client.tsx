@@ -185,7 +185,7 @@ export function MichelleChatClient() {
       <section className="flex flex-1 flex-col rounded-3xl border border-tape-beige bg-white shadow-sm">
         <header className="border-b border-tape-beige px-6 py-4 bg-tape-cream/30 rounded-t-3xl">
           <p className="text-sm font-bold text-tape-brown">ミシェルAIカウンセリング</p>
-          <p className="text-xs text-tape-light-brown">Tape式心理学の知識を元に回答します</p>
+          <p className="text-xs text-tape-light-brown">テープ式心理学の知識を元に回答します</p>
         </header>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">

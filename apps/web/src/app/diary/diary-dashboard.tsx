@@ -785,7 +785,10 @@ export function DiaryDashboard() {
                   <div className="flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
                     <span>{entry.journal_date}</span>
                     {entry.emotion_label && (
-                      <span className="rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-pink">
+                      <span className={cn(
+                        "rounded-full px-3 py-1 text-xs font-semibold",
+                        emotionOptions.find((opt) => opt.label === entry.emotion_label)?.tone ?? "bg-tape-pink/10 text-tape-pink"
+                      )}>
                         {entry.emotion_label}
                       </span>
                     )}

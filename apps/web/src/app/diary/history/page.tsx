@@ -21,19 +21,24 @@ type DiaryEntry = {
   hasCounselorComment?: boolean;
 };
 
-const emotionOptions = [
-  "恐怖",
-  "悲しみ",
-  "怒り",
-  "寂しさ",
-  "無価値感",
-  "罪悪感",
-  "悔しさ",
-  "恥ずかしさ",
-  "嬉しい",
-  "感謝",
-  "達成感",
-  "幸せ"
+type EmotionOption = {
+  label: string;
+  tone: string;
+};
+
+const emotionOptions: EmotionOption[] = [
+  { label: "恐怖", tone: "bg-purple-100 text-purple-800 border-purple-200" },
+  { label: "悲しみ", tone: "bg-blue-100 text-blue-800 border-blue-200" },
+  { label: "怒り", tone: "bg-red-100 text-red-800 border-red-200" },
+  { label: "悔しい", tone: "bg-green-100 text-green-800 border-green-200" },
+  { label: "無価値感", tone: "bg-gray-100 text-gray-800 border-gray-300" },
+  { label: "罪悪感", tone: "bg-orange-100 text-orange-800 border-orange-200" },
+  { label: "寂しさ", tone: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  { label: "恥ずかしさ", tone: "bg-pink-100 text-pink-800 border-pink-200" },
+  { label: "嬉しい", tone: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  { label: "感謝", tone: "bg-teal-100 text-teal-800 border-teal-200" },
+  { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200" },
+  { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200" }
 ];
 
 export default function DiaryHistoryPage() {
@@ -41,10 +46,12 @@ export default function DiaryHistoryPage() {
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ startDate: "", endDate: "", emotion: "", keyword: "" });
 
   const loadEntries = async (targetPage = 0, reset = true) => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (filters.startDate) params.set("startDate", filters.startDate);
@@ -56,13 +63,15 @@ export default function DiaryHistoryPage() {
 
       const res = await fetch(`/api/diary/history?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) {
-        throw new Error("Failed to load history");
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
       setCount(data.count ?? 0);
       setEntries((prev) => (reset ? data.entries : [...prev, ...data.entries]));
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "日記の読み込みに失敗しました");
     } finally {
       setLoading(false);
     }
@@ -127,8 +136,8 @@ export default function DiaryHistoryPage() {
                 >
                   <option value="">すべて</option>
                   {emotionOptions.map((emotion) => (
-                    <option key={emotion} value={emotion}>
-                      {emotion}
+                    <option key={emotion.label} value={emotion.label}>
+                      {emotion.label}
                     </option>
                   ))}
                 </select>
@@ -150,6 +159,12 @@ export default function DiaryHistoryPage() {
           </CardContent>
         </Card>
 
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-4">
           {entries.map((entry) => (
             <Card key={entry.id} className="border-none bg-white shadow-sm">
@@ -157,7 +172,10 @@ export default function DiaryHistoryPage() {
                 <div className="flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
                   <span>{entry.journal_date}</span>
                   {entry.emotion_label && (
-                    <span className="rounded-full bg-tape-pink/10 px-3 py-1 text-xs font-semibold text-tape-pink">
+                    <span className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold",
+                      emotionOptions.find((opt) => opt.label === entry.emotion_label)?.tone ?? "bg-tape-pink/10 text-tape-pink"
+                    )}>
                       {entry.emotion_label}
                     </span>
                   )}

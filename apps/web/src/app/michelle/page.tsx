@@ -19,7 +19,7 @@ export default function MichelleLandingPage() {
         <p className="text-xs font-semibold tracking-[0.3em] text-tape-green">TAPE式心理学</p>
         <h1 className="text-4xl font-bold text-tape-brown">ミシェル心理学 × AIカウンセリング</h1>
         <p className="text-base text-tape-brown/80">
-          Tape式心理学の講座・ケーススタディー・カウンセリングログをRAGとして学習させた専用AIです。<br className="hidden md:inline"/>
+          テープ式心理学の講座・ケーススタディー・カウンセリングログをRAGとして学習させた専用AIです。<br className="hidden md:inline"/>
           感情整理・セルフワーク・思い込みの特定まで、一連の伴走をAIがサポートします。
         </p>
       </header>
