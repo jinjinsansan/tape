@@ -38,7 +38,22 @@ const adaptRouteCookies = (cookieStore: CookieStore) => {
   return base;
 };
 
-export const createSupabaseRouteClient = <Database = unknown>(cookieStore: CookieStore = cookies()) =>
-  createServerClient<Database>(getPublicSupabaseUrl(), getPublicSupabaseAnonKey(), {
-    cookies: adaptRouteCookies(cookieStore)
+export const createSupabaseRouteClient = <Database = unknown>(
+  cookieStore: CookieStore = cookies(),
+  requestHeaders?: Headers | HeadersInit
+) => {
+  const headers = (() => {
+    if (!requestHeaders) return undefined;
+    if (requestHeaders instanceof Headers) {
+      const auth = requestHeaders.get("authorization");
+      return auth ? { Authorization: auth } : undefined;
+    }
+    const maybeAuth = (requestHeaders as Record<string, string | undefined>)["authorization"];
+    return maybeAuth ? { Authorization: maybeAuth } : undefined;
+  })();
+
+  return createServerClient<Database>(getPublicSupabaseUrl(), getPublicSupabaseAnonKey(), {
+    cookies: adaptRouteCookies(cookieStore),
+    global: headers ? { headers } : undefined
   });
+};

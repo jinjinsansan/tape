@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
 import { cn } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@tape/supabase";
 
 type DiaryEntry = {
   id: string;
@@ -51,6 +52,7 @@ export default function DiaryHistoryPage() {
 }
 
 function DiaryHistoryContent() {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
@@ -70,7 +72,16 @@ function DiaryHistoryContent() {
       params.set("page", String(targetPage));
       params.set("limit", "20");
 
-      const res = await fetch(`/api/diary/history?${params.toString()}`, { cache: "no-store" });
+      const { data } = await supabase.auth.getSession();
+      const headers: HeadersInit = {};
+      if (data.session?.access_token) {
+        headers["Authorization"] = `Bearer ${data.session.access_token}`;
+      }
+
+      const res = await fetch(`/api/diary/history?${params.toString()}`, {
+        cache: "no-store",
+        headers
+      });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
         throw new Error(errorData.error || `HTTP ${res.status}`);

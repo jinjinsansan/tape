@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   }
 
   const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
   const { response, user } = await requireUser(supabase, "Diary history list");
   if (response) {
     return response;
