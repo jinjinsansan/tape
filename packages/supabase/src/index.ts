@@ -46,7 +46,28 @@ export const createSupabaseBrowserClient = (
   );
 
   if (isBrowser) {
-    return createBrowserClient<Database>(url, key);
+    // 公式パターンに従ったクッキーハンドラー
+    return createBrowserClient<Database>(url, key, {
+      cookies: {
+        getAll() {
+          return document.cookie.split('; ').map(cookie => {
+            const [name, ...rest] = cookie.split('=')
+            return { name, value: rest.join('=') }
+          })
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const cookieParts = [`${name}=${value}`]
+            if (options?.path) cookieParts.push(`path=${options.path}`)
+            if (options?.maxAge) cookieParts.push(`max-age=${options.maxAge}`)
+            if (options?.domain) cookieParts.push(`domain=${options.domain}`)
+            if (options?.sameSite) cookieParts.push(`samesite=${options.sameSite}`)
+            if (options?.secure) cookieParts.push('secure')
+            document.cookie = cookieParts.join('; ')
+          })
+        },
+      },
+    });
   }
 
   return createClient<Database>(url, key, {
