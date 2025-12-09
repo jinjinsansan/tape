@@ -8,7 +8,6 @@
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces",
-    "postinstall": "node scripts/postinstall.js"
   },
   "workspaces": [
     "apps/*",
