@@ -72,10 +72,10 @@ function DiaryHistoryContent() {
       params.set("page", String(targetPage));
       params.set("limit", "20");
 
-      const { data } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const headers: HeadersInit = {};
-      if (data.session?.access_token) {
-        headers["Authorization"] = `Bearer ${data.session.access_token}`;
+      if (sessionData.session?.access_token) {
+        headers["Authorization"] = `Bearer ${sessionData.session.access_token}`;
       }
 
       const res = await fetch(`/api/diary/history?${params.toString()}`, {
@@ -86,9 +86,9 @@ function DiaryHistoryContent() {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
         throw new Error(errorData.error || `HTTP ${res.status}`);
       }
-      const data = await res.json();
-      setCount(data.count ?? 0);
-      setEntries((prev) => (reset ? data.entries : [...prev, ...data.entries]));
+      const json = await res.json();
+      setCount(json.count ?? 0);
+      setEntries((prev) => (reset ? json.entries : [...prev, ...json.entries]));
     } catch (err: any) {
       console.error(err);
       setError(err.message || "日記の読み込みに失敗しました");
