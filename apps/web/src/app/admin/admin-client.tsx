@@ -703,12 +703,13 @@ export function AdminClient({ userRole }: { userRole: string }) {
                       className="w-full p-2 border border-slate-200 rounded-lg text-sm"
                     >
                       <option value="">未割り当て</option>
-                      <option value="心理カウンセラー仁">心理カウンセラー仁</option>
-                      <option value="心理カウンセラーAOI">心理カウンセラーAOI</option>
-                      <option value="心理カウンセラーあさみ">心理カウンセラーあさみ</option>
-                      <option value="心理カウンセラーSHU">心理カウンセラーSHU</option>
-                      <option value="心理カウンセラーゆーちゃ">心理カウンセラーゆーちゃ</option>
-                      <option value="心理カウンセラーSammy">心理カウンセラーSammy</option>
+                      {counselors
+                        .filter((c) => c.is_active)
+                        .map((counselor) => (
+                          <option key={counselor.id} value={counselor.display_name}>
+                            {counselor.display_name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div>
