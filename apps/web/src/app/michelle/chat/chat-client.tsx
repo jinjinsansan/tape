@@ -284,7 +284,7 @@ export function MichelleChatClient() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] font-sans" style={{ fontFamily: 'sans-serif' }}>
+    <div className="flex h-screen font-sans md:h-[calc(100vh-80px)]">
       {/* オーバーレイ（モバイルのみ） */}
       {isSidebarOpen && (
         <div
@@ -401,14 +401,14 @@ export function MichelleChatClient() {
             <div className="mx-auto max-w-3xl space-y-6">
               {/* フェーズ表示エリア */}
               {activeSessionId && messages.length >= 4 && (
-                <div className="mb-3 flex flex-col gap-2 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-3">
-                  <div className="flex items-center justify-between">
+                <div className="mb-3 flex flex-col gap-1.5 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-2 md:gap-2 md:p-3">
+                  <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[#b23462]">感情ケア操作</span>
+                      <span className="text-xs font-semibold text-[#b23462] md:text-sm">感情ケア操作</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                        className="h-6 px-2 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:text-[11px]"
                         onClick={handlePhaseInsightRequest}
                         disabled={isPhaseInsightLoading || !activeSessionId}
                       >
@@ -416,11 +416,11 @@ export function MichelleChatClient() {
                         現在のフェーズ
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full border border-[#ffd1e4] bg-[#fff5f9] px-3 py-1 text-xs text-[#b23462]">
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+                      <span className="rounded-full border border-[#ffd1e4] bg-[#fff5f9] px-2 py-0.5 text-[10px] text-[#b23462] md:px-3 md:py-1 md:text-xs">
                         現在: {GUIDED_PHASE_LABELS[currentPhase]}
                       </span>
-                      <span className="text-xs text-[#c08ba5]">{GUIDED_PHASE_DESCRIPTIONS[currentPhase]}</span>
+                      <span className="text-[10px] text-[#c08ba5] md:text-xs">{GUIDED_PHASE_DESCRIPTIONS[currentPhase]}</span>
                     </div>
                   </div>
 
@@ -429,7 +429,7 @@ export function MichelleChatClient() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
                       onClick={() => handleGuidedAction("back")}
                       disabled={guidedActionLoading !== null || isLoading}
                     >
@@ -438,7 +438,7 @@ export function MichelleChatClient() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
                       onClick={() => handleGuidedAction("deeper")}
                       disabled={guidedActionLoading !== null || isLoading}
                     >
@@ -447,7 +447,7 @@ export function MichelleChatClient() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
                       onClick={() => handleGuidedAction("next")}
                       disabled={guidedActionLoading !== null || isLoading}
                     >
@@ -457,7 +457,7 @@ export function MichelleChatClient() {
 
                   {/* 最新診断結果 */}
                   {phaseInsight && (
-                    <p className="text-[11px] text-[#b1637d]">
+                    <p className="text-[10px] text-[#b1637d] md:text-[11px]">
                       最新診断: <span className="font-semibold">{GUIDED_PHASE_LABELS[phaseInsight.phase]}</span> — {phaseInsight.summary}
                     </p>
                   )}
