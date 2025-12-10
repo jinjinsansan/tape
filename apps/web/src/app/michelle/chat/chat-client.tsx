@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Send, Trash2, Menu, X, User } from "lucide-react";
+import { Send, Trash2, Menu, X, User, Loader2 } from "lucide-react";
 import Image from "next/image";
 
 type SessionSummary = {
@@ -19,6 +19,9 @@ type MessageItem = {
   content: string;
   created_at: string;
 };
+
+type GuidedAction = "back" | "deeper" | "next";
+type GuidedPhase = "explore" | "deepen" | "release";
 
 const PRESET_PROMPTS = [
   "会社の上司に怒られた...",
@@ -36,6 +39,34 @@ const THINKING_MESSAGES = [
 
 const THINKING_INTERVAL_MS = 1400;
 
+const GUIDED_ACTION_PRESETS: Record<GuidedAction, { prompt: string; success: string }> = {
+  back: {
+    prompt: "直前に扱っていたテーマをもう一度整理したいです。さっきの内容を別の視点でもう少し丁寧に解説してください。",
+    success: "✓ 直前のテーマをもう一度整理します",
+  },
+  deeper: {
+    prompt:
+      "今取り組んでいる心のテーマをさらに深掘りしたいです。感情の芯や根底にある思い込みまで一緒に探ってください。",
+    success: "✓ 同じテーマをさらに深掘りします",
+  },
+  next: {
+    prompt: "このテーマはいったん区切って、次に進むためのセルフケアや新しい視点を案内してください。",
+    success: "✓ 次のステップへ進みます",
+  },
+};
+
+const GUIDED_PHASE_LABELS: Record<GuidedPhase, string> = {
+  explore: "気持ちの整理",
+  deepen: "深掘り・核心探索",
+  release: "リリース＆ケア",
+};
+
+const GUIDED_PHASE_DESCRIPTIONS: Record<GuidedPhase, string> = {
+  explore: "今感じている感情やテーマを整理しています",
+  deepen: "感情の芯や思い込みを深掘り中",
+  release: "感情のリリースとセルフケアへ移行中",
+};
+
 export function MichelleChatClient() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -45,6 +76,10 @@ export function MichelleChatClient() {
   const [error, setError] = useState<string | null>(null);
   const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState<GuidedPhase>("explore");
+  const [phaseInsight, setPhaseInsight] = useState<{ phase: GuidedPhase; summary: string } | null>(null);
+  const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
+  const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = async () => {
@@ -171,6 +206,81 @@ export function MichelleChatClient() {
     setActiveSessionId(null);
     setMessages([]);
     setError(null);
+    setPhaseInsight(null);
+    setCurrentPhase("explore");
+  };
+
+  const handlePhaseInsightRequest = async () => {
+    if (!activeSessionId || messages.length < 4) {
+      setError("会話が十分ではありません");
+      setTimeout(() => setError(null), 2000);
+      return;
+    }
+
+    setIsPhaseInsightLoading(true);
+    try {
+      const res = await fetch("/api/michelle/phase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: activeSessionId }),
+      });
+
+      if (res.status === 401) {
+        setError("ログインが必要です");
+        setTimeout(() => setError(null), 2000);
+        return;
+      }
+
+      if (!res.ok) {
+        let serverMessage = "フェーズ診断に失敗しました";
+        try {
+          const errorBody = (await res.json()) as { error?: string };
+          if (errorBody?.error) {
+            serverMessage = errorBody.error;
+          }
+        } catch {}
+        throw new Error(serverMessage);
+      }
+
+      const data = (await res.json()) as { phase?: string; summary?: string };
+      const allowedPhases: GuidedPhase[] = ["explore", "deepen", "release"];
+      const normalized = (data.phase ?? "explore").toLowerCase() as GuidedPhase;
+      const nextPhase = allowedPhases.includes(normalized) ? normalized : "explore";
+
+      setCurrentPhase(nextPhase);
+      setPhaseInsight({
+        phase: nextPhase,
+        summary: data.summary?.trim() || `現在は${GUIDED_PHASE_LABELS[nextPhase]}にいます。`,
+      });
+    } catch (phaseError) {
+      const message = phaseError instanceof Error ? phaseError.message : "フェーズ診断に失敗しました";
+      setError(message);
+      setTimeout(() => setError(null), 2000);
+    } finally {
+      setIsPhaseInsightLoading(false);
+    }
+  };
+
+  const handleGuidedAction = async (action: GuidedAction) => {
+    if (isLoading || guidedActionLoading) {
+      return;
+    }
+
+    const preset = GUIDED_ACTION_PRESETS[action];
+    setGuidedActionLoading(action);
+
+    try {
+      setError(preset.success);
+      setTimeout(() => setError(null), 2000);
+
+      await handleSend(preset.prompt);
+    } catch (actionError) {
+      console.error("Guided action error", actionError);
+      setError("操作に失敗しました");
+      setTimeout(() => setError(null), 2000);
+    } finally {
+      setGuidedActionLoading(null);
+    }
   };
 
   return (
@@ -289,6 +399,71 @@ export function MichelleChatClient() {
             </div>
           ) : (
             <div className="mx-auto max-w-3xl space-y-6">
+              {/* フェーズ表示エリア */}
+              {activeSessionId && messages.length >= 4 && (
+                <div className="mb-3 flex flex-col gap-2 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[#b23462]">感情ケア操作</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                        onClick={handlePhaseInsightRequest}
+                        disabled={isPhaseInsightLoading || !activeSessionId}
+                      >
+                        {isPhaseInsightLoading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                        現在のフェーズ
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full border border-[#ffd1e4] bg-[#fff5f9] px-3 py-1 text-xs text-[#b23462]">
+                        現在: {GUIDED_PHASE_LABELS[currentPhase]}
+                      </span>
+                      <span className="text-xs text-[#c08ba5]">{GUIDED_PHASE_DESCRIPTIONS[currentPhase]}</span>
+                    </div>
+                  </div>
+
+                  {/* ガイドアクションボタン */}
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      onClick={() => handleGuidedAction("back")}
+                      disabled={guidedActionLoading !== null || isLoading}
+                    >
+                      {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      onClick={() => handleGuidedAction("deeper")}
+                      disabled={guidedActionLoading !== null || isLoading}
+                    >
+                      {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+                      onClick={() => handleGuidedAction("next")}
+                      disabled={guidedActionLoading !== null || isLoading}
+                    >
+                      {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
+                    </Button>
+                  </div>
+
+                  {/* 最新診断結果 */}
+                  {phaseInsight && (
+                    <p className="text-[11px] text-[#b1637d]">
+                      最新診断: <span className="font-semibold">{GUIDED_PHASE_LABELS[phaseInsight.phase]}</span> — {phaseInsight.summary}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {messages.map((message) => (
                 <div
                   key={message.id}

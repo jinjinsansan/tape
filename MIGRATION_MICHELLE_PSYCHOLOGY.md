@@ -407,13 +407,47 @@ ${conversation}
 
 ---
 
-### STEP 3: チャットクライアントUIの実装
+### STEP 3: チャットクライアントUIの実装（完全版）
 
-**重要なコード部分**（`chat-client.tsx`に追加）：
+**ファイル**: `apps/web/src/app/michelle/chat/chat-client.tsx`
+
+#### 3-1. 型定義とガイドアクション
 
 ```typescript
-// フェーズ関連の定数
+type GuidedAction = "back" | "deeper" | "next";
 type GuidedPhase = "explore" | "deepen" | "release";
+```
+
+#### 3-2. ガイドアクションの定義
+
+```typescript
+const GUIDED_ACTION_PRESETS: Record<GuidedAction, { prompt: string; success: string }> = {
+  back: {
+    prompt: "直前に扱っていたテーマをもう一度整理したいです。さっきの内容を別の視点でもう少し丁寧に解説してください。",
+    success: "✓ 直前のテーマをもう一度整理します",
+  },
+  deeper: {
+    prompt:
+      "今取り組んでいる心のテーマをさらに深掘りしたいです。感情の芯や根底にある思い込みまで一緒に探ってください。",
+    success: "✓ 同じテーマをさらに深掘りします",
+  },
+  next: {
+    prompt: "このテーマはいったん区切って、次に進むためのセルフケアや新しい視点を案内してください。",
+    success: "✓ 次のステップへ進みます",
+  },
+};
+
+const GUIDED_ACTION_NOTES: Record<GuidedAction, string> = {
+  back: "ユーザー操作: 直前のテーマ整理をリクエスト",
+  deeper: "ユーザー操作: 現在のテーマを深掘り",
+  next: "ユーザー操作: 次のセルフケア案内をリクエスト",
+};
+```
+
+#### 3-3. フェーズの定義
+
+```typescript
+const GUIDED_PHASE_SEQUENCE: GuidedPhase[] = ["explore", "deepen", "release"];
 
 const GUIDED_PHASE_LABELS: Record<GuidedPhase, string> = {
   explore: "気持ちの整理",
@@ -426,15 +460,27 @@ const GUIDED_PHASE_DESCRIPTIONS: Record<GuidedPhase, string> = {
   deepen: "感情の芯や思い込みを深掘り中",
   release: "感情のリリースとセルフケアへ移行中",
 };
+```
 
-// 状態管理
+#### 3-4. 状態管理（Reactフック内）
+
+```typescript
+// コンポーネント内の状態定義
 const [currentPhase, setCurrentPhase] = useState<GuidedPhase>("explore");
 const [phaseInsight, setPhaseInsight] = useState<{ phase: GuidedPhase; summary: string } | null>(null);
 const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
+const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
+```
 
-// フェーズ判定関数
-const fetchPhaseInsight = useCallback(async () => {
-  if (!activeSessionId || messages.length < 4) return;
+#### 3-5. フェーズ判定関数
+
+```typescript
+const handlePhaseInsightRequest = useCallback(async () => {
+  if (!activeSessionId || messages.length < 4) {
+    setError("会話が十分ではありません");
+    setTimeout(() => setError(null), 2000);
+    return;
+  }
 
   setIsPhaseInsightLoading(true);
   try {
@@ -450,25 +496,185 @@ const fetchPhaseInsight = useCallback(async () => {
     }
 
     if (!res.ok) {
-      throw new Error("フェーズ診断に失敗しました");
+      let serverMessage = "フェーズ診断に失敗しました";
+      try {
+        const errorBody = (await res.json()) as { error?: string };
+        if (errorBody?.error) {
+          serverMessage = errorBody.error;
+        }
+      } catch {}
+      throw new Error(serverMessage);
     }
 
     const data = (await res.json()) as { phase?: string; summary?: string };
+    const allowedPhases: GuidedPhase[] = ["explore", "deepen", "release"];
     const normalized = (data.phase ?? "explore").toLowerCase() as GuidedPhase;
-    const nextPhase = ["explore", "deepen", "release"].includes(normalized) ? normalized : "explore";
+    const nextPhase = allowedPhases.includes(normalized) ? normalized : "explore";
 
     setCurrentPhase(nextPhase);
     setPhaseInsight({
       phase: nextPhase,
       summary: data.summary?.trim() || `現在は${GUIDED_PHASE_LABELS[nextPhase]}にいます。`,
     });
-  } catch (error) {
-    console.error("Phase insight error:", error);
+  } catch (phaseError) {
+    const message = phaseError instanceof Error ? phaseError.message : "フェーズ診断に失敗しました";
+    setError(message);
+    setTimeout(() => setError(null), 2000);
   } finally {
     setIsPhaseInsightLoading(false);
   }
-}, [activeSessionId, messages.length]);
+}, [activeSessionId, messages]);
 ```
+
+#### 3-6. ガイドアクション処理関数
+
+```typescript
+const handleGuidedAction = useCallback(
+  async (action: GuidedAction) => {
+    if (isLoading.sending || hasPendingResponse || guidedActionLoading) {
+      return;
+    }
+
+    const preset = GUIDED_ACTION_PRESETS[action];
+    setGuidedActionLoading(action);
+
+    try {
+      setError(preset.success);
+      setTimeout(() => setError(null), 2000);
+
+      // ガイドアクションのメッセージを送信
+      await handleSendMessage(preset.prompt, { preserveStatus: true });
+    } catch (actionError) {
+      console.error("Guided action error", actionError);
+      setError("操作に失敗しました");
+      setTimeout(() => setError(null), 2000);
+    } finally {
+      setGuidedActionLoading(null);
+    }
+  },
+  [isLoading.sending, hasPendingResponse, guidedActionLoading, handleSendMessage]
+);
+```
+
+#### 3-7. UI実装（JSX部分）
+
+メッセージリストの直前に以下のフェーズ表示UIを挿入：
+
+```tsx
+{/* フェーズ表示エリア */}
+<div className="mb-3 flex flex-col gap-1 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-3">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <span className="font-semibold text-[#b23462]">感情ケア操作</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+        onClick={handlePhaseInsightRequest}
+        disabled={isPhaseInsightLoading || !activeSessionId}
+      >
+        {isPhaseInsightLoading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+        現在のフェーズ
+      </Button>
+    </div>
+    <span className="rounded-full border border-[#ffd1e4] bg-[#fff5f9] px-3 py-1 text-[#b23462]">
+      現在: {GUIDED_PHASE_LABELS[currentPhase]}
+    </span>
+    <span className="text-[#c08ba5]">{GUIDED_PHASE_DESCRIPTIONS[currentPhase]}</span>
+  </div>
+
+  {/* ガイドアクションボタン */}
+  <div className="flex flex-wrap gap-1">
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+      onClick={() => handleGuidedAction("back")}
+      disabled={guidedActionLoading !== null || hasPendingResponse || isLoading.sending}
+    >
+      {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
+    </Button>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+      onClick={() => handleGuidedAction("deeper")}
+      disabled={guidedActionLoading !== null || hasPendingResponse || isLoading.sending}
+    >
+      {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
+    </Button>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-[11px] text-[#b23462] hover:bg-[#ffe6ef]"
+      onClick={() => handleGuidedAction("next")}
+      disabled={guidedActionLoading !== null || hasPendingResponse || isLoading.sending}
+    >
+      {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
+    </Button>
+  </div>
+
+  {/* 最新診断結果 */}
+  {phaseInsight && (
+    <p className="text-[11px] text-[#b1637d]">
+      最新診断: <span className="font-semibold">{GUIDED_PHASE_LABELS[phaseInsight.phase]}</span> — {phaseInsight.summary}
+    </p>
+  )}
+</div>
+```
+
+#### 3-8. 配置場所の詳細
+
+```tsx
+export function MichelleChatClient() {
+  // ... 状態定義（3-4）
+  // ... 関数定義（3-5, 3-6）
+
+  return (
+    <div className="flex h-screen flex-col">
+      {/* ヘッダー */}
+      <header>...</header>
+
+      {/* メインコンテンツ */}
+      <div className="flex-1 overflow-y-auto">
+        {/* 👇 ここにフェーズ表示UIを挿入（3-7） */}
+        <div className="mb-3 flex flex-col gap-1 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-3">
+          {/* フェーズ表示UI全体 */}
+        </div>
+
+        {/* メッセージリスト */}
+        {messages.map((msg) => (
+          <div key={msg.id}>...</div>
+        ))}
+      </div>
+
+      {/* 入力フォーム */}
+      <form>...</form>
+    </div>
+  );
+}
+```
+
+#### 3-9. 必要なインポート
+
+```typescript
+import { useCallback, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+```
+
+#### 3-10. スタイリングの詳細
+
+| 要素 | カラーコード | 説明 |
+|------|-------------|------|
+| 背景色 | `#fffbfd` | フェーズエリア全体の背景 |
+| ボーダー | `#ffdbe8` | フェーズエリアの枠線 |
+| テキスト（メイン） | `#b23462` | 「感情ケア操作」「現在のフェーズ」ボタン |
+| テキスト（説明） | `#c08ba5` | フェーズ説明文 |
+| バッジ背景 | `#fff5f9` | 「現在: 気持ちの整理」バッジ |
+| バッジボーダー | `#ffd1e4` | バッジの枠線 |
+| ホバー背景 | `#ffe6ef` | ボタンホバー時の背景 |
+| 診断結果テキスト | `#b1637d` | 「最新診断」テキスト |
 
 ---
 
@@ -599,15 +805,55 @@ CREATE INDEX michelle_messages_session_idx ON michelle_messages(session_id);
 
 ## ✅ 完了チェックリスト
 
+### システムプロンプト
 - [ ] システムプロンプトがOpenAI Assistantに設定されている
-- [ ] フェーズ判定API (`/api/michelle/phase`) が動作する
+- [ ] `MICHELLE_ASSISTANT_ID` が環境変数に設定されている
+- [ ] `MICHELLE_AI_ENABLED=true` が設定されている
+
+### API実装
+- [ ] フェーズ判定API (`/api/michelle/phase/route.ts`) が存在する
+- [ ] フェーズ判定APIが正常に動作する
+- [ ] チャットAPI (`/api/michelle/chat/route.ts`) にRAG検索が組み込まれている
+
+### UI実装
+- [ ] フェーズ表示エリアが実装されている
+  - [ ] 「感情ケア操作」ヘッダー
+  - [ ] 「現在のフェーズ」ボタン（クリックでフェーズ判定）
+  - [ ] 現在のフェーズバッジ（ピンク背景）
+  - [ ] フェーズ説明文
+- [ ] ガイドアクションボタンが実装されている
+  - [ ] 「◀ 前のテーマ」ボタン
+  - [ ] 「◎ 深掘り」ボタン
+  - [ ] 「次へ ▶」ボタン
+- [ ] 最新診断結果が表示される（フェーズ判定後）
+- [ ] ボタンのローディング状態が正しく表示される
+  - [ ] 「整理中...」「準備中...」「案内中...」
+
+### スタイリング
+- [ ] カラースキームが正しい（ピンク系 `#b23462` など）
+- [ ] ボタンホバー時の背景色が変わる（`#ffe6ef`）
+- [ ] フェーズエリアの背景色が正しい（`#fffbfd`）
+
+### 動作確認
 - [ ] チャット開始時に基本情報（年齢・職業・同居人・既婚未婚）を聞かれる
-- [ ] 会話中に心理テストが提示される
-- [ ] フェーズ（explore/deepen/release）が表示される
-- [ ] フェーズラベルが正しく表示される（気持ちの整理/深掘り・核心探索/リリース＆ケア）
+- [ ] 会話中に心理テストが提示される（「この人生で私は【】しなければならない」など）
+- [ ] フェーズ（explore/deepen/release）が自動判定される
+- [ ] フェーズラベルが正しく表示される
+  - [ ] explore: 「気持ちの整理」
+  - [ ] deepen: 「深掘り・核心探索」
+  - [ ] release: 「リリース＆ケア」
+- [ ] ガイドアクションボタンをクリックすると対応するメッセージが送信される
+  - [ ] 「前のテーマ」→ 直前のテーマを別の視点で解説
+  - [ ] 「深掘り」→ 感情の芯や思い込みを探る
+  - [ ] 「次へ」→ セルフケアや新しい視点を案内
 - [ ] RAG知識が活用されて200文字以上の解説が出る
 - [ ] 「ミシェル心理学」という言葉が使われている
 - [ ] 「テープ式心理学」「ガムテープ」という言葉が**絶対に**出ない
+
+### デバッグ
+- [ ] ブラウザコンソールにエラーが出ていない
+- [ ] フェーズ判定APIのレスポンスが正常（200 OK）
+- [ ] チャットAPIのストリーミングが正常に動作する
 
 ---
 
