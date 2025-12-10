@@ -10,32 +10,41 @@ type WritableRequestCookies = CookieStore & {
 };
 
 const adaptRouteCookies = (cookieStore: CookieStore) => {
-  const base = {
-    getAll() {
-      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
-    }
+  const writable = cookieStore as WritableRequestCookies;
+
+  const setWithDefaults = (
+    name: string,
+    value: string,
+    options?: Record<string, unknown>
+  ) => {
+    if (typeof writable.set !== "function") return;
+    writable.set(name, value, {
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7,
+      ...options
+    });
   };
 
-  const writable = cookieStore as WritableRequestCookies;
-  if (typeof writable.set === "function") {
-    return {
-      ...base,
-      setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          writable.set?.(name, value, {
-            path: "/",
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
-            httpOnly: true,
-            maxAge: 60 * 60 * 24 * 7,
-            ...options
-          });
-        });
-      }
-    };
-  }
-
-  return base;
+  return {
+    getAll() {
+      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+    },
+    setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
+      cookiesToSet.forEach(({ name, value, options }) => setWithDefaults(name, value, options));
+    },
+    get(name: string) {
+      return cookieStore.get(name)?.value;
+    },
+    set(name: string, value: string, options?: Record<string, unknown>) {
+      setWithDefaults(name, value, options);
+    },
+    remove(name: string, options?: Record<string, unknown>) {
+      setWithDefaults(name, "", { ...(options ?? {}), maxAge: 0 });
+    }
+  };
 };
 
 export const createSupabaseRouteClient = <Database = unknown>(
