@@ -11,13 +11,13 @@ type WritableRequestCookies = CookieStore & {
 
 const adaptRouteCookies = (cookieStore: CookieStore) => {
   const writable = cookieStore as WritableRequestCookies;
-
+  const noopSet = () => {};
   const setWithDefaults = (
     name: string,
     value: string,
     options?: Record<string, unknown>
   ) => {
-    if (typeof writable.set !== "function") return;
+    if (typeof writable.set !== "function") return noopSet();
     writable.set(name, value, {
       path: "/",
       sameSite: "lax",
