@@ -112,6 +112,9 @@ export async function POST(request: NextRequest) {
     .eq("id", user.id)
     .maybeSingle();
 
+  // 管理者クライアントを取得（画像アップロードとプロフィール更新で使用）
+  const admin = getSupabaseAdminClient();
+
   if (avatarFile instanceof File && avatarFile.size > 0) {
     if (avatarFile.size > MAX_AVATAR_SIZE) {
       return NextResponse.json({ error: "アイコン画像は2MB以下にしてください" }, { status: 400 });
@@ -121,7 +124,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "PNG / JPEG / WebP 形式の画像をご利用ください" }, { status: 400 });
     }
 
-    const admin = getSupabaseAdminClient();
     const extension = avatarFile.name?.split(".").pop()?.toLowerCase() || avatarFile.type?.split("/").pop() || "png";
     newAvatarPath = `${user.id}/${randomUUID()}.${extension}`;
     const fileBuffer = Buffer.from(await avatarFile.arrayBuffer());
@@ -155,19 +157,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "更新する内容がありません" }, { status: 400 });
   }
 
-  const { data: updatedProfile, error: updateError } = await supabase
+  const { data: updatedProfile, error: updateError } = await admin
     .from("profiles")
     .upsert(updates, { onConflict: "id" })
     .select("display_name, avatar_url")
     .single();
 
   if (updateError) {
-    console.error("Failed to update profile", updateError.message);
+    console.error("Failed to update profile", updateError.message, updateError);
     return NextResponse.json({ error: "プロフィールの更新に失敗しました" }, { status: 500 });
   }
 
   if (uploadedAvatarUrl && existingProfile?.avatar_url) {
-    const admin = getSupabaseAdminClient();
     const previousPath = getStoragePathFromPublicUrl(existingProfile.avatar_url);
     if (previousPath && previousPath !== newAvatarPath) {
       await admin.storage.from("profile-avatars").remove([previousPath]).catch((error) => {
