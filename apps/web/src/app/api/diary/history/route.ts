@@ -25,9 +25,13 @@ const handleAuthError = (error: unknown) => {
   return null;
 };
 
-const requireUser = async (supabase: ReturnType<typeof createSupabaseRouteClient>, context: string) => {
+const requireUser = async (
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  context: string,
+  accessToken?: string | null
+) => {
   try {
-    const user = await getRouteUser(supabase, context);
+    const user = await getRouteUser(supabase, context, accessToken ?? undefined);
     if (!user) {
       return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
     }
@@ -48,9 +52,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid filters" }, { status: 400 });
   }
 
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore, request.headers);
-  const { response, user } = await requireUser(supabase, "Diary history list");
+  const { response, user } = await requireUser(supabase, "Diary history list", accessToken);
   if (response) {
     return response;
   }

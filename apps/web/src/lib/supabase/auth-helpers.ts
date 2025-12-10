@@ -7,9 +7,15 @@ export class SupabaseAuthUnavailableError extends Error {
   }
 }
 
-export const getRouteUser = async <Database>(supabase: SupabaseClient<Database>, context: string) => {
+export const getRouteUser = async <Database>(
+  supabase: SupabaseClient<Database>,
+  context: string,
+  accessToken?: string
+) => {
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = accessToken
+      ? await supabase.auth.getUser(accessToken)
+      : await supabase.auth.getUser();
     if (error) {
       console.warn(`[${context}] Supabase auth warning`, error.message);
     }
