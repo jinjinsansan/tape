@@ -11,6 +11,7 @@ const serverEnvSchema = z
     TURNSTILE_SECRET_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     MICHELLE_ASSISTANT_ID: z.string().optional(),
+    MICHELLE_ATTRACTION_ASSISTANT_ID: z.string().optional(),
     USE_SINR_RAG: z.string().optional()
   })
   .superRefine((env, ctx) => {
@@ -50,6 +51,7 @@ export const getServerEnv = (): ServerEnv => {
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     MICHELLE_ASSISTANT_ID: process.env.MICHELLE_ASSISTANT_ID ?? process.env.ASSISTANT_ID,
+    MICHELLE_ATTRACTION_ASSISTANT_ID: process.env.MICHELLE_ATTRACTION_ASSISTANT_ID,
     USE_SINR_RAG: process.env.USE_SINR_RAG ?? process.env.NEXT_PUBLIC_USE_SINR_RAG
   });
 
@@ -88,6 +90,14 @@ export const getMichelleAssistantId = () => {
     throw new Error("MICHELLE_ASSISTANT_ID (or ASSISTANT_ID) is not configured");
   }
   return env.MICHELLE_ASSISTANT_ID;
+};
+
+export const getMichelleAttractionAssistantId = () => {
+  const env = getServerEnv();
+  if (!env.MICHELLE_ATTRACTION_ASSISTANT_ID) {
+    throw new Error("MICHELLE_ATTRACTION_ASSISTANT_ID is not configured");
+  }
+  return env.MICHELLE_ATTRACTION_ASSISTANT_ID;
 };
 
 const toBoolean = (value: string | undefined, defaultValue: boolean) => {

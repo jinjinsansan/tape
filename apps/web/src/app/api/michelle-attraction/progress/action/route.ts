@@ -1,0 +1,108 @@
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { z } from "zod";
+
+import { MICHELLE_ATTRACTION_AI_ENABLED } from "@/lib/feature-flags";
+import {
+  ensureProgressRecord,
+  fetchProgressBySession,
+  type AttractionSupabase,
+  type ProgressRecord,
+  upsertProgressRecord
+} from "@/lib/michelle-attraction/progress-server";
+import { getNextSection, getPreviousSection } from "@/lib/michelle-attraction/sections";
+import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import type { Database } from "@tape/supabase";
+
+const requestSchema = z.object({
+  sessionId: z.string().uuid(),
+  action: z.enum(["next", "back"])
+});
+
+export async function POST(request: Request) {
+  if (!MICHELLE_ATTRACTION_AI_ENABLED) {
+    return NextResponse.json({ error: "Michelle Attraction AI is currently disabled" }, { status: 503 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsed = requestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  const { sessionId, action } = parsed.data;
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient<Database>(cookieStore) as unknown as AttractionSupabase;
+  let user;
+  try {
+    user = await getRouteUser(supabase, "Michelle attraction progress action");
+  } catch (error) {
+    if (error instanceof SupabaseAuthUnavailableError) {
+      return NextResponse.json(
+        { error: "Authentication service is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    let progressRecord = await fetchProgressBySession(supabase, user.id, sessionId);
+    if (!progressRecord) {
+      await ensureProgressRecord(supabase, user.id, sessionId);
+      progressRecord = await fetchProgressBySession(supabase, user.id, sessionId);
+    }
+
+    if (!progressRecord) {
+      throw new Error("Failed to resolve progress record");
+    }
+
+    const updated = await applyProgressAction({ action, progressRecord, supabase, authUserId: user.id, sessionId });
+    return NextResponse.json({ progress: updated });
+  } catch (error) {
+    console.error("Michelle attraction progress action error", error);
+    const message = error instanceof Error && error.message ? error.message : "進捗を更新できませんでした";
+    const status = message.includes("セクション") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+const applyProgressAction = async (params: {
+  action: "next" | "back";
+  progressRecord: ProgressRecord;
+  supabase: AttractionSupabase;
+  authUserId: string;
+  sessionId: string;
+}) => {
+  const { action, progressRecord, supabase, authUserId, sessionId } = params;
+  if (action === "next") {
+    const nextSection = getNextSection(progressRecord.current_section);
+    if (!nextSection) {
+      throw new Error("これ以上先のセクションはありません");
+    }
+    return upsertProgressRecord(supabase, {
+      authUserId,
+      sessionId,
+      level: nextSection.level,
+      section: nextSection.section,
+      status: "IP"
+    });
+  }
+
+  const previousSection = getPreviousSection(progressRecord.current_section);
+  if (!previousSection) {
+    throw new Error("これ以上戻ることはできません");
+  }
+  return upsertProgressRecord(supabase, {
+    authUserId,
+    sessionId,
+    level: previousSection.level,
+    section: previousSection.section,
+    status: "RV"
+  });
+};
