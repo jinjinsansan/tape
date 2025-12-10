@@ -399,102 +399,86 @@ export function MichelleChatClient() {
             </div>
           ) : (
             <div className="mx-auto max-w-3xl space-y-6">
-              {/* フェーズ表示エリア */}
-              {activeSessionId && messages.length >= 4 && (
-                <div className="mb-3 flex flex-col gap-1.5 rounded-lg border border-[#ffdbe8] bg-[#fffbfd] p-2 md:gap-2 md:p-3">
-                  <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-[#b23462] md:text-sm">感情ケア操作</span>
+              {messages.map((message, index) => (
+                <div key={message.id}>
+                  <div
+                    className={cn(
+                      "flex gap-3",
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    {message.role === "assistant" && (
+                      <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-white shadow">
+                        <Image
+                          src="/michelle-icon.png"
+                          alt="Michelle"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[80%] rounded-2xl px-5 py-3 shadow-sm",
+                        message.role === "user"
+                          ? "bg-tape-orange text-white"
+                          : "bg-white border border-tape-beige text-tape-brown"
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                    </div>
+                    {message.role === "user" && (
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-tape-brown shadow">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AIメッセージの下にガイドボタンを表示 */}
+                  {message.role === "assistant" && activeSessionId && messages.length >= 4 && (
+                    <div className="ml-[52px] mt-1.5 flex flex-wrap items-center gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:text-[11px]"
+                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
+                        onClick={() => handleGuidedAction("back")}
+                        disabled={guidedActionLoading !== null || isLoading}
+                      >
+                        {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
+                        onClick={() => handleGuidedAction("deeper")}
+                        disabled={guidedActionLoading !== null || isLoading}
+                      >
+                        {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
+                        onClick={() => handleGuidedAction("next")}
+                        disabled={guidedActionLoading !== null || isLoading}
+                      >
+                        {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
                         onClick={handlePhaseInsightRequest}
                         disabled={isPhaseInsightLoading || !activeSessionId}
                       >
-                        {isPhaseInsightLoading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                        現在のフェーズ
+                        {isPhaseInsightLoading && <Loader2 className="mr-0.5 h-2.5 w-2.5 animate-spin" />}
+                        {isPhaseInsightLoading ? "判定中..." : "フェーズ判定"}
                       </Button>
-                    </div>
-                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
-                      <span className="rounded-full border border-[#ffd1e4] bg-[#fff5f9] px-2 py-0.5 text-[10px] text-[#b23462] md:px-3 md:py-1 md:text-xs">
-                        現在: {GUIDED_PHASE_LABELS[currentPhase]}
-                      </span>
-                      <span className="text-[10px] text-[#c08ba5] md:text-xs">{GUIDED_PHASE_DESCRIPTIONS[currentPhase]}</span>
-                    </div>
-                  </div>
-
-                  {/* ガイドアクションボタン */}
-                  <div className="flex flex-wrap gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
-                      onClick={() => handleGuidedAction("back")}
-                      disabled={guidedActionLoading !== null || isLoading}
-                    >
-                      {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
-                      onClick={() => handleGuidedAction("deeper")}
-                      disabled={guidedActionLoading !== null || isLoading}
-                    >
-                      {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 px-1.5 text-[10px] text-[#b23462] hover:bg-[#ffe6ef] md:h-6 md:px-2 md:text-[11px]"
-                      onClick={() => handleGuidedAction("next")}
-                      disabled={guidedActionLoading !== null || isLoading}
-                    >
-                      {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
-                    </Button>
-                  </div>
-
-                  {/* 最新診断結果 */}
-                  {phaseInsight && (
-                    <p className="text-[10px] text-[#b1637d] md:text-[11px]">
-                      最新診断: <span className="font-semibold">{GUIDED_PHASE_LABELS[phaseInsight.phase]}</span> — {phaseInsight.summary}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-3",
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {message.role === "assistant" && (
-                    <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-white shadow">
-                      <Image
-                        src="/michelle-icon.png"
-                        alt="Michelle"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-2xl px-5 py-3 shadow-sm",
-                      message.role === "user"
-                        ? "bg-tape-orange text-white"
-                        : "bg-white border border-tape-beige text-tape-brown"
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
-                  </div>
-                  {message.role === "user" && (
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-tape-brown shadow">
-                      <User className="h-5 w-5 text-white" />
+                      {phaseInsight && (
+                        <span className="text-[9px] text-[#b1637d]">
+                          {GUIDED_PHASE_LABELS[phaseInsight.phase]}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
