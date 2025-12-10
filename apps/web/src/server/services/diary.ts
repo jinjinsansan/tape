@@ -32,6 +32,10 @@ export type DiaryEntryInput = {
   ai_comment_status?: DiaryAiCommentStatus;
 };
 
+export type DiaryEntryUpdateInput = Partial<Omit<DiaryEntryInput, 'content'>> & {
+  content?: string;
+};
+
 export type DiaryEntryWithRelations = Database["public"]["Tables"]["emotion_diary_entries"]["Row"] & {
   feelings: Database["public"]["Tables"]["emotion_diary_entry_feelings"]["Row"][];
   reactions: Database["public"]["Tables"]["emotion_diary_reactions"]["Row"][];
@@ -159,7 +163,7 @@ export const updateDiaryEntry = async (
   supabase: Supabase,
   entryId: string,
   userId: string,
-  payload: DiaryEntryInput,
+  payload: DiaryEntryUpdateInput,
   feelings?: DiaryFeelingInput[]
 ) => {
   const { error } = await supabase

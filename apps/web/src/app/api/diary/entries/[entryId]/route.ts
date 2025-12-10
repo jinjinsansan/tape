@@ -9,7 +9,8 @@ import {
   fetchDiaryEntryById,
   updateDiaryEntry,
   deleteDiaryEntry,
-  type DiaryFeelingInput
+  type DiaryFeelingInput,
+  type DiaryEntryUpdateInput
 } from "@/server/services/diary";
 import { updateEntrySchema } from "../_schemas";
 
@@ -113,28 +114,29 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
     }
   }
 
-  const updatePayload: Record<string, unknown> = {};
-  if (payload.title !== undefined) updatePayload.title = payload.title;
-  if (payload.content !== undefined) updatePayload.content = payload.content;
-  if (payload.moodScore !== undefined) updatePayload.mood_score = payload.moodScore;
-  if (payload.moodLabel !== undefined) updatePayload.mood_label = payload.moodLabel;
-  if (payload.moodColor !== undefined) updatePayload.mood_color = payload.moodColor;
-  if (payload.energyLevel !== undefined) updatePayload.energy_level = payload.energyLevel;
-  if (payload.emotionLabel !== undefined) updatePayload.emotion_label = payload.emotionLabel;
-  if (payload.eventSummary !== undefined) updatePayload.event_summary = payload.eventSummary;
-  if (payload.realization !== undefined) updatePayload.realization = payload.realization;
-  if (payload.selfEsteemScore !== undefined) updatePayload.self_esteem_score = payload.selfEsteemScore;
-  if (payload.worthlessnessScore !== undefined) updatePayload.worthlessness_score = payload.worthlessnessScore;
-  if (visibility !== undefined) updatePayload.visibility = visibility;
-  if (payload.journalDate !== undefined) updatePayload.journal_date = payload.journalDate;
-  if (published_at !== undefined) updatePayload.published_at = published_at;
+  const updatePayload: DiaryEntryUpdateInput = {
+    ...(payload.title !== undefined && { title: payload.title }),
+    ...(payload.content !== undefined && { content: payload.content }),
+    ...(payload.moodScore !== undefined && { mood_score: payload.moodScore }),
+    ...(payload.moodLabel !== undefined && { mood_label: payload.moodLabel }),
+    ...(payload.moodColor !== undefined && { mood_color: payload.moodColor }),
+    ...(payload.energyLevel !== undefined && { energy_level: payload.energyLevel }),
+    ...(payload.emotionLabel !== undefined && { emotion_label: payload.emotionLabel }),
+    ...(payload.eventSummary !== undefined && { event_summary: payload.eventSummary }),
+    ...(payload.realization !== undefined && { realization: payload.realization }),
+    ...(payload.selfEsteemScore !== undefined && { self_esteem_score: payload.selfEsteemScore }),
+    ...(payload.worthlessnessScore !== undefined && { worthlessness_score: payload.worthlessnessScore }),
+    ...(visibility !== undefined && { visibility }),
+    ...(payload.journalDate !== undefined && { journal_date: payload.journalDate }),
+    ...(published_at !== undefined && { published_at })
+  };
 
   try {
     const entry = await updateDiaryEntry(
       supabase,
       entryId,
       user!.id,
-      updatePayload as any,
+      updatePayload,
       feelings
     );
 
