@@ -9,7 +9,8 @@
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces",
     "upload-michelle-knowledge": "tsx scripts/michelle-knowledge/upload-to-rag.ts",
-    "sinr-process-all": "tsx scripts/michelle-knowledge/sinr-process-all.ts"
+    "sinr-process-all": "tsx scripts/michelle-knowledge/sinr-process-all.ts",
+    "create-assistant": "tsx scripts/michelle-knowledge/create-assistant.ts"
   },
   "workspaces": [
     "apps/*",
