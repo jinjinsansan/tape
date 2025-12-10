@@ -78,6 +78,12 @@ const diarySelect = `
   created_at,
   updated_at,
   deleted_at,
+  counselor_memo,
+  counselor_name,
+  is_visible_to_user,
+  counselor_memo_read,
+  assigned_counselor,
+  urgency_level,
   feelings:emotion_diary_entry_feelings(label,intensity,tone,created_at),
   reactions:emotion_diary_reactions(reaction_type,user_id,created_at)
 `;

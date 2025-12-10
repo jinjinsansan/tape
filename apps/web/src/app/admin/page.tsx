@@ -25,9 +25,9 @@ export default async function AdminPage() {
   }
 
   const { data: profile, error } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (error || profile?.role !== "admin") {
+  if (error || !profile || !['admin', 'counselor'].includes(profile.role)) {
     redirect("/");
   }
 
-  return <AdminClient />;
+  return <AdminClient userRole={profile.role} />;
 }

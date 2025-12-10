@@ -23,6 +23,12 @@ type DiaryEntry = {
   worthlessness_score: number | null;
   visibility: DiaryVisibility;
   hasCounselorComment?: boolean;
+  counselor_memo: string | null;
+  counselor_name: string | null;
+  is_visible_to_user: boolean;
+  counselor_memo_read: boolean;
+  assigned_counselor: string | null;
+  urgency_level: string | null;
 };
 
 type EditFormState = {
@@ -630,6 +636,15 @@ function DiaryHistoryContent() {
                           <p className="text-xs font-semibold text-tape-light-brown">無価値感</p>
                           <p className="mt-1 text-sm font-semibold text-tape-brown">{entry.worthlessness_score ?? "-"}</p>
                         </div>
+                      </div>
+                    )}
+                    {entry.is_visible_to_user && entry.counselor_memo && entry.counselor_name && (
+                      <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm">
+                        <p className="text-xs font-bold text-yellow-900 flex items-center gap-2">
+                          <span>💬</span> カウンセラーからのコメント
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-yellow-800">{entry.counselor_memo}</p>
+                        <p className="mt-2 text-xs text-yellow-700">— {entry.counselor_name}</p>
                       </div>
                     )}
                   </>
