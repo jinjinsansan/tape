@@ -69,7 +69,6 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
         published_at,
         journal_date,
         created_at,
-        profiles:profiles!emotion_diary_entries_user_id_fkey(id, display_name, avatar_url),
         feelings:emotion_diary_entry_feelings(label, intensity),
         reactions:emotion_diary_feed_reactions(reaction_type, user_id)
       `
@@ -88,25 +87,39 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
     throw error;
   }
 
-  const entries = (data ?? []).map((item) => ({
-    id: item.id,
-    content: item.content,
-    publishedAt: item.published_at,
-    journalDate: item.journal_date,
-    author: {
-      id: item.profiles?.id ?? item.user_id,
-      displayName: item.profiles?.display_name ?? "匿名ユーザー",
-      avatarUrl: item.profiles?.avatar_url ?? null
-    },
-    feelings: (item.feelings ?? []).map((feeling) => ({
-      label: feeling.label,
-      intensity: feeling.intensity
-    })),
-    moodScore: item.mood_score,
-    moodLabel: item.mood_label,
-    moodColor: item.mood_color,
-    reactions: buildReactionSummary(item.reactions ?? [], params.viewerId)
-  })) as FeedEntry[];
+  // ユーザーIDを収集してプロファイルを一括取得
+  const userIds = [...new Set((data ?? []).map((item) => item.user_id))];
+  const { data: profilesData } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .in("id", userIds);
+
+  const profilesMap = new Map(
+    (profilesData ?? []).map((profile) => [profile.id, profile])
+  );
+
+  const entries = (data ?? []).map((item) => {
+    const profile = profilesMap.get(item.user_id);
+    return {
+      id: item.id,
+      content: item.content,
+      publishedAt: item.published_at,
+      journalDate: item.journal_date,
+      author: {
+        id: item.user_id,
+        displayName: profile?.display_name ?? "匿名ユーザー",
+        avatarUrl: profile?.avatar_url ?? null
+      },
+      feelings: (item.feelings ?? []).map((feeling) => ({
+        label: feeling.label,
+        intensity: feeling.intensity
+      })),
+      moodScore: item.mood_score,
+      moodLabel: item.mood_label,
+      moodColor: item.mood_color,
+      reactions: buildReactionSummary(item.reactions ?? [], params.viewerId)
+    };
+  }) as FeedEntry[];
 
   const hasNext = entries.length > limit;
   const slicedEntries = hasNext ? entries.slice(0, limit) : entries;

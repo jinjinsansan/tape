@@ -26,8 +26,7 @@ export async function GET(
           id,
           content,
           created_at,
-          commenter_user_id,
-          profiles:profiles!emotion_diary_comments_commenter_user_id_fkey(display_name)
+          commenter_user_id
         `
       )
       .eq("entry_id", entryId)
@@ -39,12 +38,26 @@ export async function GET(
       throw error;
     }
 
-    const formattedComments = (comments || []).map((comment) => ({
-      id: comment.id,
-      content: comment.content,
-      created_at: comment.created_at,
-      commenter_name: comment.profiles?.display_name || "匿名ユーザー"
-    }));
+    // ユーザーIDを収集してプロファイルを一括取得
+    const userIds = [...new Set((comments || []).map((c) => c.commenter_user_id).filter(Boolean) as string[])];
+    const { data: profilesData } = await adminSupabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+
+    const profilesMap = new Map(
+      (profilesData || []).map((profile) => [profile.id, profile])
+    );
+
+    const formattedComments = (comments || []).map((comment) => {
+      const profile = comment.commenter_user_id ? profilesMap.get(comment.commenter_user_id) : null;
+      return {
+        id: comment.id,
+        content: comment.content,
+        created_at: comment.created_at,
+        commenter_name: profile?.display_name || "匿名ユーザー"
+      };
+    });
 
     return NextResponse.json({ comments: formattedComments });
   } catch (error) {

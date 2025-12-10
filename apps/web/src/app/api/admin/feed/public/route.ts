@@ -23,8 +23,7 @@ export async function GET() {
           user_id,
           content,
           published_at,
-          visibility,
-          profiles:profiles!emotion_diary_entries_user_id_fkey(display_name)
+          visibility
         `
       )
       .eq("visibility", "public")
@@ -36,6 +35,17 @@ export async function GET() {
       console.error("Failed to fetch public diaries", error);
       throw error;
     }
+
+    // ユーザーIDを収集してプロファイルを一括取得
+    const userIds = [...new Set((data || []).map((entry) => entry.user_id))];
+    const { data: profilesData } = await adminSupabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+
+    const profilesMap = new Map(
+      (profilesData || []).map((profile) => [profile.id, profile])
+    );
 
     // コメント数を取得
     const entryIds = (data || []).map((entry) => entry.id);
@@ -56,15 +66,18 @@ export async function GET() {
       }
     }
 
-    const entries = (data || []).map((entry) => ({
-      id: entry.id,
-      user_id: entry.user_id,
-      user_name: entry.profiles?.display_name || "匿名ユーザー",
-      content: entry.content,
-      published_at: entry.published_at,
-      visibility: entry.visibility,
-      comments_count: commentCounts[entry.id] || 0
-    }));
+    const entries = (data || []).map((entry) => {
+      const profile = profilesMap.get(entry.user_id);
+      return {
+        id: entry.id,
+        user_id: entry.user_id,
+        user_name: profile?.display_name || "匿名ユーザー",
+        content: entry.content,
+        published_at: entry.published_at,
+        visibility: entry.visibility,
+        comments_count: commentCounts[entry.id] || 0
+      };
+    });
 
     return NextResponse.json({ entries });
   } catch (error) {
