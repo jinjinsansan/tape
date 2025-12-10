@@ -86,6 +86,7 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
   const supabase = createSupabaseRouteClient(cookieStore, request.headers);
   const { response, user } = await requireUser(supabase, "Diary entry update", accessToken);
   if (response) {
+    return response;
   }
 
   const existing = await fetchDiaryEntryById(supabase, entryId, user!.id);
@@ -112,27 +113,28 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
     }
   }
 
+  const updatePayload: Record<string, unknown> = {};
+  if (payload.title !== undefined) updatePayload.title = payload.title;
+  if (payload.content !== undefined) updatePayload.content = payload.content;
+  if (payload.moodScore !== undefined) updatePayload.mood_score = payload.moodScore;
+  if (payload.moodLabel !== undefined) updatePayload.mood_label = payload.moodLabel;
+  if (payload.moodColor !== undefined) updatePayload.mood_color = payload.moodColor;
+  if (payload.energyLevel !== undefined) updatePayload.energy_level = payload.energyLevel;
+  if (payload.emotionLabel !== undefined) updatePayload.emotion_label = payload.emotionLabel;
+  if (payload.eventSummary !== undefined) updatePayload.event_summary = payload.eventSummary;
+  if (payload.realization !== undefined) updatePayload.realization = payload.realization;
+  if (payload.selfEsteemScore !== undefined) updatePayload.self_esteem_score = payload.selfEsteemScore;
+  if (payload.worthlessnessScore !== undefined) updatePayload.worthlessness_score = payload.worthlessnessScore;
+  if (visibility !== undefined) updatePayload.visibility = visibility;
+  if (payload.journalDate !== undefined) updatePayload.journal_date = payload.journalDate;
+  if (published_at !== undefined) updatePayload.published_at = published_at;
+
   try {
     const entry = await updateDiaryEntry(
       supabase,
       entryId,
       user!.id,
-      {
-        title: payload.title ?? undefined,
-        content: payload.content ?? undefined,
-        mood_score: payload.moodScore,
-        mood_label: payload.moodLabel,
-        mood_color: payload.moodColor,
-        energy_level: payload.energyLevel,
-        emotion_label: payload.emotionLabel,
-        event_summary: payload.eventSummary,
-        realization: payload.realization,
-        self_esteem_score: payload.selfEsteemScore,
-        worthlessness_score: payload.worthlessnessScore,
-        visibility,
-        journal_date: payload.journalDate,
-        published_at
-      },
+      updatePayload as any,
       feelings
     );
 

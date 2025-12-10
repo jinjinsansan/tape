@@ -120,6 +120,13 @@ const writeGuestEntriesToStorage = (entries: DiaryEntry[]) => {
   window.localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(entries));
 };
 
+const clearGuestEntriesFromStorage = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.removeItem(GUEST_STORAGE_KEY);
+};
+
 const derivePreviousScoreFromEntries = (entries: DiaryEntry[]): PreviousScoreInfo | null => {
   const target = entries.find((entry) => entry.worthlessness_score != null);
   if (!target || target.worthlessness_score == null) {
@@ -148,6 +155,7 @@ export function DiaryDashboard() {
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
   const [emotionPreview, setEmotionPreview] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const isWorthlessnessSelected = emotionLabel === "無価値感";
 
   const handleEmotionSelect = (label: string) => {
@@ -211,6 +219,7 @@ export function DiaryDashboard() {
   }, [persistGuestEntries]);
 
   const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    console.log("[DiaryDashboard] getAuthHeaders called, token:", accessToken ? "present" : "none");
     if (accessToken) {
       return { Authorization: `Bearer ${accessToken}` };
     }
@@ -319,13 +328,17 @@ export function DiaryDashboard() {
 
   useEffect(() => {
     const initSession = async () => {
+      console.log("[DiaryDashboard] Initializing session...");
       const { data } = await supabase.auth.getSession();
+      console.log("[DiaryDashboard] Session loaded:", data.session ? "authenticated" : "no session");
       setAccessToken(data.session?.access_token ?? null);
+      setSessionChecked(true);
     };
     initSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setAccessToken(session?.access_token ?? null);
+      setSessionChecked(true);
     });
 
     return () => {
@@ -338,26 +351,37 @@ export function DiaryDashboard() {
       return;
     }
 
+    if (!sessionChecked) {
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
+        console.log("[DiaryDashboard] Loading entries...");
         // ゲストエントリーをクラウドに同期
         const synced = await syncGuestEntriesToCloud();
         
+        const headers = await getAuthHeaders();
+        console.log("[DiaryDashboard] Fetching with headers:", headers);
         const res = await fetch(`/api/diary/entries?scope=me&limit=50`, {
           cache: "no-store",
-          headers: await getAuthHeaders()
+          headers
         });
 
+        console.log("[DiaryDashboard] Response status:", res.status);
         if (res.status === 401) {
+          console.log("[DiaryDashboard] Unauthorized, enabling guest mode");
           enableGuestMode();
           return;
         }
 
         if (!res.ok) {
+          const errorText = await res.text();
+          console.error("[DiaryDashboard] Failed to load entries:", errorText);
           throw new Error("Failed to load entries");
         }
 
@@ -384,9 +408,13 @@ export function DiaryDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [guestMode, enableGuestMode, syncPreviousFromEntries, syncGuestEntriesToCloud]);
+  }, [guestMode, sessionChecked, enableGuestMode, syncPreviousFromEntries, syncGuestEntriesToCloud, getAuthHeaders]);
 
   useEffect(() => {
+    if (!sessionChecked) {
+      return;
+    }
+
     const loadInitialScore = async () => {
       try {
         const res = await fetch("/api/diary/initial-score", {
@@ -427,7 +455,7 @@ export function DiaryDashboard() {
       }
     };
     loadInitialScore();
-  }, []);
+  }, [sessionChecked, getAuthHeaders]);
 
   useEffect(() => {
     if (emotionLabel) {
