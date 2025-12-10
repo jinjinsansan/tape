@@ -8,7 +8,7 @@ import { chunkTextSinr, getChunkStats } from "@/lib/michelle/chunk-sinr";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const KNOWLEDGE_DIR = path.resolve(process.cwd(), "apps/web/md", "michelle");
+const KNOWLEDGE_DIR = path.join(process.cwd(), "md", "michelle");
 const EMBEDDING_MODEL = "text-embedding-3-small";
 
 const PARENT_SIZE = 800;

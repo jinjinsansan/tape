@@ -8,13 +8,17 @@
 
 import { readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
+import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { chunkText } from "./chunk";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+// .env.localを読み込む
+config({ path: join(process.cwd(), ".env.local") });
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() || "";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const MD_DIR = join(process.cwd(), "apps/web/md/michelle");
