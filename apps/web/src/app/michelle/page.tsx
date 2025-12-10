@@ -17,9 +17,9 @@ export default function MichelleLandingPage() {
     <section className="mx-auto flex max-w-5xl flex-col gap-10 px-6 py-16">
       <header className="space-y-4 text-center">
         <p className="text-xs font-semibold tracking-[0.3em] text-tape-green">TAPE式心理学</p>
-        <h1 className="text-4xl font-bold text-tape-brown">ミシェル心理学 × AIカウンセリング</h1>
+        <h1 className="text-4xl font-bold text-tape-brown">テープ式心理学 × AIカウンセリング</h1>
         <p className="text-base text-tape-brown/80">
-          テープ式心理学の講座・ケーススタディー・カウンセリングログをRAGとして学習させた専用AIです。<br className="hidden md:inline"/>
+          26万文字を学習させたテープ式心理学専用AIです。<br className="hidden md:inline"/>
           感情整理・セルフワーク・思い込みの特定まで、一連の伴走をAIがサポートします。
         </p>
       </header>
@@ -28,11 +28,6 @@ export default function MichelleLandingPage() {
         <Link href="/michelle/chat">
           <Button size="lg" className="bg-tape-green text-tape-brown hover:bg-tape-green/90">
             カウンセリングを始める
-          </Button>
-        </Link>
-        <Link href="#about">
-          <Button variant="outline" size="lg">
-            3つのフェーズを見る
           </Button>
         </Link>
       </div>
