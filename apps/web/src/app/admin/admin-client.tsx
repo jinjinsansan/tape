@@ -137,7 +137,124 @@ type DiaryEntry = {
   urgency_level: string | null;
 };
 
+type BookingRow = {
+  id: string;
+  status: string;
+  payment_status: string;
+  start_time: string;
+  end_time: string;
+  client: { id: string; display_name: string | null } | null;
+  counselor?: { display_name: string } | null;
+  notes: string | null;
+};
+
+type CounselorSlot = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+};
+
 export function AdminClient({ userRole }: { userRole: string }) {
+  // ... existing state ...
+  const [bookingList, setBookingList] = useState<BookingRow[]>([]);
+  const [myCounselor, setMyCounselor] = useState<{ id: string; slug: string; display_name: string } | null>(null);
+  const [mySlots, setMySlots] = useState<CounselorSlot[]>([]);
+  const [slotForm, setSlotForm] = useState({ date: "", startTime: "10:00", endTime: "11:00" });
+
+  const loadMyCounselor = useCallback(async () => {
+    if (userRole !== "counselor" && userRole !== "admin") return;
+    try {
+      const data = await fetchJson<{ counselor: { id: string; slug: string; display_name: string } | null }>("/api/admin/me/counselor");
+      setMyCounselor(data.counselor);
+      if (data.counselor) {
+        loadSlots(data.counselor.slug);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [userRole]);
+
+  const loadSlots = async (slug: string) => {
+    try {
+      const data = await fetchJson<{ slots: CounselorSlot[] }>(`/api/counselors/${slug}`);
+      setMySlots(data.slots ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadBookings = useCallback(async () => {
+    try {
+      let data: { bookings: BookingRow[] };
+      if (userRole === "admin") {
+        data = await fetchJson<{ bookings: BookingRow[] }>("/api/admin/bookings");
+      } else {
+        data = await fetchJson<{ bookings: BookingRow[] }>("/api/counselors/me/bookings");
+      }
+      setBookingList(data.bookings ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [userRole]);
+
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm("この予約をキャンセルしますか？")) return;
+    try {
+      await fetchJson(`/api/admin/bookings/${bookingId}`, { method: "DELETE" });
+      alert("予約をキャンセルしました");
+      loadBookings();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "キャンセルに失敗しました");
+    }
+  };
+
+  const handleAddSlot = async () => {
+    if (!myCounselor) return;
+    try {
+      const start = new Date(`${slotForm.date}T${slotForm.startTime}:00`);
+      const end = new Date(`${slotForm.date}T${slotForm.endTime}:00`);
+      
+      await fetchJson("/api/admin/slots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          counselorId: myCounselor.id,
+          startTime: start.toISOString(),
+          endTime: end.toISOString()
+        })
+      });
+      alert("予約枠を追加しました");
+      loadSlots(myCounselor.slug);
+    } catch (err) {
+      console.error(err);
+      alert("予約枠の追加に失敗しました");
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    if (!confirm("この予約枠を削除しますか？")) return;
+    try {
+      await fetchJson(`/api/admin/slots/${slotId}`, { method: "DELETE" });
+      if (myCounselor) loadSlots(myCounselor.slug);
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました");
+    }
+  };
+
+  useEffect(() => {
+    // ... existing loads ...
+    loadMyCounselor();
+    loadBookings();
+  }, [
+    // ... existing deps ...
+    loadMyCounselor,
+    loadBookings
+  ]);
+
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [reports, setReports] = useState<DiaryReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
@@ -794,7 +911,147 @@ export function AdminClient({ userRole }: { userRole: string }) {
         )}
       </section>
 
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-slate-900">予約管理</h2>
+          <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadBookings}>
+            再読み込み
+          </button>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-slate-500 bg-slate-50">
+              <tr>
+                <th className="px-4 py-2">日時</th>
+                <th className="px-4 py-2">クライアント</th>
+                {userRole === "admin" && <th className="px-4 py-2">カウンセラー</th>}
+                <th className="px-4 py-2">ステータス</th>
+                <th className="px-4 py-2">決済</th>
+                <th className="px-4 py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookingList.map((booking) => (
+                <tr key={booking.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3">
+                    {new Date(booking.start_time).toLocaleString("ja-JP")}
+                  </td>
+                  <td className="px-4 py-3">{booking.client?.display_name ?? "-"}</td>
+                  {userRole === "admin" && <td className="px-4 py-3">{booking.counselor?.display_name ?? "-"}</td>}
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      booking.status === "confirmed" ? "bg-green-100 text-green-700" :
+                      booking.status === "cancelled" ? "bg-red-100 text-red-700" :
+                      "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {booking.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{booking.payment_status}</td>
+                  <td className="px-4 py-3">
+                    {booking.status !== "cancelled" && (
+                      <button
+                        onClick={() => handleCancelBooking(booking.id)}
+                        className="text-xs text-red-500 hover:underline"
+                      >
+                        キャンセル
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {bookingList.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    予約はありません。
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {myCounselor && (
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-slate-900">予約枠管理 ({myCounselor.display_name})</h2>
+          </div>
+          
+          <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">新規枠の追加</h3>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">日付</label>
+                <input
+                  type="date"
+                  value={slotForm.date}
+                  onChange={(e) => setSlotForm({ ...slotForm, date: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">開始時間</label>
+                <input
+                  type="time"
+                  value={slotForm.startTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">終了時間</label>
+                <input
+                  type="time"
+                  value={slotForm.endTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAddSlot}
+                disabled={!slotForm.date || !slotForm.startTime || !slotForm.endTime}
+                className="rounded-full bg-blue-500 px-6 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+              >
+                追加
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-slate-700 mb-3">現在の予約枠</h3>
+            <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {mySlots.map((slot) => (
+                <div key={slot.id} className={`p-3 rounded-xl border ${slot.status === 'available' ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-70'}`}>
+                  <p className="text-xs font-bold text-slate-700">
+                    {new Date(slot.start_time).toLocaleDateString("ja-JP")}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(slot.start_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })} - {new Date(slot.end_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="mt-2 text-xs">
+                    ステータス: <span className={slot.status === 'available' ? 'text-green-600' : 'text-slate-500'}>{slot.status}</span>
+                  </p>
+                  {slot.status === 'available' && (
+                    <button
+                      onClick={() => handleDeleteSlot(slot.id)}
+                      className="mt-2 w-full rounded-md border border-rose-200 bg-rose-50 py-1 text-xs text-rose-600 hover:bg-rose-100"
+                    >
+                      削除
+                    </button>
+                  )}
+                </div>
+              ))}
+              {mySlots.length === 0 && (
+                <p className="col-span-full text-sm text-slate-500 text-center py-4">登録された枠はありません。</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* 日記詳細モーダル */}
+
       {selectedEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedEntry(null)}>
           <div

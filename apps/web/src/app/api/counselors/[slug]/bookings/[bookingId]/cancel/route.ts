@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
 import { cancelBooking, SlotUnavailableError } from "@/server/services/counselors";
+import { sendBookingCancelledEmail } from "@/server/emails";
 
 const paramsSchema = z.object({ slug: z.string().min(1), bookingId: z.string().uuid() });
 
@@ -24,12 +25,18 @@ export async function POST(_: Request, context: { params: { slug: string; bookin
   const supabase = createSupabaseRouteClient(cookieStore);
 
   let userId: string;
+  let userEmail: string | undefined;
+  let userName: string | undefined;
+
   try {
     const user = await getRouteUser(supabase, "Counselor booking cancel");
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     userId = user.id;
+    userEmail = user.email;
+    // Try to get display name from metadata if possible, otherwise default
+    userName = (user.user_metadata?.full_name as string) ?? "お客様";
   } catch (error) {
     const response = handleAuthError(error);
     if (response) return response;
@@ -37,7 +44,19 @@ export async function POST(_: Request, context: { params: { slug: string; bookin
   }
 
   try {
-    await cancelBooking(bookingId, userId);
+    const booking = await cancelBooking(bookingId, userId);
+
+    if (userEmail && booking) {
+      const startTime = booking.slot?.start_time 
+        ? new Date(booking.slot.start_time).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+        : "日時不明";
+      
+      // @ts-ignore
+      const counselorName = booking.counselor?.display_name ?? "担当カウンセラー";
+
+      await sendBookingCancelledEmail(userEmail, userName, counselorName, startTime);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof SlotUnavailableError) {

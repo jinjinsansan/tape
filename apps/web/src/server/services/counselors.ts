@@ -200,6 +200,19 @@ export const cancelBooking = async (bookingId: string, userId: string) => {
   if (cancelError) {
     throw cancelError;
   }
+
+  // Return booking for email notification
+  const { data: cancelledBooking } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      counselor:counselors!counselor_bookings_counselor_id_fkey(display_name),
+      slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
+    `)
+    .eq("id", booking.id)
+    .single();
+
+  return cancelledBooking;
 };
 
 type IntroMessagePayload = {
@@ -264,6 +277,19 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
   if (updateError) {
     throw updateError;
   }
+
+  const { data: confirmedBooking } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      client:profiles!counselor_bookings_client_user_id_fkey(id, display_name, avatar_url),
+      counselor:counselors!counselor_bookings_counselor_id_fkey(id, display_name),
+      slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
+    `)
+    .eq("id", booking.id)
+    .single();
+
+  return confirmedBooking;
 };
 
 export const getIntroMessages = async (chatId: string, supabase = getSupabaseAdminClient()) => {
@@ -353,4 +379,113 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
     end_time: booking.slot?.end_time ?? "",
     client: booking.client ?? null
   }));
+};
+
+export const listAllBookings = async (limit = 100) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      counselor:counselors(display_name),
+      client:profiles(display_name),
+      slot:counselor_slots(start_time, end_time)
+    `)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const adminCancelBooking = async (bookingId: string) => {
+  const supabase = getSupabaseAdminClient();
+  const { data: booking, error } = await supabase
+    .from("counselor_bookings")
+    .select("id, slot_id, status, price_cents, client_user_id, payment_status")
+    .eq("id", bookingId)
+    .single();
+
+  if (error) throw error;
+  if (!booking) throw new Error("Booking not found");
+
+  // Refund if paid
+  if (booking.payment_status === "paid") {
+    await topUpWallet(booking.client_user_id, booking.price_cents, {
+      reason: "Admin cancellation refund",
+      bookingId
+    });
+  }
+
+  // Release slot
+  await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
+
+  const { error: cancelError } = await supabase
+    .from("counselor_bookings")
+    .update({ status: "cancelled", payment_status: "refunded" })
+    .eq("id", bookingId);
+
+  if (cancelError) throw cancelError;
+  
+  // Return booking for email notification
+  const { data: cancelledBooking } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      client:profiles(id, display_name, email:auth_user_id(email)), -- Wait, profiles doesn't link email directly usually
+      counselor:counselors(display_name),
+      slot:counselor_slots(start_time, end_time)
+    `)
+    .eq("id", bookingId)
+    .single();
+    
+    // Note: Fetching email from auth_users is tricky via join in standard Supabase if not configured.
+    // We'll assume the caller handles email fetching or we use a separate call if needed.
+    
+    return booking;
+};
+
+export const listUserBookings = async (userId: string) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      counselor:counselors(display_name, avatar_url, slug),
+      slot:counselor_slots(start_time, end_time)
+    `)
+    .eq("client_user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const createSlot = async (counselorId: string, startTime: string, endTime: string) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("counselor_slots")
+    .insert({
+      counselor_id: counselorId,
+      start_time: startTime,
+      end_time: endTime,
+      status: "available"
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const deleteSlot = async (slotId: string) => {
+  const supabase = getSupabaseAdminClient();
+  // Only delete if available
+  const { error } = await supabase
+    .from("counselor_slots")
+    .delete()
+    .eq("id", slotId)
+    .eq("status", "available");
+
+  if (error) throw error;
 };

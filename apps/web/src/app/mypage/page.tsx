@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
 import { MyPageClient } from "./my-page-client";
+import { MyBookingsClient } from "./my-bookings-client";
 
 export default async function MyPage() {
   const cookieStore = cookies();
@@ -50,6 +51,13 @@ export default async function MyPage() {
             「みんなの日記」や各種サービスで表示される情報をここで変更できます。
           </p>
         </header>
+
+        <Card className="border-tape-beige bg-white/90 shadow-sm">
+          <CardContent className="p-6">
+            <h2 className="mb-6 text-xl font-bold text-tape-brown">カウンセリング予約</h2>
+            <MyBookingsClient />
+          </CardContent>
+        </Card>
 
         <Card className="border-tape-beige bg-white/90 shadow-sm">
           <CardContent className="p-6">
