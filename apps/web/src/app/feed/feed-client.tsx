@@ -56,6 +56,22 @@ const reactionOptions = [
   { id: "support", label: "🤝" }
 ];
 
+// かんじょうにっきエリアと同じ感情の色マッピング
+const emotionToneMap: Record<string, string> = {
+  恐怖: "bg-purple-100 text-purple-800 border-purple-200",
+  悲しみ: "bg-blue-100 text-blue-800 border-blue-200",
+  怒り: "bg-red-100 text-red-800 border-red-200",
+  寂しさ: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  無価値感: "bg-gray-100 text-gray-800 border-gray-300",
+  罪悪感: "bg-orange-100 text-orange-800 border-orange-200",
+  悔しさ: "bg-green-100 text-green-800 border-green-200",
+  恥ずかしさ: "bg-pink-100 text-pink-800 border-pink-200",
+  嬉しい: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  感謝: "bg-teal-100 text-teal-800 border-teal-200",
+  達成感: "bg-lime-100 text-lime-800 border-lime-200",
+  幸せ: "bg-amber-100 text-amber-800 border-amber-200"
+};
+
 export function FeedPageClient() {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -298,10 +314,20 @@ export function FeedPageClient() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-3">
                   <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"} alt={entry.author.displayName ?? "匿名"} className="h-10 w-10 rounded-full object-cover border border-tape-beige" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-bold text-tape-brown">{entry.author.displayName ?? "匿名ユーザー"}</p>
                     <p className="text-xs text-tape-light-brown">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
                   </div>
+                  {entry.moodLabel && (
+                    <span
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-semibold",
+                        emotionToneMap[entry.moodLabel] ?? "bg-gray-100 text-gray-800 border-gray-200"
+                      )}
+                    >
+                      {entry.moodLabel}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
                 {entry.feelings.length > 0 && (
