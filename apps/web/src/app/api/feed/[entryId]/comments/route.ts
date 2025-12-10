@@ -129,15 +129,7 @@ export async function POST(
         source: "user",
         content: content.trim()
       })
-      .select(
-        `
-          id,
-          content,
-          created_at,
-          commenter_user_id,
-          profiles:profiles!emotion_diary_comments_commenter_user_id_fkey(id, display_name, avatar_url)
-        `
-      )
+      .select("id, content, created_at, commenter_user_id")
       .single();
 
     if (error) {
@@ -145,14 +137,21 @@ export async function POST(
       throw error;
     }
 
+    // プロファイル情報を別途取得
+    const { data: profile } = await adminSupabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .eq("id", user.id)
+      .single();
+
     const formattedComment = {
       id: comment.id,
       content: comment.content,
       createdAt: comment.created_at,
       author: {
         id: comment.commenter_user_id,
-        displayName: comment.profiles?.display_name || "匿名ユーザー",
-        avatarUrl: comment.profiles?.avatar_url || null
+        displayName: profile?.display_name || "匿名ユーザー",
+        avatarUrl: profile?.avatar_url || null
       }
     };
 
