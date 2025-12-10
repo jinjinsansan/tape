@@ -66,6 +66,7 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
         mood_score,
         mood_label,
         mood_color,
+        emotion_label,
         published_at,
         journal_date,
         created_at,
@@ -115,7 +116,7 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
         intensity: feeling.intensity
       })),
       moodScore: item.mood_score,
-      moodLabel: item.mood_label,
+      moodLabel: item.mood_label || item.emotion_label,
       moodColor: item.mood_color,
       reactions: buildReactionSummary(item.reactions ?? [], params.viewerId)
     };
