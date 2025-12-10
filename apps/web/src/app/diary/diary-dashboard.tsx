@@ -147,6 +147,7 @@ export function DiaryDashboard() {
   const [realization, setRealization] = useState("");
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
   const [emotionPreview, setEmotionPreview] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const isWorthlessnessSelected = emotionLabel === "無価値感";
 
   const handleEmotionSelect = (label: string) => {
@@ -210,12 +211,11 @@ export function DiaryDashboard() {
   }, [persistGuestEntries]);
 
   const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.access_token) {
-      return { Authorization: `Bearer ${data.session.access_token}` };
+    if (accessToken) {
+      return { Authorization: `Bearer ${accessToken}` };
     }
     return {};
-  }, [supabase]);
+  }, [accessToken]);
 
   const ensureGuestEntries = () => {
     if (guestEntries.length > 0) {
@@ -316,6 +316,22 @@ export function DiaryDashboard() {
     setEntries(guestEntries);
     setLoading(false);
   }, [guestMode, guestEntries]);
+
+  useEffect(() => {
+    const initSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setAccessToken(data.session?.access_token ?? null);
+    };
+    initSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAccessToken(session?.access_token ?? null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     if (guestMode) {
