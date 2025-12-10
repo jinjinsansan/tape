@@ -219,7 +219,6 @@ export function DiaryDashboard() {
   }, [persistGuestEntries]);
 
   const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
-    console.log("[DiaryDashboard] getAuthHeaders called, token:", accessToken ? "present" : "none");
     if (accessToken) {
       return { Authorization: `Bearer ${accessToken}` };
     }
@@ -328,9 +327,7 @@ export function DiaryDashboard() {
 
   useEffect(() => {
     const initSession = async () => {
-      console.log("[DiaryDashboard] Initializing session...");
       const { data } = await supabase.auth.getSession();
-      console.log("[DiaryDashboard] Session loaded:", data.session ? "authenticated" : "no session");
       setAccessToken(data.session?.access_token ?? null);
       setSessionChecked(true);
     };
@@ -361,27 +358,21 @@ export function DiaryDashboard() {
       setLoading(true);
       setError(null);
       try {
-        console.log("[DiaryDashboard] Loading entries...");
         // ゲストエントリーをクラウドに同期
         const synced = await syncGuestEntriesToCloud();
         
         const headers = await getAuthHeaders();
-        console.log("[DiaryDashboard] Fetching with headers:", headers);
         const res = await fetch(`/api/diary/entries?scope=me&limit=50`, {
           cache: "no-store",
           headers
         });
 
-        console.log("[DiaryDashboard] Response status:", res.status);
         if (res.status === 401) {
-          console.log("[DiaryDashboard] Unauthorized, enabling guest mode");
           enableGuestMode();
           return;
         }
 
         if (!res.ok) {
-          const errorText = await res.text();
-          console.error("[DiaryDashboard] Failed to load entries:", errorText);
           throw new Error("Failed to load entries");
         }
 
