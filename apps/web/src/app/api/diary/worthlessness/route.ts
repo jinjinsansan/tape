@@ -83,13 +83,14 @@ export async function GET(request: Request) {
       return new Date(entry.journal_date) >= startDate;
     });
 
-    const pointsMap = new Map<string, { date: string; selfEsteemScore: number; worthlessnessScore: number }>();
-    const addPoint = (date: string, esteem: number, worthlessness: number) => {
+    const pointsMap = new Map<string, { date: string; selfEsteemScore: number; worthlessnessScore: number; entryId?: string | null }>();
+    const addPoint = (date: string, esteem: number, worthlessness: number, entryId?: string | null) => {
       if (!pointsMap.has(date)) {
         pointsMap.set(date, {
           date,
           selfEsteemScore: esteem,
-          worthlessnessScore: worthlessness
+          worthlessnessScore: worthlessness,
+          entryId: entryId ?? null
         });
       }
     };
@@ -98,7 +99,8 @@ export async function GET(request: Request) {
       addPoint(
         entry.journal_date,
         entry.self_esteem_score ?? 0,
-        entry.worthlessness_score ?? 0
+        entry.worthlessness_score ?? 0,
+        entry.id
       );
     });
 
@@ -108,7 +110,8 @@ export async function GET(request: Request) {
         addPoint(
           initialScore.measured_on,
           initialScore.self_esteem_score,
-          initialScore.worthlessness_score
+          initialScore.worthlessness_score,
+          null
         );
       }
     }

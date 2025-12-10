@@ -20,6 +20,7 @@ type TrendPoint = {
   date: string;
   selfEsteemScore: number;
   worthlessnessScore: number;
+  entryId?: string | null;
 };
 
 type TrendResponse = {
@@ -68,6 +69,14 @@ export default function WorthlessnessPage() {
   }, [range]);
 
   const emotionRanking = data ? Object.entries(data.emotions.filtered).sort((a, b) => b[1] - a[1]) : [];
+  const latestPoint = data?.chart?.[data.chart.length - 1];
+
+  const handlePointClick = (state: any) => {
+    const entryId = state?.activePayload?.[0]?.payload?.entryId as string | null | undefined;
+    if (entryId) {
+      window.location.href = `/diary/history#entry-${entryId}`;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-tape-cream px-4 py-10">
@@ -99,10 +108,18 @@ export default function WorthlessnessPage() {
             </div>
           </div>
 
+          {latestPoint && (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-tape-beige bg-tape-cream/40 px-4 py-3 text-sm text-tape-brown">
+              <span className="text-tape-light-brown">最新スコア ({latestPoint.date})</span>
+              <span className="rounded-full bg-white px-3 py-1 font-semibold text-tape-green">自己肯定感 {latestPoint.selfEsteemScore}</span>
+              <span className="rounded-full bg-white px-3 py-1 font-semibold text-tape-pink">無価値感 {latestPoint.worthlessnessScore}</span>
+            </div>
+          )}
+
           <div className="h-80 w-full rounded-3xl border border-tape-beige bg-tape-cream/40 p-4">
             {data && data.chart.length > 0 ? (
               <ResponsiveContainer>
-                <LineChart data={data.chart} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                <LineChart data={data.chart} margin={{ top: 10, right: 20, bottom: 0, left: 0 }} onClick={handlePointClick}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0eae1" />
                   <XAxis dataKey="date" stroke="#b08c72" fontSize={12} />
                   <YAxis domain={[0, 100]} stroke="#b08c72" fontSize={12} />
@@ -114,7 +131,7 @@ export default function WorthlessnessPage() {
                     name="自己肯定感"
                     stroke="#5ba88f"
                     strokeWidth={3}
-                    dot={false}
+                    dot={{ r: 4, strokeWidth: 2 }}
                   />
                   <Line
                     type="monotone"
@@ -122,7 +139,7 @@ export default function WorthlessnessPage() {
                     name="無価値感"
                     stroke="#ec8ea3"
                     strokeWidth={3}
-                    dot={false}
+                    dot={{ r: 4, strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>

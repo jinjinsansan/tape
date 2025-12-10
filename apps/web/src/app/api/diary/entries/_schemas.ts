@@ -16,8 +16,8 @@ export const entrySchema = z.object({
   emotionLabel: z.string().max(48).optional().nullable(),
   eventSummary: z.string().max(1000).optional().nullable(),
   realization: z.string().max(2000).optional().nullable(),
-  selfEsteemScore: z.number().int().min(0).max(100).optional(),
-  worthlessnessScore: z.number().int().min(0).max(100).optional(),
+  selfEsteemScore: z.number().int().min(0).max(100).optional().nullable(),
+  worthlessnessScore: z.number().int().min(0).max(100).optional().nullable(),
   visibility: z.enum(["private", "followers", "public"]).optional(),
   journalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   feelings: z.array(feelingSchema).max(8).optional()
