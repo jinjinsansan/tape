@@ -7,7 +7,8 @@
     "dev": "npm run dev --workspace web",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "upload-michelle-knowledge": "tsx scripts/michelle-knowledge/upload-to-rag.ts"
   },
   "workspaces": [
     "apps/*",
@@ -21,6 +22,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
