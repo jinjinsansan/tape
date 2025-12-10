@@ -2,6 +2,8 @@
  * SINR全ファイル処理API
  * 
  * Server-Sent Events (SSE) でリアルタイム進捗を返す
+ * 
+ * Note: Path is correctly set to path.join(process.cwd(), "md", "michelle")
  */
 
 import fs from "node:fs/promises";
