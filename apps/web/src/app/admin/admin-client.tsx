@@ -661,6 +661,98 @@ export function AdminClient({ userRole }: { userRole: string }) {
         )}
       </section>
 
+      {userRole === "admin" && (
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-500">みんなの日記管理</p>
+              <h2 className="text-xl font-black text-slate-900">公開日記の管理</h2>
+            </div>
+            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadPublicDiaries}>
+              再読み込み
+            </button>
+          </div>
+          <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+            {publicDiaries.length === 0 ? (
+              <p className="text-sm text-slate-500">公開日記がありません。</p>
+            ) : (
+              publicDiaries.map((diary) => (
+                <article key={diary.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-400">
+                        ユーザー: {diary.user_name} | {new Date(diary.published_at).toLocaleString("ja-JP")}
+                      </p>
+                      <p className="mt-2 line-clamp-2 text-slate-700">{diary.content}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        コメント数: {diary.comments_count}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => loadDiaryComments(diary.id)}
+                      className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs text-blue-700 hover:bg-blue-100"
+                    >
+                      コメント管理
+                    </button>
+                    <button
+                      onClick={() => handleHideDiary(diary.id)}
+                      className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-700 hover:bg-amber-100"
+                    >
+                      非表示にする
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDiary(diary.id)}
+                      className="rounded-full bg-rose-500 px-3 py-1 text-xs text-white hover:bg-rose-600"
+                    >
+                      削除
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+
+          {selectedDiaryComments && (
+            <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-slate-900">コメント一覧</h3>
+                <button
+                  onClick={() => setSelectedDiaryComments(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  閉じる
+                </button>
+              </div>
+              {selectedDiaryComments.comments.length === 0 ? (
+                <p className="text-xs text-slate-500">コメントがありません。</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDiaryComments.comments.map((comment) => (
+                    <div key={comment.id} className="rounded-lg border border-slate-100 bg-white p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-slate-700">{comment.commenter_name}</p>
+                          <p className="text-xs text-slate-400">{new Date(comment.created_at).toLocaleString("ja-JP")}</p>
+                          <p className="mt-1 text-sm text-slate-600">{comment.content}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteComment(selectedDiaryComments.entryId, comment.id)}
+                          className="ml-2 text-xs text-rose-500 hover:underline"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
         <h2 className="text-xl font-black text-slate-900">ユーザー管理</h2>
         <input 
