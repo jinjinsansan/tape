@@ -19,6 +19,21 @@ export async function DELETE(
   const adminSupabase = getSupabaseAdminClient();
 
   try {
+    // 日記が存在するか確認
+    const { data: entry, error: fetchError } = await adminSupabase
+      .from("emotion_diary_entries")
+      .select("id")
+      .eq("id", entryId)
+      .single();
+
+    if (fetchError || !entry) {
+      return NextResponse.json(
+        { error: "Entry not found" },
+        { status: 404 }
+      );
+    }
+
+    // 削除実行
     const { error } = await adminSupabase
       .from("emotion_diary_entries")
       .delete()

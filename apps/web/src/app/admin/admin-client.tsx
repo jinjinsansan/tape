@@ -285,11 +285,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
   const handleHideDiary = async (entryId: string) => {
     if (!confirm("この日記を非表示にしますか？")) return;
     try {
-      await fetchJson(`/api/admin/diary/entries/${entryId}/visibility`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visibility: "private" })
-      });
+      await updateVisibility(entryId, "private");
       alert("日記を非表示にしました");
       loadPublicDiaries();
     } catch (err) {

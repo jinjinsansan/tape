@@ -40,6 +40,7 @@ type FeedEntry = {
   showComments?: boolean;
   commentInput?: string;
   submittingComment?: boolean;
+  commentsError?: string;
 };
 
 type FeedResponse = {
@@ -183,11 +184,16 @@ export function FeedPageClient() {
       const data = await res.json();
       setEntries((prev) =>
         prev.map((entry) =>
-          entry.id === entryId ? { ...entry, comments: data.comments } : entry
+          entry.id === entryId ? { ...entry, comments: data.comments, commentsError: undefined } : entry
         )
       );
     } catch (err) {
       console.error(err);
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId ? { ...entry, commentsError: "コメントの読み込みに失敗しました" } : entry
+        )
+      );
     }
   };
 
@@ -345,7 +351,17 @@ export function FeedPageClient() {
                   <div className="mt-4 space-y-3 border-t border-tape-beige pt-4">
                     <p className="text-sm font-bold text-tape-brown">コメント</p>
                     
-                    {entry.comments && entry.comments.length > 0 ? (
+                    {entry.commentsError ? (
+                      <div className="rounded-lg bg-red-50 p-3 text-center">
+                        <p className="text-xs text-red-600 mb-2">{entry.commentsError}</p>
+                        <button
+                          onClick={() => loadComments(entry.id)}
+                          className="text-xs text-red-700 underline hover:text-red-800"
+                        >
+                          再試行
+                        </button>
+                      </div>
+                    ) : entry.comments && entry.comments.length > 0 ? (
                       <div className="space-y-3">
                         {entry.comments.map((comment) => (
                           <div key={comment.id} className="rounded-lg bg-tape-cream/50 p-3">

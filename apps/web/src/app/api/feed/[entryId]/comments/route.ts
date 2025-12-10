@@ -80,6 +80,34 @@ export async function POST(
   const adminSupabase = getSupabaseAdminClient();
 
   try {
+    // 日記が存在し、公開されていることを確認
+    const { data: entry, error: entryError } = await adminSupabase
+      .from("emotion_diary_entries")
+      .select("id, visibility, deleted_at")
+      .eq("id", entryId)
+      .single();
+
+    if (entryError || !entry) {
+      return NextResponse.json(
+        { error: "Entry not found" },
+        { status: 404 }
+      );
+    }
+
+    if (entry.visibility !== "public") {
+      return NextResponse.json(
+        { error: "This entry is not public" },
+        { status: 403 }
+      );
+    }
+
+    if (entry.deleted_at) {
+      return NextResponse.json(
+        { error: "This entry has been deleted" },
+        { status: 410 }
+      );
+    }
+
     const { data: comment, error } = await adminSupabase
       .from("emotion_diary_comments")
       .insert({
