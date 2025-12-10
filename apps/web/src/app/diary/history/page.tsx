@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, Filter, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default function DiaryHistoryPage() {
 
 function DiaryHistoryContent() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const searchParams = useSearchParams();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
@@ -77,6 +79,11 @@ function DiaryHistoryContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [focusFetched, setFocusFetched] = useState(false);
+  const [focusScrolling, setFocusScrolling] = useState(false);
+  const [fetchingFocus, setFetchingFocus] = useState(false);
+
+  const focusEntryId = searchParams.get("focus");
 
   const getAuthHeaders = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -137,6 +144,8 @@ function DiaryHistoryContent() {
       setEntries((prev) => (reset ? json.entries : [...prev, ...json.entries]));
       if (reset) {
         resetEditState();
+        setFocusFetched(false);
+        setFocusScrolling(false);
       }
     } catch (err: any) {
       console.error(err);
@@ -151,6 +160,64 @@ function DiaryHistoryContent() {
     setPage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setFocusFetched(false);
+    setFocusScrolling(false);
+  }, [focusEntryId]);
+
+  useEffect(() => {
+    if (!focusEntryId) return;
+    if (loading || fetchingFocus) return;
+
+    const exists = entries.some((entry) => entry.id === focusEntryId);
+    if (exists) {
+      if (!focusScrolling) {
+        const el = document.getElementById(`entry-${focusEntryId}`);
+        if (el) {
+          setFocusScrolling(true);
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 50);
+        }
+      }
+      return;
+    }
+
+    if (focusFetched) return;
+
+    const fetchFocus = async () => {
+      setFetchingFocus(true);
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/diary/entries/${focusEntryId}`, {
+          method: "GET",
+          headers
+        });
+        if (res.status === 404) {
+          setFocusFetched(true);
+          return;
+        }
+        if (!res.ok) {
+          throw new Error("フォーカス対象の日記取得に失敗しました");
+        }
+        const json = await res.json();
+        setEntries((prev) => {
+          if (prev.some((item) => item.id === focusEntryId)) return prev;
+          return [json.entry, ...prev];
+        });
+        setCount((prev) => Math.max(prev, entries.length + 1));
+        setFocusFetched(true);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setFetchingFocus(false);
+      }
+    };
+
+    fetchFocus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusEntryId, entries, loading, focusFetched, focusScrolling, fetchingFocus]);
 
   const handleFilter = () => {
     setPage(0);
