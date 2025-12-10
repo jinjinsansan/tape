@@ -112,9 +112,8 @@ export async function POST(request: NextRequest) {
     .eq("id", user.id)
     .maybeSingle();
 
-  // 管理者クライアントを取得（画像アップロードとプロフィール更新で使用）
-  const admin = getSupabaseAdminClient();
-
+  // 画像アップロードは認証済みクライアントで実行（RLSポリシーを通過）
+  // プロフィール更新は管理者クライアントで実行（upsertに必要）
   if (avatarFile instanceof File && avatarFile.size > 0) {
     if (avatarFile.size > MAX_AVATAR_SIZE) {
       return NextResponse.json({ error: "アイコン画像は2MB以下にしてください" }, { status: 400 });
@@ -128,20 +127,24 @@ export async function POST(request: NextRequest) {
     newAvatarPath = `${user.id}/${randomUUID()}.${extension}`;
     const fileBuffer = Buffer.from(await avatarFile.arrayBuffer());
 
-    const { error: uploadError } = await admin.storage.from("profile-avatars").upload(newAvatarPath, fileBuffer, {
+    // 認証済みクライアントでアップロード（auth.uid()が利用可能）
+    const { error: uploadError } = await supabase.storage.from("profile-avatars").upload(newAvatarPath, fileBuffer, {
       cacheControl: "3600",
       upsert: true,
       contentType: avatarFile.type || "image/png"
     });
 
     if (uploadError) {
-      console.error("Avatar upload failed", uploadError.message);
-      return NextResponse.json({ error: "アイコン画像のアップロードに失敗しました" }, { status: 500 });
+      console.error("Avatar upload failed", uploadError.message, uploadError);
+      return NextResponse.json({ error: `アイコン画像のアップロードに失敗しました: ${uploadError.message}` }, { status: 500 });
     }
 
-    const { data: publicUrl } = admin.storage.from("profile-avatars").getPublicUrl(newAvatarPath);
+    const { data: publicUrl } = supabase.storage.from("profile-avatars").getPublicUrl(newAvatarPath);
     uploadedAvatarUrl = publicUrl?.publicUrl ?? null;
   }
+
+  // 管理者クライアントを取得（プロフィール更新用）
+  const admin = getSupabaseAdminClient();
 
   const updates: { id: string; display_name?: string; avatar_url?: string } = { id: user.id };
 
