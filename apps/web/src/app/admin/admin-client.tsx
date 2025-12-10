@@ -92,6 +92,23 @@ type HealthStatus = {
   featureFlags: Record<string, string>;
 };
 
+type PublicDiaryEntry = {
+  id: string;
+  user_id: string;
+  user_name: string;
+  content: string;
+  published_at: string;
+  visibility: string;
+  comments_count: number;
+};
+
+type DiaryComment = {
+  id: string;
+  content: string;
+  created_at: string;
+  commenter_name: string;
+};
+
 const StatCard = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
     <p className="text-xs text-slate-500">{label}</p>
@@ -142,6 +159,11 @@ export function AdminClient({ userRole }: { userRole: string }) {
     assignedCounselor: "",
     urgencyLevel: ""
   });
+  const [publicDiaries, setPublicDiaries] = useState<PublicDiaryEntry[]>([]);
+  const [selectedDiaryComments, setSelectedDiaryComments] = useState<{
+    entryId: string;
+    comments: DiaryComment[];
+  } | null>(null);
 
   const fetchJson = async <T,>(url: string, options?: RequestInit) => {
     const res = await fetch(url, options);
@@ -251,6 +273,70 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   }, []);
 
+  const loadPublicDiaries = useCallback(async () => {
+    try {
+      const data = await fetchJson<{ entries: PublicDiaryEntry[] }>("/api/admin/feed/public");
+      setPublicDiaries(data.entries ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const handleHideDiary = async (entryId: string) => {
+    if (!confirm("この日記を非表示にしますか？")) return;
+    try {
+      await fetchJson(`/api/admin/diary/entries/${entryId}/visibility`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: "private" })
+      });
+      alert("日記を非表示にしました");
+      loadPublicDiaries();
+    } catch (err) {
+      console.error(err);
+      alert("非表示に失敗しました");
+    }
+  };
+
+  const handleDeleteDiary = async (entryId: string) => {
+    if (!confirm("この日記を完全に削除しますか？この操作は取り消せません。")) return;
+    try {
+      await fetchJson(`/api/admin/diary/entries/${entryId}`, {
+        method: "DELETE"
+      });
+      alert("日記を削除しました");
+      loadPublicDiaries();
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました");
+    }
+  };
+
+  const loadDiaryComments = async (entryId: string) => {
+    try {
+      const data = await fetchJson<{ comments: DiaryComment[] }>(`/api/admin/feed/${entryId}/comments`);
+      setSelectedDiaryComments({ entryId, comments: data.comments ?? [] });
+    } catch (err) {
+      console.error(err);
+      alert("コメントの取得に失敗しました");
+    }
+  };
+
+  const handleDeleteComment = async (entryId: string, commentId: string) => {
+    if (!confirm("このコメントを削除しますか？")) return;
+    try {
+      await fetchJson(`/api/admin/feed/${entryId}/comments/${commentId}`, {
+        method: "DELETE"
+      });
+      alert("コメントを削除しました");
+      loadDiaryComments(entryId);
+      loadPublicDiaries();
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました");
+    }
+  };
+
   const handleMakeCounselor = async (userId: string) => {
     if (!confirm("このユーザーをカウンセラーにしますか？")) return;
     try {
@@ -307,6 +393,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadAuditLogs();
     loadHealth();
     loadDiaryEntries();
+    loadPublicDiaries();
   }, [
     loadStats,
     loadReports,
@@ -317,7 +404,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadCounselors,
     loadAuditLogs,
     loadHealth,
-    loadDiaryEntries
+    loadDiaryEntries,
+    loadPublicDiaries
   ]);
 
   const updateVisibility = async (entryId: string, visibility: "public" | "followers" | "private") => {

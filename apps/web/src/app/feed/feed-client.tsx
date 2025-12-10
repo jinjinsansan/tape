@@ -6,6 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Flag, MessageCircle } from "lucide-react";
 
+type FeedComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+};
+
 type FeedEntry = {
   id: string;
   content: string;
@@ -25,6 +36,10 @@ type FeedEntry = {
     viewerReaction: string | null;
     total: number;
   };
+  comments?: FeedComment[];
+  showComments?: boolean;
+  commentInput?: string;
+  submittingComment?: boolean;
 };
 
 type FeedResponse = {
@@ -47,10 +62,6 @@ export function FeedPageClient() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const [composerContent, setComposerContent] = useState("今日の気持ちを書いてみませんか？");
-  const [composerVisibility, setComposerVisibility] = useState<"public" | "followers" | "private">("public");
-  const [composerSubmitting, setComposerSubmitting] = useState(false);
-  const [composerError, setComposerError] = useState<string | null>(null);
 
   const fetchFeed = useCallback(
     async (mode: "initial" | "append") => {
@@ -150,87 +161,115 @@ export function FeedPageClient() {
     }
   };
 
-  const timeline = useMemo(() => entries, [entries]);
+  const handleToggleComments = async (entryId: string) => {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        const newShowComments = !entry.showComments;
+        return { ...entry, showComments: newShowComments };
+      })
+    );
 
-  const handleComposerSubmit = async () => {
-    if (!composerContent.trim()) {
-      setComposerError("内容を入力してください");
-      return;
-    }
-    setComposerSubmitting(true);
-    setComposerError(null);
-    try {
-      const res = await fetch("/api/diary/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: composerContent.trim(), visibility: composerVisibility })
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload?.error ?? "投稿に失敗しました");
-      }
-      setComposerContent("");
-      fetchFeed("initial");
-    } catch (err) {
-      console.error(err);
-      setComposerError(err instanceof Error ? err.message : "投稿に失敗しました");
-    } finally {
-      setComposerSubmitting(false);
+    const entry = entries.find((e) => e.id === entryId);
+    if (entry && !entry.comments) {
+      await loadComments(entryId);
     }
   };
 
+  const loadComments = async (entryId: string) => {
+    try {
+      const res = await fetch(`/api/feed/${entryId}/comments`);
+      if (!res.ok) throw new Error("Failed to load comments");
+      const data = await res.json();
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId ? { ...entry, comments: data.comments } : entry
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCommentSubmit = async (entryId: string) => {
+    const entry = entries.find((e) => e.id === entryId);
+    const commentInput = entry?.commentInput?.trim();
+    if (!commentInput) return;
+
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.id === entryId ? { ...e, submittingComment: true } : e
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/feed/${entryId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentInput })
+      });
+
+      if (!res.ok) throw new Error("Failed to post comment");
+      const data = await res.json();
+
+      setEntries((prev) =>
+        prev.map((e) => {
+          if (e.id !== entryId) return e;
+          return {
+            ...e,
+            comments: [...(e.comments || []), data.comment],
+            commentInput: "",
+            submittingComment: false
+          };
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      alert("コメントの投稿に失敗しました");
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entryId ? { ...e, submittingComment: false } : e
+        )
+      );
+    }
+  };
+
+  const handleDeleteComment = async (entryId: string, commentId: string) => {
+    if (!confirm("このコメントを削除しますか？")) return;
+
+    try {
+      const res = await fetch(`/api/feed/${entryId}/comments/${commentId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) throw new Error("Failed to delete comment");
+
+      setEntries((prev) =>
+        prev.map((e) => {
+          if (e.id !== entryId) return e;
+          return {
+            ...e,
+            comments: (e.comments || []).filter((c) => c.id !== commentId)
+          };
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      alert("コメントの削除に失敗しました");
+    }
+  };
+
+  const timeline = useMemo(() => entries, [entries]);
+
   return (
     <div className="flex flex-col gap-6">
-      <Card className="border-tape-beige shadow-sm">
+      <Card className="border-tape-beige bg-blue-50/50 shadow-sm">
         <CardContent className="p-6">
-          <p className="text-sm font-bold text-tape-brown">いまの気持ちを記録</p>
-          <textarea
-            value={composerContent}
-            onChange={(event) => setComposerContent(event.target.value)}
-            className="mt-3 h-24 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
-            placeholder="共有したい日記を入力してください"
-          />
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-tape-light-brown">
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="feed-visibility"
-                checked={composerVisibility === "public"}
-                onChange={() => setComposerVisibility("public")}
-                className="accent-tape-pink"
-              />
-              みんなの日記に公開 (フィード掲載)
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="feed-visibility"
-                checked={composerVisibility === "followers"}
-                onChange={() => setComposerVisibility("followers")}
-                className="accent-tape-pink"
-              />
-              公開（カウンセラー共有）
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="feed-visibility"
-                checked={composerVisibility === "private"}
-                onChange={() => setComposerVisibility("private")}
-                className="accent-tape-pink"
-              />
-              非公開（下書き）
-            </label>
-            <Button
-              onClick={handleComposerSubmit}
-              disabled={composerSubmitting}
-              className="ml-auto bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
-              size="sm"
-            >
-              {composerSubmitting ? "投稿中..." : "投稿"}
-            </Button>
-          </div>
-          {composerError && <p className="mt-2 text-xs text-tape-pink">{composerError}</p>}
+          <p className="text-sm font-bold text-tape-brown mb-2">📖 みんなの日記について</p>
+          <p className="text-xs text-tape-brown/80 leading-relaxed">
+            ここでは、他のユーザーが「かんじょうにっき」で書いて公開した日記を閲覧できます。<br />
+            新しい日記を書くには、<a href="/diary" className="text-tape-pink underline">かんじょうにっき</a>のページから投稿してください。
+          </p>
         </CardContent>
       </Card>
 
@@ -286,6 +325,14 @@ export function FeedPageClient() {
                   ))}
                   <button
                     type="button"
+                    onClick={() => handleToggleComments(entry.id)}
+                    className="flex items-center gap-1 rounded-full border border-tape-beige px-3 py-1 text-xs text-tape-light-brown hover:bg-tape-cream"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    コメント {entry.comments && entry.comments.length > 0 ? `(${entry.comments.length})` : ""}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleReport(entry.id)}
                     className="ml-auto text-tape-light-brown hover:text-tape-pink"
                     title="通報"
@@ -293,6 +340,70 @@ export function FeedPageClient() {
                     <Flag className="h-4 w-4" />
                   </button>
                 </div>
+
+                {entry.showComments && (
+                  <div className="mt-4 space-y-3 border-t border-tape-beige pt-4">
+                    <p className="text-sm font-bold text-tape-brown">コメント</p>
+                    
+                    {entry.comments && entry.comments.length > 0 ? (
+                      <div className="space-y-3">
+                        {entry.comments.map((comment) => (
+                          <div key={comment.id} className="rounded-lg bg-tape-cream/50 p-3">
+                            <div className="flex items-start gap-2">
+                              <img
+                                src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
+                                alt={comment.author.displayName}
+                                className="h-8 w-8 rounded-full object-cover border border-tape-beige"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-bold text-tape-brown">{comment.author.displayName}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs text-tape-light-brown">{new Date(comment.createdAt).toLocaleString("ja-JP")}</p>
+                                    <button
+                                      onClick={() => handleDeleteComment(entry.id, comment.id)}
+                                      className="text-xs text-tape-pink hover:underline"
+                                    >
+                                      削除
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="mt-1 text-sm text-tape-brown whitespace-pre-wrap">{comment.content}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-tape-light-brown">まだコメントがありません</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <textarea
+                        value={entry.commentInput || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setEntries((prev) =>
+                            prev.map((item) =>
+                              item.id === entry.id ? { ...item, commentInput: value } : item
+                            )
+                          );
+                        }}
+                        placeholder="コメントを入力..."
+                        className="flex-1 rounded-lg border border-tape-beige bg-white px-3 py-2 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
+                        rows={2}
+                      />
+                      <Button
+                        onClick={() => handleCommentSubmit(entry.id)}
+                        disabled={!entry.commentInput?.trim() || entry.submittingComment}
+                        size="sm"
+                        className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
+                      >
+                        {entry.submittingComment ? "送信中..." : "送信"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
