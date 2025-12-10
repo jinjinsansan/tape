@@ -124,6 +124,8 @@ export const createDiaryEntry = async (
   payload: DiaryEntryInput,
   feelings?: DiaryFeelingInput[]
 ) => {
+  console.log("[createDiaryEntry] Creating entry for user:", userId, "with payload:", JSON.stringify(payload));
+  
   const { data, error } = await supabase
     .from("emotion_diary_entries")
     .insert({
@@ -148,10 +150,13 @@ export const createDiaryEntry = async (
     .single();
 
   if (error || !data) {
+    console.error("[createDiaryEntry] Insert error:", error);
     throw error ?? new Error("Failed to create diary entry");
   }
 
+  console.log("[createDiaryEntry] Entry inserted with id:", data.id);
   await syncFeelings(supabase, data.id, feelings);
+  console.log("[createDiaryEntry] Feelings synced, fetching full entry");
   return fetchDiaryEntryById(supabase, data.id, userId);
 };
 
@@ -233,6 +238,7 @@ export const listDiaryEntries = async (
   supabase: Supabase,
   params: ListDiaryParams
 ) => {
+  console.log("[listDiaryEntries] Params:", JSON.stringify(params));
   const limit = params.limit ?? 20;
   let query = supabase
     .from("emotion_diary_entries")
@@ -242,6 +248,7 @@ export const listDiaryEntries = async (
 
   if (params.scope === "me") {
     if (!params.userId) {
+      console.error("[listDiaryEntries] userId missing for scope=me");
       throw new Error("userId is required for scope=me");
     }
     query = query
@@ -254,13 +261,18 @@ export const listDiaryEntries = async (
       .order("published_at", { ascending: false, nullsFirst: false });
   }
 
+  console.log("[listDiaryEntries] Executing query...");
   const { data, error } = await query;
 
   if (error) {
+    console.error("[listDiaryEntries] Query error:", error);
     throw error;
   }
 
-  return (data ?? []).map((entry) => withRelations(entry as unknown as DiaryEntryWithRelations));
+  console.log("[listDiaryEntries] Query returned", data?.length ?? 0, "rows");
+  const result = (data ?? []).map((entry) => withRelations(entry as unknown as DiaryEntryWithRelations));
+  console.log("[listDiaryEntries] Mapped to", result.length, "entries");
+  return result;
 };
 
 export const deleteDiaryEntry = async (supabase: Supabase, entryId: string, userId: string) => {
