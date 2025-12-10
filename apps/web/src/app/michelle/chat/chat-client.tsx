@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,23 @@ type MessageItem = {
   created_at: string;
 };
 
+type Category = "love" | "life" | "relationship";
+
+const CATEGORY_LABELS: Record<Category, string> = {
+  love: "恋愛",
+  life: "人生",
+  relationship: "人間関係"
+};
+
+const THINKING_MESSAGES = [
+  "心の声を聞いています...",
+  "感情を整理しています...",
+  "思考を整えています...",
+  "寄り添いながら考えています..."
+];
+
+const THINKING_INTERVAL_MS = 1400;
+
 export function MichelleChatClient() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -27,6 +44,9 @@ export function MichelleChatClient() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category>("life");
+  const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = async () => {
     const res = await fetch("/api/michelle/sessions", { cache: "no-store" });
@@ -61,6 +81,22 @@ export function MichelleChatClient() {
     loadSessions();
   }, []);
 
+  // 思考メッセージのローテーション
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const interval = setInterval(() => {
+      setThinkingMessageIndex((prev) => (prev + 1) % THINKING_MESSAGES.length);
+    }, THINKING_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  // メッセージ更新時に自動スクロール
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
   const handleDeleteSession = async (sessionId: string) => {
     const confirmed = window.confirm("このセッションを削除しますか？");
     if (!confirmed) return;
@@ -83,7 +119,8 @@ export function MichelleChatClient() {
 
     const payload = {
       sessionId: activeSessionId ?? undefined,
-      message: input.trim()
+      message: input.trim(),
+      category: !activeSessionId ? selectedCategory : undefined
     };
 
     const optimisticUserMessage: MessageItem = {
@@ -139,6 +176,8 @@ export function MichelleChatClient() {
             onClick={() => {
               setActiveSessionId(null);
               setMessages([]);
+              setSelectedCategory("life");
+              setError(null);
             }}
             title="新規チャット"
           >
@@ -161,7 +200,14 @@ export function MichelleChatClient() {
               <div className="flex items-start gap-2">
                 <MessageSquare className={cn("mt-0.5 h-4 w-4 shrink-0", session.id === activeSessionId ? "text-tape-green" : "text-tape-light-brown")} />
                 <div className="flex-1 overflow-hidden">
-                  <p className="truncate font-medium text-tape-brown">{session.title ?? "無題のセッション"}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium text-tape-brown">{session.title ?? "無題のセッション"}</p>
+                    {session.category && CATEGORY_LABELS[session.category as Category] && (
+                      <span className="shrink-0 rounded-full bg-tape-green/10 px-2 py-0.5 text-[9px] font-semibold text-tape-green">
+                        {CATEGORY_LABELS[session.category as Category]}
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-[10px] text-tape-light-brown">
                     {new Date(session.updated_at).toLocaleString("ja-JP")}
                   </p>
@@ -190,11 +236,33 @@ export function MichelleChatClient() {
 
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
           {messages.length === 0 && (
-            <div className="flex h-full items-center justify-center text-center">
+            <div className="flex h-full flex-col items-center justify-center gap-8 text-center">
               <div>
-                <p className="text-lg font-bold text-tape-brown">こんにちは</p>
-                <p className="text-sm text-tape-light-brown">今日のお気持ちをお聞かせください。</p>
+                <p className="text-2xl font-bold text-tape-brown">こんにちは</p>
+                <p className="mt-2 text-sm text-tape-light-brown">今日のお気持ちをお聞かせください。</p>
               </div>
+
+              {!activeSessionId && (
+                <div className="w-full max-w-md">
+                  <p className="mb-3 text-xs font-semibold text-tape-brown">相談カテゴリー</p>
+                  <div className="flex gap-3">
+                    {(Object.entries(CATEGORY_LABELS) as [Category, string][]).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedCategory(key)}
+                        className={cn(
+                          "flex-1 rounded-2xl border-2 px-4 py-3 text-sm font-medium transition-all",
+                          selectedCategory === key
+                            ? "border-tape-green bg-tape-green/10 text-tape-green"
+                            : "border-tape-beige bg-white text-tape-light-brown hover:border-tape-green/50"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {messages.map((message) => (
@@ -220,6 +288,24 @@ export function MichelleChatClient() {
               </div>
             </article>
           ))}
+
+          {/* 思考メッセージ（ローディング中） */}
+          {isLoading && (
+            <article className="flex w-full flex-col gap-1 items-start">
+              <p className="ml-1 text-[10px] font-semibold text-tape-light-brown">Michelle</p>
+              <div className="flex items-center gap-3 rounded-2xl border border-tape-beige bg-white px-5 py-3 shadow-sm">
+                <div className="flex gap-1">
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.3s]" />
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.15s]" />
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green" />
+                </div>
+                <p className="text-sm text-tape-light-brown">{THINKING_MESSAGES[thinkingMessageIndex]}</p>
+              </div>
+            </article>
+          )}
+
+          {/* 自動スクロール用の要素 */}
+          <div ref={messagesEndRef} />
         </div>
 
         <footer className="border-t border-tape-beige p-4 bg-tape-cream/30 rounded-b-3xl">
