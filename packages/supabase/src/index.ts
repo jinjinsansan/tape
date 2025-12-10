@@ -60,6 +60,14 @@ export const createSupabaseServerClient = (
   );
 
   return createServerClient<Database>(url, key, {
+    cookies: {
+      getAll() {
+        return [];
+      },
+      setAll() {
+        // noop - service role client doesn't need cookies
+      }
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false
