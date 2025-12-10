@@ -26,9 +26,13 @@ const handleAuthError = (error: unknown) => {
   return null;
 };
 
-const requireUser = async (supabase: ReturnType<typeof createSupabaseRouteClient>, context: string) => {
+const requireUser = async (
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  context: string,
+  accessToken?: string | null
+) => {
   try {
-    const user = await getRouteUser(supabase, context);
+    const user = await getRouteUser(supabase, context, accessToken ?? undefined);
     if (!user) {
       return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
     }
@@ -42,10 +46,15 @@ const requireUser = async (supabase: ReturnType<typeof createSupabaseRouteClient
   }
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+
   const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
-  const { response, user } = await requireUser(supabase, "Diary initial score get");
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
+  const { response, user } = await requireUser(supabase, "Diary initial score get", accessToken);
   if (response) {
     return response;
   }
@@ -63,9 +72,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+
   const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
-  const { response, user } = await requireUser(supabase, "Diary initial score upsert");
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
+  const { response, user } = await requireUser(supabase, "Diary initial score upsert", accessToken);
   if (response) {
     return response;
   }

@@ -27,9 +27,13 @@ const handleAuthError = (error: unknown) => {
   return null;
 };
 
-const requireUser = async (supabase: ReturnType<typeof createSupabaseRouteClient>, context: string) => {
+const requireUser = async (
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  context: string,
+  accessToken?: string | null
+) => {
   try {
-    const user = await getRouteUser(supabase, context);
+    const user = await getRouteUser(supabase, context, accessToken ?? undefined);
     if (!user) {
       return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
     }
@@ -74,12 +78,14 @@ export async function GET(_: Request, context: { params: { entryId: string } }) 
 
 export async function PATCH(request: Request, context: { params: { entryId: string } }) {
   const { entryId } = paramsSchema.parse(context.params);
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
   const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
-
-  const { response, user } = await requireUser(supabase, "Diary entry update");
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
+  const { response, user } = await requireUser(supabase, "Diary entry update", accessToken);
   if (response) {
-    return response;
   }
 
   const existing = await fetchDiaryEntryById(supabase, entryId, user!.id);
@@ -141,12 +147,17 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
   }
 }
 
-export async function DELETE(_: Request, context: { params: { entryId: string } }) {
+export async function DELETE(request: Request, context: { params: { entryId: string } }) {
   const { entryId } = paramsSchema.parse(context.params);
-  const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
 
-  const { response, user } = await requireUser(supabase, "Diary entry delete");
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
+
+  const { response, user } = await requireUser(supabase, "Diary entry delete", accessToken);
   if (response) {
     return response;
   }

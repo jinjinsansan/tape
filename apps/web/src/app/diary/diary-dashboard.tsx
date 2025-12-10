@@ -134,6 +134,7 @@ const derivePreviousScoreFromEntries = (entries: DiaryEntry[]): PreviousScoreInf
 };
 
 export function DiaryDashboard() {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [activeTab, setActiveTab] = useState<DiaryTab>("mine");
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -207,6 +208,14 @@ export function DiaryDashboard() {
     return stored;
   }, [persistGuestEntries]);
 
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      return { Authorization: `Bearer ${data.session.access_token}` };
+    }
+    return {};
+  }, [supabase]);
+
   const ensureGuestEntries = () => {
     if (guestEntries.length > 0) {
       return guestEntries;
@@ -269,7 +278,8 @@ export function DiaryDashboard() {
       const res = await fetch("/api/diary/entries", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(await getAuthHeaders())
         },
         body: JSON.stringify(payload)
       });
@@ -288,7 +298,7 @@ export function DiaryDashboard() {
     clearGuestEntriesFromStorage();
     setGuestEntries([]);
     return true;
-  }, []);
+  }, [getAuthHeaders]);
 
   const resetComposer = (visibility: DiaryVisibility = form.visibility) => {
     setForm({ ...defaultForm, journalDate: today(), visibility });
@@ -321,7 +331,8 @@ export function DiaryDashboard() {
         const synced = await syncGuestEntriesToCloud();
         
         const res = await fetch(`/api/diary/entries?scope=me&limit=50`, {
-          cache: "no-store"
+          cache: "no-store",
+          headers: await getAuthHeaders()
         });
 
         if (res.status === 401) {
@@ -361,7 +372,10 @@ export function DiaryDashboard() {
   useEffect(() => {
     const loadInitialScore = async () => {
       try {
-        const res = await fetch("/api/diary/initial-score", { cache: "no-store" });
+        const res = await fetch("/api/diary/initial-score", {
+          cache: "no-store",
+          headers: await getAuthHeaders()
+        });
         if (res.status === 401) {
           setPreviousScoreInfo(derivePreviousScoreFromEntries(readGuestEntriesFromStorage()));
           return;
@@ -433,22 +447,25 @@ export function DiaryDashboard() {
     setIsSaving(true);
     setSaveError(null);
     try {
+      const payload = {
+        title: form.title || null,
+        content: form.content,
+        emotionLabel,
+        eventSummary,
+        realization: realization || null,
+        selfEsteemScore,
+        worthlessnessScore,
+        visibility: form.visibility,
+        journalDate: form.journalDate
+      };
+
       const res = await fetch("/api/diary/entries", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(await getAuthHeaders())
         },
-        body: JSON.stringify({
-          title: form.title || null,
-          content: form.content,
-          emotionLabel,
-          eventSummary,
-          realization: realization || null,
-          selfEsteemScore,
-          worthlessnessScore,
-          visibility: form.visibility,
-          journalDate: form.journalDate
-        })
+        body: JSON.stringify(payload)
       });
 
       if (res.status === 401) {
@@ -512,7 +529,8 @@ export function DiaryDashboard() {
     }
     try {
       const res = await fetch(`/api/diary/entries/${entryId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: await getAuthHeaders()
       });
       if (!res.ok && res.status !== 204) {
         throw new Error("Failed to delete entry");
@@ -539,7 +557,8 @@ export function DiaryDashboard() {
       const res = await fetch(`/api/diary/entries/${entryId}`, {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(await getAuthHeaders())
         },
         body: JSON.stringify({ visibility })
       });

@@ -21,9 +21,13 @@ const handleAuthError = (error: unknown) => {
   return null;
 };
 
-const requireUser = async (supabase: ReturnType<typeof createSupabaseRouteClient>, context: string) => {
+const requireUser = async (
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  context: string,
+  accessToken?: string | null
+) => {
   try {
-    const user = await getRouteUser(supabase, context);
+    const user = await getRouteUser(supabase, context, accessToken ?? undefined);
     if (!user) {
       return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
     }
@@ -45,12 +49,17 @@ export async function GET(request: Request) {
   const limitParam = Number(searchParams.get("limit"));
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
 
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+
   const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
 
   let userId: string | undefined;
   if (scope === "me") {
-    const { response, user } = await requireUser(supabase, "Diary entries list");
+    const { response, user } = await requireUser(supabase, "Diary entries list", accessToken);
     if (response) {
       return response;
     }
@@ -71,10 +80,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient(cookieStore);
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
 
-  const { response, user } = await requireUser(supabase, "Diary entry create");
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore, request.headers);
+
+  const { response, user } = await requireUser(supabase, "Diary entry create", accessToken);
   if (response) {
     return response;
   }
