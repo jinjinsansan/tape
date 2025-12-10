@@ -66,8 +66,13 @@ where not exists (
 on conflict (id) do nothing;
 
 -- =====================================
--- Part 2: ストレージポリシーの修正
+-- Part 2: ストレージバケットとポリシーの修正
 -- =====================================
+
+-- まず profile-avatars バケットを作成（存在しない場合）
+insert into storage.buckets (id, name, public)
+values ('profile-avatars', 'profile-avatars', true)
+on conflict (id) do update set public = true;
 
 -- 既存のポリシーを削除して再作成（ownerチェックを緩和）
 
