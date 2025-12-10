@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Send, Trash2 } from "lucide-react";
+import { Send, Trash2, Menu, X, User } from "lucide-react";
 import Image from "next/image";
 
 type SessionSummary = {
@@ -44,6 +44,7 @@ export function MichelleChatClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = async () => {
@@ -174,14 +175,33 @@ export function MichelleChatClient() {
 
   return (
     <div className="flex h-[calc(100vh-80px)] font-sans" style={{ fontFamily: 'sans-serif' }}>
+      {/* オーバーレイ（モバイルのみ） */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* サイドバー */}
-      <aside className="hidden w-72 flex-col border-r border-tape-beige bg-tape-cream md:flex">
-        <div className="p-4">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-tape-brown/20 bg-tape-cream transition-transform duration-300 md:static md:z-0 md:translate-x-0",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-tape-beige p-4">
           <button
             onClick={handleNewChat}
-            className="w-full rounded-lg bg-white px-4 py-3 text-left text-sm font-medium text-tape-pink transition-colors hover:bg-tape-beige"
+            className="flex-1 rounded-lg bg-white px-4 py-3 text-left text-sm font-medium text-tape-pink transition-colors hover:bg-tape-beige"
           >
             ＋ 新しいチャット
+          </button>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-tape-brown hover:bg-tape-beige md:hidden"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto px-2">
@@ -213,6 +233,20 @@ export function MichelleChatClient() {
 
       {/* メインエリア */}
       <main className="flex flex-1 flex-col bg-tape-cream">
+        {/* モバイルヘッダー */}
+        <div className="flex items-center gap-3 border-b border-tape-beige bg-white/80 px-4 py-3 md:hidden">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-tape-brown hover:bg-tape-beige"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex-1 text-center">
+            <p className="text-sm font-semibold text-tape-brown">ミシェルAI</p>
+          </div>
+          <div className="h-10 w-10" /> {/* スペーサー */}
+        </div>
+
         <div className="flex-1 overflow-y-auto px-4 py-8">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-8">
@@ -283,6 +317,11 @@ export function MichelleChatClient() {
                   >
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
                   </div>
+                  {message.role === "user" && (
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-tape-brown shadow">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -347,7 +386,7 @@ export function MichelleChatClient() {
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-tape-light-brown">
-              テープ式心理学AI機能（開発中）
+              ミシェルAIは誤った情報を生成する場合があります。
             </p>
           </div>
         </div>
