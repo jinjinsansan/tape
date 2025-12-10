@@ -175,12 +175,11 @@ export function MichelleChatClient() {
   return (
     <div className="flex h-[calc(100vh-80px)] font-sans" style={{ fontFamily: 'sans-serif' }}>
       {/* サイドバー */}
-      <aside className="hidden w-72 flex-col border-r md:flex" style={{ backgroundColor: '#fce4ec' }}>
+      <aside className="hidden w-72 flex-col border-r border-tape-beige bg-tape-cream md:flex">
         <div className="p-4">
           <button
             onClick={handleNewChat}
-            className="w-full rounded-lg bg-white px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50"
-            style={{ color: '#e91e63' }}
+            className="w-full rounded-lg bg-white px-4 py-3 text-left text-sm font-medium text-tape-pink transition-colors hover:bg-tape-beige"
           >
             ＋ 新しいチャット
           </button>
@@ -191,12 +190,12 @@ export function MichelleChatClient() {
               key={session.id}
               className={cn(
                 "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-white/50 transition-colors",
-                session.id === activeSessionId && "bg-white/70"
+                session.id === activeSessionId && "bg-white"
               )}
               onClick={() => loadMessages(session.id)}
             >
-              <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-              <span className="flex-1 truncate text-gray-700">{session.title ?? "無題のセッション"}</span>
+              <input type="checkbox" className="h-4 w-4 rounded border-tape-beige" />
+              <span className="flex-1 truncate text-tape-brown">{session.title ?? "無題のセッション"}</span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -213,7 +212,7 @@ export function MichelleChatClient() {
       </aside>
 
       {/* メインエリア */}
-      <main className="flex flex-1 flex-col" style={{ backgroundColor: '#fce4ec' }}>
+      <main className="flex flex-1 flex-col bg-tape-cream">
         <div className="flex-1 overflow-y-auto px-4 py-8">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-8">
@@ -228,26 +227,26 @@ export function MichelleChatClient() {
                   />
                 </div>
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold" style={{ color: '#e91e63' }}>
+                  <h2 className="text-2xl font-bold text-tape-pink">
                     こんにちは、ミシェルです
                   </h2>
-                  <p className="mt-2 text-sm text-gray-600">
+                  <p className="mt-2 text-sm text-tape-light-brown">
                     心のモヤモヤ、誰にも言えない悩み、なんでも話してください。
                   </p>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-tape-light-brown">
                     私はあなたの親となって、一緒に答えを探します。
                   </p>
                 </div>
               </div>
 
               {/* プリセットボタン */}
-              <div className="grid w-full max-w-xl grid-cols-1 gap-3 px-4 sm:grid-cols-2">
+              <div className="grid w-full max-w-xl grid-cols-2 gap-3 px-4 md:grid-cols-4">
                 {PRESET_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => handleSend(prompt)}
                     disabled={isLoading}
-                    className="rounded-xl bg-white px-6 py-4 text-center text-sm text-gray-700 shadow-sm transition-all hover:shadow-md disabled:opacity-50"
+                    className="rounded-xl border border-tape-beige bg-white px-6 py-4 text-center text-sm text-tape-brown shadow-sm transition-all hover:bg-tape-beige hover:shadow-md disabled:opacity-50"
                   >
                     {prompt}
                   </button>
@@ -278,8 +277,8 @@ export function MichelleChatClient() {
                     className={cn(
                       "max-w-[80%] rounded-2xl px-5 py-3 shadow-sm",
                       message.role === "user"
-                        ? "bg-white text-gray-800"
-                        : "bg-pink-50 text-gray-800"
+                        ? "bg-tape-orange text-white"
+                        : "bg-white border border-tape-beige text-tape-brown"
                     )}
                   >
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
@@ -297,13 +296,13 @@ export function MichelleChatClient() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="flex items-center gap-3 rounded-2xl bg-pink-50 px-5 py-3 shadow-sm">
+                  <div className="flex items-center gap-3 rounded-2xl border border-tape-beige bg-white px-5 py-3 shadow-sm">
                     <div className="flex gap-1">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400 [animation-delay:-0.3s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400 [animation-delay:-0.15s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.3s]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.15s]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green" />
                     </div>
-                    <p className="text-sm text-gray-600">{THINKING_MESSAGES[thinkingMessageIndex]}</p>
+                    <p className="text-sm text-tape-light-brown">{THINKING_MESSAGES[thinkingMessageIndex]}</p>
                   </div>
                 </div>
               )}
@@ -314,10 +313,10 @@ export function MichelleChatClient() {
         </div>
 
         {/* 入力エリア */}
-        <div className="border-t bg-white/50 px-4 py-4 backdrop-blur-sm">
+        <div className="border-t border-tape-beige bg-white/80 px-4 py-4 backdrop-blur-sm">
           <div className="mx-auto max-w-3xl">
             {error && (
-              <p className="mb-2 text-xs font-medium text-red-500">{error}</p>
+              <p className="mb-2 text-xs font-medium text-tape-pink">{error}</p>
             )}
             <div className="flex items-end gap-3">
               <textarea
@@ -331,25 +330,24 @@ export function MichelleChatClient() {
                 }}
                 placeholder="ミシェルに話しかける..."
                 disabled={isLoading}
-                className="flex-1 resize-none rounded-2xl border-0 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm outline-none ring-1 ring-gray-200 focus:ring-2 focus:ring-pink-300 disabled:opacity-50"
+                className="flex-1 resize-none rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown shadow-sm outline-none focus:border-tape-green focus:ring-2 focus:ring-tape-green/20 disabled:opacity-50"
                 rows={1}
               />
               <button
                 type="button"
                 onClick={() => handleSend()}
                 disabled={isLoading || !input.trim()}
-                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#ec407a' }}
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-tape-pink text-white shadow-md transition-all hover:bg-tape-pink/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 ) : (
-                  <Send className="h-5 w-5 text-white" style={{ marginLeft: '2px' }} />
+                  <Send className="h-5 w-5" style={{ marginLeft: '2px' }} />
                 )}
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-gray-500">
-              ミシェルAI機能は開発中の機能です
+            <p className="mt-2 text-center text-xs text-tape-light-brown">
+              テープ式心理学AI機能（開発中）
             </p>
           </div>
         </div>
