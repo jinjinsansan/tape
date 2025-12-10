@@ -23,8 +23,8 @@ export async function GET() {
           reason,
           status,
           created_at,
-          entry:emotion_diary_entries!emotion_diary_reports_entry_id_fkey(id, content, visibility, published_at, user_id),
-          reporter:profiles!emotion_diary_reports_reporter_user_id_fkey(id, display_name)
+          entry_id,
+          reporter_user_id
         `
       )
       .eq("status", "open")
@@ -32,10 +32,35 @@ export async function GET() {
       .limit(50);
 
     if (error) {
+      console.error("Failed to query emotion_diary_reports", error);
       throw error;
     }
 
-    return NextResponse.json({ reports: data ?? [] });
+    // Fetch related data separately to avoid FK name issues
+    const reportsWithDetails = await Promise.all(
+      (data ?? []).map(async (report) => {
+        const [entryResult, reporterResult] = await Promise.all([
+          adminSupabase
+            .from("emotion_diary_entries")
+            .select("id, content, visibility, published_at, user_id")
+            .eq("id", report.entry_id)
+            .single(),
+          adminSupabase
+            .from("profiles")
+            .select("id, display_name")
+            .eq("id", report.reporter_user_id)
+            .single()
+        ]);
+
+        return {
+          ...report,
+          entry: entryResult.data,
+          reporter: reporterResult.data
+        };
+      })
+    );
+
+    return NextResponse.json({ reports: reportsWithDetails });
   } catch (error) {
     console.error("Failed to load diary reports", error);
     return NextResponse.json({ error: "Failed to load reports" }, { status: 500 });
