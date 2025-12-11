@@ -18,14 +18,30 @@ export async function POST(request: Request) {
 
   try {
     const user = await getRouteUser(supabase, "Admin create slot");
-    if (!user || (user.role !== "admin" && user.role !== "counselor")) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user role from profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      console.error("Failed to load profile", profileError);
+      return NextResponse.json({ error: "Profile not found" }, { status: 500 });
+    }
+
+    if (profile.role !== "admin" && profile.role !== "counselor") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
     const { counselorId, startTime, endTime } = bodySchema.parse(body);
 
-    if (user.role === "counselor") {
+    if (profile.role === "counselor") {
       const myCounselor = await getCounselorByAuthUser(user.id);
       if (!myCounselor || myCounselor.id !== counselorId) {
         return NextResponse.json({ error: "Unauthorized access to counselor profile" }, { status: 403 });

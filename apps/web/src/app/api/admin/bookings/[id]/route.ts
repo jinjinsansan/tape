@@ -18,8 +18,24 @@ export async function DELETE(_: Request, context: { params: { id: string } }) {
 
   try {
     const user = await getRouteUser(supabase, "Admin cancel booking");
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user role from profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      console.error("Failed to load profile", profileError);
+      return NextResponse.json({ error: "Profile not found" }, { status: 500 });
+    }
+
+    if (profile.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const booking = await adminCancelBooking(id);
