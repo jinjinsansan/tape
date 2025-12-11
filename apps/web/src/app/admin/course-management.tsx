@@ -14,7 +14,7 @@ type Module = {
   title: string;
   summary: string | null;
   order_index: number;
-  lessons: { count: number }[];
+  lessons?: any;
 };
 
 type Lesson = {
@@ -340,7 +340,11 @@ export function CourseManagement() {
                   <p className="text-sm text-slate-600 mt-1">{module.summary}</p>
                 )}
                 <p className="text-xs text-slate-500 mt-2">
-                  レッスン数: {module.lessons[0]?.count || 0}
+                  レッスン数: {
+                    (Array.isArray(module.lessons) && module.lessons[0]?.count) || 
+                    module.lessons?.count || 
+                    0
+                  }
                 </p>
               </button>
             ))}
