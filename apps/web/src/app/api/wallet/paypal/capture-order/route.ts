@@ -39,17 +39,24 @@ export async function POST(request: Request) {
     }
 
     // Get the payment amount - try multiple sources
-    // First, try from purchase_units (most reliable for order amount)
     const purchaseUnit = result.purchaseUnits?.[0];
     console.log("Purchase Unit:", JSON.stringify(purchaseUnit, null, 2));
     
     let amountValue = purchaseUnit?.amount?.value;
     let currencyCode = purchaseUnit?.amount?.currencyCode;
     
-    // If not found, try from payments.captures (actual captured amount)
+    // If not found in purchaseUnit.amount, try from purchaseUnit.payments.captures
+    if (!amountValue && (purchaseUnit as any)?.payments?.captures?.[0]) {
+      const capture = (purchaseUnit as any).payments.captures[0];
+      console.log("Trying capture from purchaseUnit.payments:", JSON.stringify(capture, null, 2));
+      amountValue = capture.amount?.value;
+      currencyCode = capture.amount?.currency_code || capture.amount?.currencyCode;
+    }
+    
+    // Fallback: try from result.payments.captures (top level)
     if (!amountValue && (result as any).payments?.captures?.[0]) {
       const capture = (result as any).payments.captures[0];
-      console.log("Trying capture amount:", JSON.stringify(capture, null, 2));
+      console.log("Trying capture from result.payments:", JSON.stringify(capture, null, 2));
       amountValue = capture.amount?.value;
       currencyCode = capture.amount?.currency_code || capture.amount?.currencyCode;
     }
