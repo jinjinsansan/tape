@@ -423,8 +423,8 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
         payment_status,
         notes,
         intro_chat_id,
-        slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time),
-        client:profiles!counselor_bookings_client_user_id_fkey(id, display_name)
+        client_user_id,
+        slot:counselor_slots(start_time, end_time)
       `
     )
     .eq("counselor_id", counselorId)
@@ -435,6 +435,19 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
     throw error;
   }
 
+  // Fetch client profiles separately
+  const clientIds = data?.map(b => b.client_user_id).filter(Boolean) ?? [];
+  const clientsMap = new Map();
+  
+  if (clientIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", clientIds);
+    
+    profiles?.forEach(p => clientsMap.set(p.id, p));
+  }
+
   return (data ?? []).map((booking) => ({
     id: booking.id,
     status: booking.status,
@@ -443,7 +456,7 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
     intro_chat_id: booking.intro_chat_id,
     start_time: booking.slot?.start_time ?? "",
     end_time: booking.slot?.end_time ?? "",
-    client: booking.client ?? null
+    client: clientsMap.get(booking.client_user_id) || { id: booking.client_user_id, display_name: null }
   }));
 };
 
