@@ -116,6 +116,11 @@ export function MyBookingsClient() {
           </div>
 
           <div className="flex items-center gap-3 justify-end">
+            <Link href={`/mypage/bookings/${booking.id}`}>
+              <button className="text-xs text-white bg-tape-orange border border-tape-orange rounded-full px-4 py-1.5 hover:bg-tape-orange/90 font-medium">
+                詳細・チャット
+              </button>
+            </Link>
             <Link href={`/counselor/${booking.counselor.slug}`}>
               <button className="text-xs text-tape-brown border border-tape-beige rounded-full px-3 py-1.5 hover:bg-tape-cream">
                 プロフィール
