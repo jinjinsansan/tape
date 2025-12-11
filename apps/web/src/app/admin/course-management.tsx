@@ -6,7 +6,8 @@ type Course = {
   id: string;
   slug: string;
   title: string;
-  price: number;
+  price: number | null;
+  currency?: string | null;
 };
 
 type Module = {
@@ -26,6 +27,13 @@ type Lesson = {
   video_duration_seconds: number | null;
   resources: { keyPoints?: string[] } | null;
   order_index: number;
+};
+
+const formatCoursePrice = (course: Course) => {
+  const price = course.price ?? 0;
+  if (price <= 0) return "無料";
+  const prefix = !course.currency || course.currency === "JPY" ? "¥" : `${course.currency} `;
+  return `${prefix}${price.toLocaleString()}`;
 };
 
 export function CourseManagement() {
@@ -263,10 +271,8 @@ export function CourseManagement() {
                   : "border-slate-200 hover:border-purple-300"
               }`}
             >
-              <p className="font-bold text-slate-900">{course.title}</p>
-              <p className="text-sm text-slate-600 mt-1">
-                {course.price === 0 ? "無料" : `¥${course.price.toLocaleString()}`}
-              </p>
+                <p className="font-bold text-slate-900">{course.title}</p>
+                <p className="text-sm text-slate-600 mt-1">{formatCoursePrice(course)}</p>
             </button>
           ))}
         </div>

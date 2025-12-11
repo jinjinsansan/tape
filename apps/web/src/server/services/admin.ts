@@ -161,6 +161,8 @@ export const listCoursesForAdmin = async () => {
         id,
         slug,
         title,
+        price,
+        currency,
         published,
         total_duration_seconds,
         metadata,
