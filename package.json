@@ -20,6 +20,9 @@
     "node": ">=18.18.0"
   },
   "dependencies": {
+    "@paypal/paypal-js": "^9.0.1",
+    "@paypal/paypal-server-sdk": "^2.1.0",
+    "@paypal/react-paypal-js": "^8.9.2",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "tailwind-merge": "^3.4.0"
