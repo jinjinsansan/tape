@@ -16,35 +16,58 @@ export type AdminUser = {
   } | null;
 };
 
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+
+const findUserByEmail = async (authAdmin: ReturnType<typeof adminClient>["auth"]["admin"], email: string) => {
+  const normalized = normalizeEmail(email);
+  try {
+    const { data } = await authAdmin.getUserByEmail(normalized);
+    if (data.user) {
+      return data.user;
+    }
+  } catch (error) {
+    console.error("getUserByEmail failed", error);
+  }
+
+  try {
+    const { data } = await authAdmin.listUsers({ page: 1, perPage: 1000 });
+    return data.users.find((user) => (user.email ?? "").toLowerCase() === normalized) ?? null;
+  } catch (error) {
+    console.error("listUsers fallback failed", error);
+    return null;
+  }
+};
+
 export const listUsersForAdmin = async (query?: string, limit = 20) => {
   const supabase = adminClient();
   const authAdmin = supabase.auth.admin;
 
   if (query && query.includes("@")) {
-    const { data: userResult } = await authAdmin.getUserByEmail(query);
-    if (!userResult.user) {
+    const targetUser = await findUserByEmail(authAdmin, query);
+    if (!targetUser) {
       return [];
     }
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("display_name, role, created_at")
-      .eq("id", userResult.user.id)
-      .maybeSingle();
-
-    const { data: walletData } = await supabase
-      .from("wallets")
-      .select("balance_cents, status")
-      .eq("user_id", userResult.user.id)
-      .maybeSingle();
+    const [{ data: profileData }, { data: walletData }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("display_name, role, created_at")
+        .eq("id", targetUser.id)
+        .maybeSingle(),
+      supabase
+        .from("wallets")
+        .select("balance_cents, status")
+        .eq("user_id", targetUser.id)
+        .maybeSingle()
+    ]);
 
     return [
       {
-        id: userResult.user.id,
-        displayName: profileData?.display_name ?? userResult.user.email ?? "",
+        id: targetUser.id,
+        displayName: profileData?.display_name ?? targetUser.email ?? "",
         role: profileData?.role ?? "user",
-        createdAt: profileData?.created_at ?? userResult.user.created_at ?? new Date().toISOString(),
-        email: userResult.user.email,
+        createdAt: profileData?.created_at ?? targetUser.created_at ?? new Date().toISOString(),
+        email: targetUser.email,
         wallet: walletData
           ? { balanceCents: walletData.balance_cents, status: walletData.status }
           : null
