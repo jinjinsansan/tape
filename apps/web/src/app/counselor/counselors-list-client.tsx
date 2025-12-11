@@ -12,6 +12,7 @@ type Counselor = {
   specialties: string[] | null;
   avatar_url: string | null;
   hourly_rate_cents: number;
+  available_slots_count?: number;
 };
 
 const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
@@ -71,9 +72,15 @@ export function CounselorsListClient() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="text-lg font-bold text-tape-brown truncate">{counselor.display_name}</p>
-                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    予約受付中
-                  </span>
+                  {(counselor.available_slots_count ?? 0) > 0 ? (
+                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      予約受付中
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      空き枠なし
+                    </span>
+                  )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {counselor.specialties?.slice(0, 3).map(tag => (

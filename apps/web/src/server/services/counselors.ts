@@ -47,15 +47,81 @@ const publicSelect = `
 export const listCounselors = async (supabase = getSupabaseAdminClient()) => {
   const { data, error } = await supabase
     .from("counselors")
-    .select(publicSelect)
+    .select(`${publicSelect}, slots:counselor_slots(count)`)
     .eq("is_active", true)
+    .eq("slots.status", "available")
+    .gte("slots.start_time", new Date().toISOString())
     .order("display_name", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  // The .eq filter on joined table "slots" might filter out counselors entirely if they have no slots
+  // depending on how Supabase/PostgREST handles inner vs left join. 
+  // By default, !inner join is used if a filter is applied on the foreign table.
+  // We want to list ALL counselors, but just count their available slots.
+  // To do this properly in one query without filtering out counselors, we might need a different approach
+  // or accept that Supabase syntax `slots(count)` with filters might be tricky.
+  // Actually, filtering inside the select: `slots:counselor_slots(count)` with modifiers works if supported.
+  
+  // Let's try a simpler approach: get all counselors, then maybe parallel fetch counts or trust the simple join.
+  // The correct syntax for filtered count without filtering the parent row is tricky in standard PostgREST client.
+  // However, we can just fetch all counselors and their available slots (id only) or use a view.
+  // Given the likely small number of counselors, let's just fetch their future available slots.
+  
+  const { data: counselors, error: fetchError } = await supabase
+    .from("counselors")
+    .select(`
+      ${publicSelect},
+      slots:counselor_slots(id)
+    `)
+    .eq("is_active", true)
+    .eq("slots.status", "available")
+    .gte("slots.start_time", new Date().toISOString())
+    .order("display_name", { ascending: true });
+
+  if (fetchError) throw fetchError;
+
+  // Wait, if I filter on slots (eq, gte), it performs an INNER JOIN by default in Supabase JS client
+  // which means counselors with 0 slots will be excluded.
+  // To keep counselors with 0 slots, we need to NOT filter on the top level but on the relation.
+  // But standard Supabase client doesn't support complex nested filtering easily for LEFT JOIN behavior with constraints on the right side.
+  
+  // Alternative: Fetch all counselors first. Then fetching slots is a separate query or we accept the limitation.
+  // Better approach: Since we want to display "No slots" for counselors without slots, we need them in the list.
+  
+  // Let's reset to basic fetch and use a second query for availability or just "available_slots_count" if we can.
+  // For now, let's fetch counselors, then fetch all future available slots and map them.
+  
+  const { data: allCounselors, error: counselorsError } = await supabase
+    .from("counselors")
+    .select(publicSelect)
+    .eq("is_active", true)
+    .order("display_name", { ascending: true });
+    
+  if (counselorsError) throw counselorsError;
+  
+  const counselorIds = allCounselors?.map(c => c.id) ?? [];
+  
+  if (counselorIds.length === 0) return [];
+  
+  const { data: slots } = await supabase
+    .from("counselor_slots")
+    .select("counselor_id")
+    .in("counselor_id", counselorIds)
+    .eq("status", "available")
+    .gte("start_time", new Date().toISOString());
+    
+  const slotCounts = new Map<string, number>();
+  slots?.forEach(s => {
+    slotCounts.set(s.counselor_id, (slotCounts.get(s.counselor_id) ?? 0) + 1);
+  });
+  
+  return allCounselors?.map(c => ({
+    ...c,
+    available_slots_count: slotCounts.get(c.id) ?? 0
+  })) ?? [];
 };
 
 export const getCounselor = async (slug: string, supabase = getSupabaseAdminClient()) => {
