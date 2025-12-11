@@ -76,6 +76,54 @@ const formatDuration = (seconds?: number | null) => {
   return `${minutes}分`;
 };
 
+const resolveYoutubeId = (url: string): string | null => {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "youtu.be") {
+      return parsed.pathname.replace("/", "");
+    }
+    if (host.endsWith("youtube.com")) {
+      if (parsed.pathname.startsWith("/embed/")) {
+        return parsed.pathname.replace("/embed/", "");
+      }
+      if (parsed.pathname === "/watch") {
+        return parsed.searchParams.get("v");
+      }
+      const segments = parsed.pathname.split("/").filter(Boolean);
+      if (segments[0] === "shorts" && segments[1]) {
+        return segments[1];
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to parse video url", error);
+  }
+  return null;
+};
+
+const buildVideoSource = (url: string | null | undefined) => {
+  if (!url) return { type: "none" as const, src: null };
+  const youtubeId = resolveYoutubeId(url);
+  if (youtubeId) {
+    return { type: "youtube" as const, src: `https://www.youtube.com/embed/${youtubeId}` };
+  }
+  return { type: "file" as const, src: url };
+};
+
+const extractKeyPoints = (resources: unknown): string[] => {
+  if (!resources) return [];
+  if (Array.isArray(resources)) {
+    return resources.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (typeof resources === "object") {
+    const keyPoints = (resources as { keyPoints?: unknown }).keyPoints;
+    if (Array.isArray(keyPoints)) {
+      return keyPoints.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    }
+  }
+  return [];
+};
+
 const findInitialLesson = (course: CourseData | null) => {
   if (!course) return null;
   for (const module of course.modules) {
@@ -156,6 +204,8 @@ export function CourseLearnClient({ slug }: { slug: string }) {
   }, [course]);
 
   const activeLesson = useMemo(() => extractLesson(course, activeLessonId), [course, activeLessonId]);
+  const activeLessonKeyPoints = useMemo(() => extractKeyPoints(activeLesson?.resources), [activeLesson?.resources]);
+  const activeLessonVideo = useMemo(() => buildVideoSource(activeLesson?.videoUrl), [activeLesson?.videoUrl]);
   const nextLesson = useMemo(() => extractAdjacentLesson(course, activeLessonId, "next"), [course, activeLessonId]);
   const prevLesson = useMemo(() => extractAdjacentLesson(course, activeLessonId, "prev"), [course, activeLessonId]);
 
@@ -357,23 +407,34 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                   <p className="text-sm text-tape-brown/80">{activeLesson.summary}</p>
                 </div>
 
-                {activeLesson.videoUrl ? (
+                {activeLessonVideo.type !== "none" ? (
                   <div className="aspect-video w-full overflow-hidden rounded-2xl border border-tape-beige shadow-inner bg-black/5">
-                    {activeLesson.videoUrl.includes("youtube.com") ? (
+                    {activeLessonVideo.type === "youtube" && activeLessonVideo.src ? (
                       <iframe
-                        src={activeLesson.videoUrl}
+                        src={activeLessonVideo.src}
                         className="h-full w-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         title={activeLesson.title}
                       />
-                    ) : (
-                      <video controls className="h-full w-full" src={activeLesson.videoUrl} />
-                    )}
+                    ) : activeLessonVideo.type === "file" && activeLessonVideo.src ? (
+                      <video controls className="h-full w-full" src={activeLessonVideo.src} />
+                    ) : null}
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-tape-beige p-6 text-sm text-tape-light-brown text-center">
                     動画は準備中です。
+                  </div>
+                )}
+
+                {activeLessonKeyPoints.length > 0 && (
+                  <div className="mt-6 rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
+                    <p className="text-xs font-semibold text-tape-orange">重点ポイント</p>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-tape-brown">
+                      {activeLessonKeyPoints.map((point, index) => (
+                        <li key={`${activeLesson.id}-kp-${index}`}>{point}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
