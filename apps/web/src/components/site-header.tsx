@@ -11,7 +11,7 @@ const navItems = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/diary", label: "感情日記", icon: BookHeart },
   { href: "/michelle", label: "Michelle AI", icon: Bot },
-  { href: "/course/beginner", label: "動画コース", icon: PlayCircle },
+  { href: "/courses", label: "動画コース", icon: PlayCircle },
   { href: "/counselor", label: "カウンセリング", icon: CalendarHeart },
   { href: "/feed", label: "みんなの日記", icon: Users },
   { href: "/mypage", label: "マイページ", icon: UserCircle }

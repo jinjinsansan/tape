@@ -673,6 +673,8 @@ export interface Database {
           tags: string[] | null;
           total_duration_seconds: number | null;
           published: boolean;
+          price: number;
+          currency: string;
           metadata: Json;
           created_at: string;
           updated_at: string;
@@ -688,6 +690,8 @@ export interface Database {
           tags?: string[] | null;
           total_duration_seconds?: number | null;
           published?: boolean;
+          price?: number;
+          currency?: string;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
@@ -702,6 +706,8 @@ export interface Database {
           tags?: string[] | null;
           total_duration_seconds?: number | null;
           published?: boolean;
+          price?: number;
+          currency?: string;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
@@ -888,6 +894,49 @@ export interface Database {
           answers?: Json;
           passed?: boolean;
           created_at?: string;
+        };
+      };
+      course_purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          amount: number;
+          currency: string;
+          payment_method: string | null;
+          payment_id: string | null;
+          status: string;
+          metadata: Json;
+          purchased_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          amount: number;
+          currency?: string;
+          payment_method?: string | null;
+          payment_id?: string | null;
+          status?: string;
+          metadata?: Json;
+          purchased_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          course_id?: string;
+          amount?: number;
+          currency?: string;
+          payment_method?: string | null;
+          payment_id?: string | null;
+          status?: string;
+          metadata?: Json;
+          purchased_at?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       counselors: {

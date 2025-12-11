@@ -32,7 +32,7 @@ function HomePage() {
       title: "動画コース",
       description: "心の仕組みを学ぶ",
       icon: PlayCircle,
-      href: "/course/beginner",
+      href: "/courses",
       color: "bg-tape-orange/20 text-tape-brown",
     },
     {
