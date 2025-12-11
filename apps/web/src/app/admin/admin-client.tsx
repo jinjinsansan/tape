@@ -180,15 +180,6 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   };
 
-  useEffect(() => {
-    // ... existing loads ...
-    loadBookings();
-  }, [
-    // ... existing deps ...
-    loadBookings
-  ]);
-
-
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [reports, setReports] = useState<DiaryReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
@@ -938,7 +929,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
         )}
       </section>
 
-      {userRole === "admin" && (
+      {/* 予約管理セクション - 一時的に非表示（bookings API エラーのため） */}
+      {false && userRole === "admin" && (
         <section className="rounded-3xl border border-slate-100 bg-white/90 p-4 md:p-6 shadow-xl shadow-slate-200/70">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
