@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
-import { paypalClient } from "@/lib/paypal";
+import { ordersController } from "@/lib/paypal";
 import { topUpWallet } from "@/server/services/wallet";
 import { createNotification } from "@/server/services/notifications";
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       id: orderId,
     };
 
-    const { result, ...httpResponse } = await paypalClient.orders.ordersCapture(collect);
+    const { result, ...httpResponse} = await ordersController.captureOrder(collect);
 
     if (result.status !== "COMPLETED") {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });

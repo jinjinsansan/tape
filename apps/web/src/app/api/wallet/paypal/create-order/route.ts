@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
-import { paypalClient } from "@/lib/paypal";
+import { ordersController } from "@/lib/paypal";
 
 export async function POST(request: Request) {
   const cookieStore = cookies();
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       },
     };
 
-    const { result, ...httpResponse } = await paypalClient.orders.ordersCreate(collect);
+    const { result, ...httpResponse } = await ordersController.createOrder(collect);
 
     return NextResponse.json({
       orderId: result.id,
