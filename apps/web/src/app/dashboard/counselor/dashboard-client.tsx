@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 
 type DashboardBooking = {
   id: string;
@@ -280,6 +281,62 @@ export function CounselorDashboardClient() {
     const booking = bookings.find((item) => item.id === selectedBookingId);
     loadMessages(booking?.intro_chat_id ?? null);
   }, [bookings, selectedBookingId, loadMessages]);
+
+  // Realtime subscription for new messages
+  useEffect(() => {
+    const booking = bookings.find((item) => item.id === selectedBookingId);
+    if (!booking || !booking.intro_chat_id) {
+      return;
+    }
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const chatId = booking.intro_chat_id;
+
+    // Subscribe to new messages in this chat
+    const channel = supabase
+      .channel(`chat:${chatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "counselor_intro_messages",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          console.log("New message received:", payload);
+          const newMessage = payload.new as any;
+          
+          // Add the new message to the messages array
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newMessage.id,
+              body: newMessage.body,
+              role: newMessage.role,
+              created_at: newMessage.created_at,
+              sender: {
+                id: newMessage.sender_user_id,
+                display_name: newMessage.role === "counselor" ? "カウンセラー" : "クライアント",
+              },
+            },
+          ]);
+        }
+      )
+      .subscribe();
+
+    console.log(`Subscribed to realtime messages for chat: ${chatId}`);
+
+    // Cleanup subscription on unmount or when chatId changes
+    return () => {
+      console.log(`Unsubscribing from chat: ${chatId}`);
+      supabase.removeChannel(channel);
+    };
+  }, [selectedBookingId, bookings]);
 
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
 
