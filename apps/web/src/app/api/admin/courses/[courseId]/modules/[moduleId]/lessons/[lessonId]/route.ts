@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
-import { getRouteUser } from "@/lib/supabase/auth-helpers";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 export async function PUT(
   req: NextRequest,
@@ -8,23 +10,10 @@ export async function PUT(
     params,
   }: { params: { courseId: string; moduleId: string; lessonId: string } }
 ) {
-  const supabase = createSupabaseRouteClient();
-  const user = await getRouteUser(supabase);
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin role
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore);
+  const { response } = await ensureAdmin(supabase, "Admin update course lesson");
+  if (response) return response;
 
   try {
     const body = await req.json();
@@ -71,23 +60,10 @@ export async function DELETE(
     params,
   }: { params: { courseId: string; moduleId: string; lessonId: string } }
 ) {
-  const supabase = createSupabaseRouteClient();
-  const user = await getRouteUser(supabase);
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin role
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore);
+  const { response } = await ensureAdmin(supabase, "Admin delete course lesson");
+  if (response) return response;
 
   try {
     const { error } = await supabase
