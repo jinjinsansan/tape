@@ -361,7 +361,7 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
 export const getIntroMessages = async (chatId: string, supabase = getSupabaseAdminClient()) => {
   const { data, error } = await supabase
     .from("counselor_intro_messages")
-    .select("id, chat_id, sender_user_id, body, role, created_at, sender_profile:profiles!sender_user_id(id, display_name, avatar_url)")
+    .select("id, chat_id, sender_user_id, body, role, created_at")
     .eq("chat_id", chatId)
     .order("created_at", { ascending: true });
 
@@ -369,7 +369,23 @@ export const getIntroMessages = async (chatId: string, supabase = getSupabaseAdm
     throw error;
   }
 
-  return data as IntroChatMessage[];
+  // Fetch sender profiles separately
+  const senderIds = data?.map(m => m.sender_user_id).filter(Boolean) ?? [];
+  const profilesMap = new Map();
+  
+  if (senderIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", senderIds);
+    
+    profiles?.forEach(p => profilesMap.set(p.id, p));
+  }
+
+  return (data ?? []).map(msg => ({
+    ...msg,
+    sender_profile: profilesMap.get(msg.sender_user_id) || null
+  })) as IntroChatMessage[];
 };
 
 export const closeIntroChat = async (chatId: string, status: IntroChatStatus = "closed") => {
@@ -388,7 +404,7 @@ export const getCounselorByAuthUser = async (authUserId: string) => {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("counselors")
-    .select("id, display_name, slug")
+    .select("id, display_name, slug, avatar_url, bio, specialties, hourly_rate_cents, intro_video_url, is_active")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
