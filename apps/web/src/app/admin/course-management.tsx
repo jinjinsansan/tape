@@ -145,6 +145,26 @@ export function CourseManagement() {
     }
   };
 
+  const handleDeleteModule = async (moduleId: string) => {
+    if (!selectedCourse) return;
+    if (!confirm("このモジュールを削除しますか？この操作は元に戻せません。")) return;
+    try {
+      await fetchJson(
+        `/api/admin/courses/${selectedCourse.id}/modules/${moduleId}`,
+        { method: "DELETE" }
+      );
+      if (selectedModule?.id === moduleId) {
+        setSelectedModule(null);
+        setLessons([]);
+      }
+      alert("モジュールを削除しました");
+      loadModules();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "モジュールの削除に失敗しました");
+    }
+  };
+
   const handleCreateOrUpdateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCourse || !selectedModule) return;
@@ -332,10 +352,17 @@ export function CourseManagement() {
 
           <div className="space-y-2">
             {modules.map((module) => (
-              <button
+              <div
                 key={module.id}
                 onClick={() => setSelectedModule(module)}
-                className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    setSelectedModule(module);
+                  }
+                }}
+                className={`w-full rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
                   selectedModule?.id === module.id
                     ? "border-blue-500 bg-blue-50"
                     : "border-slate-200 hover:border-blue-300"
@@ -345,15 +372,30 @@ export function CourseManagement() {
                 {module.summary && (
                   <p className="text-sm text-slate-600 mt-1">{module.summary}</p>
                 )}
-                <p className="text-xs text-slate-500 mt-2">
-                  レッスン数: {
-                    (Array.isArray(module.lessons) && module.lessons[0]?.count) || 
-                    module.lessons?.count || 
-                    0
-                  }
-                </p>
-              </button>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    レッスン数: {
+                      (Array.isArray(module.lessons) && module.lessons[0]?.count) ||
+                      module.lessons?.count ||
+                      0
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteModule(module.id);
+                    }}
+                    className="text-rose-600 hover:underline"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
             ))}
+            {modules.length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">モジュールがまだありません。</p>
+            )}
           </div>
         </div>
       )}
