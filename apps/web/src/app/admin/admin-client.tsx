@@ -110,10 +110,12 @@ type DiaryComment = {
   commenter_name: string;
 };
 
-const StatCard = ({ label, value }: { label: string; value: number }) => (
+const StatCard = ({ label, value }: { label: string; value: number | undefined }) => (
   <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
     <p className="text-xs text-slate-500">{label}</p>
-    <p className="mt-1 text-2xl font-black text-slate-900">{value.toLocaleString()}</p>
+    <p className="mt-1 text-2xl font-black text-slate-900">
+      {value !== undefined ? value.toLocaleString() : "-"}
+    </p>
   </div>
 );
 
@@ -160,7 +162,9 @@ export function AdminClient({ userRole }: { userRole: string }) {
       const data = await fetchJson<{ bookings: BookingRow[] }>("/api/admin/bookings");
       setBookingList(data.bookings ?? []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load bookings:", err);
+      // Set empty array on error to prevent crashes
+      setBookingList([]);
     }
   }, []);
 
@@ -227,6 +231,13 @@ export function AdminClient({ userRole }: { userRole: string }) {
       setStats(data);
     } catch (err) {
       console.error(err);
+      // Set default stats on error to prevent crashes
+      setStats({
+        users: 0,
+        publicDiaries: 0,
+        pendingReports: 0,
+        pendingBookings: 0,
+      });
       setError(err instanceof Error ? err.message : "統計の取得に失敗しました");
     }
   }, []);
