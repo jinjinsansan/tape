@@ -647,6 +647,16 @@ export function AdminClient({ userRole }: { userRole: string }) {
         <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">ADMIN PANEL</p>
         <h1 className="text-3xl font-black text-slate-900">管理者ダッシュボード</h1>
         <p className="text-sm text-slate-500">テープ式心理学プラットフォーム全体の状態を確認できます。</p>
+        {(userRole === "admin" || userRole === "counselor") && (
+          <div className="flex gap-2 pt-2">
+            <a
+              href="/dashboard/counselor"
+              className="inline-flex items-center rounded-full bg-purple-500 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-600"
+            >
+              カウンセラーダッシュボードへ →
+            </a>
+          </div>
+        )}
       </header>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}

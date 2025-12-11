@@ -7,7 +7,7 @@ import type {
   SlotStatus
 } from "@tape/supabase";
 import { getSupabaseAdminClient } from "@/server/supabase";
-import { getOrCreateWallet, consumeWallet } from "@/server/services/wallet";
+import { getOrCreateWallet, consumeWallet, topUpWallet } from "@/server/services/wallet";
 
 type Supabase = SupabaseClient<Database>;
 
