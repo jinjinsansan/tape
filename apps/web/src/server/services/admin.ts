@@ -224,6 +224,73 @@ export const updateCounselorActive = async (counselorId: string, isActive: boole
   }
 };
 
+export const updateCounselorProfile = async (
+  counselorId: string,
+  updates: {
+    display_name?: string;
+    slug?: string;
+    avatar_url?: string | null;
+    bio?: string | null;
+    specialties?: string[] | null;
+    hourly_rate_cents?: number;
+    intro_video_url?: string | null;
+  }
+) => {
+  const supabase = adminClient();
+  const { data, error } = await supabase
+    .from("counselors")
+    .update(updates)
+    .eq("id", counselorId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw error;
+  }
+  
+  return data;
+};
+
+export const createCounselor = async (
+  authUserId: string,
+  profile: {
+    slug: string;
+    display_name: string;
+    avatar_url?: string | null;
+    bio?: string | null;
+    specialties?: string[] | null;
+    hourly_rate_cents?: number;
+    intro_video_url?: string | null;
+  }
+) => {
+  const supabase = adminClient();
+  
+  // First, ensure the user has counselor role
+  await updateUserRole(authUserId, "counselor");
+  
+  // Then create the counselor profile
+  const { data, error } = await supabase
+    .from("counselors")
+    .insert({
+      auth_user_id: authUserId,
+      slug: profile.slug,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url ?? null,
+      bio: profile.bio ?? null,
+      specialties: profile.specialties ?? [],
+      hourly_rate_cents: profile.hourly_rate_cents ?? 12000,
+      intro_video_url: profile.intro_video_url ?? null,
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    throw error;
+  }
+  
+  return data;
+};
+
 export const listAuditLogs = async (limit = 50) => {
   const supabase = adminClient();
   const { data, error } = await supabase

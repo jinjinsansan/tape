@@ -897,6 +897,74 @@ export function AdminClient({ userRole }: { userRole: string }) {
         </div>
       </section>
 
+      {userRole === "admin" && (
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-purple-500">カウンセラー管理</p>
+              <h2 className="text-xl font-black text-slate-900">カウンセラープロフィール</h2>
+            </div>
+            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadCounselors}>
+              再読み込み
+            </button>
+          </div>
+          <div className="space-y-3">
+            {counselors.map((counselor) => (
+              <div key={counselor.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900">{counselor.display_name}</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${counselor.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {counselor.is_active ? 'アクティブ' : '非アクティブ'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">slug: {counselor.slug}</p>
+                    {counselor.specialties && counselor.specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {counselor.specialties.map((spec: string) => (
+                          <span key={spec} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400 mt-2">予約数: {counselor.booking_count}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleCounselorActive(counselor.id, !counselor.is_active)}
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      {counselor.is_active ? '無効化' : '有効化'}
+                    </button>
+                    <a 
+                      href={`/counselor/${counselor.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-purple-500 hover:underline"
+                    >
+                      プロフィールを見る
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {counselors.length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">カウンセラーが登録されていません。</p>
+            )}
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <p className="text-xs text-slate-500 mb-2">
+              ℹ️ カウンセラーのプロフィール編集は、各カウンセラーがログインして /dashboard/counselor から行います。
+            </p>
+            <p className="text-xs text-slate-500">
+              新規カウンセラーを追加するには、ユーザー管理セクションで該当ユーザーを「カウンセラー化」してください。
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
         <h2 className="text-xl font-black text-slate-900">システム状態</h2>
         {health && (
