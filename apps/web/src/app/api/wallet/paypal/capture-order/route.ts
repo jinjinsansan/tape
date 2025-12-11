@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       id: orderId,
     };
 
-    const { result, ...httpResponse } = await paypalClient.ordersController.ordersCapture(collect);
+    const { result, ...httpResponse } = await paypalClient.orders.ordersCapture(collect);
 
     if (result.status !== "COMPLETED") {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });

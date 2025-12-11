@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       },
     };
 
-    const { result, ...httpResponse } = await paypalClient.ordersController.ordersCreate(collect);
+    const { result, ...httpResponse } = await paypalClient.orders.ordersCreate(collect);
 
     return NextResponse.json({
       orderId: result.id,
