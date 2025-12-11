@@ -38,6 +38,13 @@ type CounselorProfile = {
   intro_video_url: string | null;
 };
 
+type CounselorSlot = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+};
+
 export function CounselorDashboardClient() {
   const [bookings, setBookings] = useState<DashboardBooking[]>([]);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -57,6 +64,8 @@ export function CounselorDashboardClient() {
     intro_video_url: "",
   });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [mySlots, setMySlots] = useState<CounselorSlot[]>([]);
+  const [slotForm, setSlotForm] = useState({ date: "", startTime: "10:00", endTime: "11:00" });
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -107,10 +116,64 @@ export function CounselorDashboardClient() {
         hourly_rate_cents: data.counselor.hourly_rate_cents || 12000,
         intro_video_url: data.counselor.intro_video_url || "",
       });
+      // Load slots after getting profile
+      if (data.counselor?.slug) {
+        loadSlots(data.counselor.slug);
+      }
     } catch (err) {
       console.error(err);
     }
   }, []);
+
+  const loadSlots = async (slug: string) => {
+    try {
+      const res = await fetch(`/api/counselors/${slug}`);
+      if (!res.ok) throw new Error("予約枠の取得に失敗しました");
+      const data = await res.json();
+      setMySlots(data.slots ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddSlot = async () => {
+    if (!profile) return;
+    try {
+      const start = new Date(`${slotForm.date}T${slotForm.startTime}:00`);
+      const end = new Date(`${slotForm.date}T${slotForm.endTime}:00`);
+      
+      const res = await fetch("/api/admin/slots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          counselorId: profile.id,
+          startTime: start.toISOString(),
+          endTime: end.toISOString()
+        })
+      });
+      
+      if (!res.ok) throw new Error("予約枠の追加に失敗しました");
+      
+      alert("予約枠を追加しました");
+      loadSlots(profile.slug);
+      setSlotForm({ date: "", startTime: "10:00", endTime: "11:00" });
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "予約枠の追加に失敗しました");
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    if (!confirm("この予約枠を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/admin/slots/${slotId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("削除に失敗しました");
+      if (profile) loadSlots(profile.slug);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "削除に失敗しました");
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -397,6 +460,87 @@ export function CounselorDashboardClient() {
               </div>
             </div>
           )}
+        </section>
+      )}
+
+      {profile && (
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold text-blue-500">予約枠管理</p>
+              <h2 className="text-xl font-black text-slate-900">予約可能時間の設定</h2>
+            </div>
+          </div>
+          
+          <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">新規枠の追加</h3>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">日付</label>
+                <input
+                  type="date"
+                  value={slotForm.date}
+                  onChange={(e) => setSlotForm({ ...slotForm, date: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">開始時間</label>
+                <input
+                  type="time"
+                  value={slotForm.startTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">終了時間</label>
+                <input
+                  type="time"
+                  value={slotForm.endTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAddSlot}
+                disabled={!slotForm.date || !slotForm.startTime || !slotForm.endTime}
+                className="rounded-full bg-blue-500 px-6 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+              >
+                追加
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-slate-700 mb-3">現在の予約枠</h3>
+            <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {mySlots.map((slot) => (
+                <div key={slot.id} className={`p-3 rounded-xl border ${slot.status === 'available' ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-70'}`}>
+                  <p className="text-xs font-bold text-slate-700">
+                    {new Date(slot.start_time).toLocaleDateString("ja-JP")}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(slot.start_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })} - {new Date(slot.end_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="mt-2 text-xs">
+                    ステータス: <span className={slot.status === 'available' ? 'text-green-600' : 'text-slate-500'}>{slot.status}</span>
+                  </p>
+                  {slot.status === 'available' && (
+                    <button
+                      onClick={() => handleDeleteSlot(slot.id)}
+                      className="mt-2 w-full rounded-md border border-rose-200 bg-rose-50 py-1 text-xs text-rose-600 hover:bg-rose-100"
+                    >
+                      削除
+                    </button>
+                  )}
+                </div>
+              ))}
+              {mySlots.length === 0 && (
+                <p className="col-span-full text-sm text-slate-500 text-center py-4">登録された枠はありません。</p>
+              )}
+            </div>
+          </div>
         </section>
       )}
 
