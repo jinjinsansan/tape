@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       userId: user.id,
       channel: "in_app",
       type: "wallet.topup",
+      category: "wallet",
       title: "ウォレットチャージ完了",
       body: `¥${(amountCents / 100).toLocaleString()}のチャージが完了しました。`,
       data: { transaction_id: transaction.id, amount_cents: amountCents },

@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       userId: user.id,
       channel: "in_app",
       type: "wallet.topup",
+      category: "wallet",
       title: "ウォレットにポイントが追加されました",
       body: `${transaction.amount_cents / 100}円相当が加算されました`,
       data: transaction

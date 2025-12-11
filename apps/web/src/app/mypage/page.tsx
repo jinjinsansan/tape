@@ -7,6 +7,7 @@ import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-
 import { MyPageClient } from "./my-page-client";
 import { MyBookingsClient } from "./my-bookings-client";
 import { WalletClient } from "./wallet-client";
+import { NotificationsClient } from "./notifications-client";
 
 export default async function MyPage() {
   const cookieStore = cookies();
@@ -52,6 +53,13 @@ export default async function MyPage() {
             「みんなの日記」や各種サービスで表示される情報をここで変更できます。
           </p>
         </header>
+
+        <Card className="border-tape-beige bg-white/90 shadow-sm">
+          <CardContent className="p-6">
+            <h2 className="mb-6 text-xl font-bold text-tape-brown">お知らせ受信箱</h2>
+            <NotificationsClient />
+          </CardContent>
+        </Card>
 
         <Card className="border-tape-beige bg-white/90 shadow-sm">
           <CardContent className="p-6">

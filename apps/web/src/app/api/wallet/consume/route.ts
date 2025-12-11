@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       userId: user.id,
       channel: "in_app",
       type: "wallet.consume",
+      category: "wallet",
       title: "ポイントを利用しました",
       body: `${Math.abs(transaction.amount_cents) / 100}円相当を消費しました`,
       data: transaction

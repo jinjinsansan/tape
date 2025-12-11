@@ -14,6 +14,7 @@ export type TransactionType =
   | "release";
 
 export type NotificationChannel = "in_app" | "email" | "push";
+export type NotificationCategory = "announcement" | "booking" | "wallet" | "other";
 
 export type DiaryVisibility = "private" | "followers" | "public";
 export type DiaryCommentSource = "user" | "ai" | "counselor" | "moderator";
@@ -105,6 +106,7 @@ export interface Database {
           id: string;
           user_id: string;
           channel: NotificationChannel;
+          category: Database["public"]["Enums"]["notification_category"];
           type: string;
           title: string | null;
           body: string | null;
@@ -117,6 +119,7 @@ export interface Database {
           id?: string;
           user_id: string;
           channel?: NotificationChannel;
+          category?: Database["public"]["Enums"]["notification_category"];
           type: string;
           title?: string | null;
           body?: string | null;
@@ -130,6 +133,7 @@ export interface Database {
           title?: string | null;
           body?: string | null;
           data?: Json;
+          category?: Database["public"]["Enums"]["notification_category"];
         };
       };
       notification_preferences: {
@@ -1228,6 +1232,7 @@ export interface Database {
           p_title?: string | null;
           p_body?: string | null;
           p_data?: Json | null;
+          p_category?: Database["public"]["Enums"]["notification_category"] | null;
         };
         Returns: Database["public"]["Tables"]["notifications"]["Row"];
       };
@@ -1283,6 +1288,7 @@ export interface Database {
       booking_status: BookingStatus;
       slot_status: SlotStatus;
       intro_chat_status: IntroChatStatus;
+      notification_category: NotificationCategory;
     };
   };
 }
