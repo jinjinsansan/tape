@@ -394,7 +394,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder="メッセージを入力..."
-              className="flex-1 rounded-xl sm:rounded-2xl border border-tape-beige bg-tape-cream/50 px-3 sm:px-4 py-2 sm:py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-16 sm:h-20"
+              className="flex-1 rounded-xl sm:rounded-2xl border border-tape-beige bg-tape-cream/50 px-3 sm:px-4 py-2 sm:py-3 text-base md:text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-16 sm:h-20"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

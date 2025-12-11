@@ -533,7 +533,7 @@ function DiaryHistoryContent() {
                         value={editForm.eventSummary}
                         onChange={(event) => setEditForm((prev) => prev && { ...prev, eventSummary: event.target.value })}
                         placeholder="印象に残った出来事を具体的に"
-                        className="mt-1 h-20 w-full rounded-2xl border border-tape-beige bg-white px-3 py-2 text-sm text-tape-brown"
+                        className="mt-1 h-20 w-full rounded-2xl border border-tape-beige bg-white px-3 py-2 text-base md:text-sm text-tape-brown"
                       />
                     </label>
 
@@ -542,7 +542,7 @@ function DiaryHistoryContent() {
                       <textarea
                         value={editForm.content}
                         onChange={(event) => setEditForm((prev) => prev && { ...prev, content: event.target.value })}
-                        className="mt-1 h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/60 px-3 py-2 text-sm text-tape-brown"
+                        className="mt-1 h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/60 px-3 py-2 text-base md:text-sm text-tape-brown"
                       />
                     </label>
 
@@ -551,7 +551,7 @@ function DiaryHistoryContent() {
                       <textarea
                         value={editForm.realization}
                         onChange={(event) => setEditForm((prev) => prev && { ...prev, realization: event.target.value })}
-                        className="mt-1 h-20 w-full rounded-2xl border border-dashed border-tape-beige bg-white px-3 py-2 text-sm text-tape-brown"
+                        className="mt-1 h-20 w-full rounded-2xl border border-dashed border-tape-beige bg-white px-3 py-2 text-base md:text-sm text-tape-brown"
                       />
                     </label>
 

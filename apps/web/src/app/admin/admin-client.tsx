@@ -1104,7 +1104,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
                     <textarea
                       value={memoForm.counselorMemo}
                       onChange={(e) => setMemoForm({ ...memoForm, counselorMemo: e.target.value })}
-                      className="w-full h-32 p-3 border border-slate-200 rounded-lg text-sm"
+                      className="w-full h-32 p-3 border border-slate-200 rounded-lg text-base md:text-sm"
                       placeholder="カウンセラーコメントを入力..."
                     />
                   </div>

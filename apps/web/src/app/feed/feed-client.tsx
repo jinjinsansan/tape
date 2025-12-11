@@ -432,7 +432,7 @@ export function FeedPageClient() {
                           );
                         }}
                         placeholder="コメントを入力..."
-                        className="flex-1 rounded-lg border border-tape-beige bg-white px-3 py-2 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
+                        className="flex-1 rounded-lg border border-tape-beige bg-white px-3 py-2 text-base md:text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink resize-none"
                         rows={2}
                       />
                       <Button

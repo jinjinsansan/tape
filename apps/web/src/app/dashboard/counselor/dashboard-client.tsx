@@ -520,7 +520,7 @@ export function CounselorDashboardClient() {
                   value={profileForm.bio}
                   onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-base md:text-sm"
                   placeholder="カウンセラーとしての経歴や得意分野を記入してください"
                 />
               </div>
@@ -754,7 +754,7 @@ export function CounselorDashboardClient() {
                         value={messageInput}
                         onChange={(event) => setMessageInput(event.target.value)}
                         placeholder="クライアントへのメッセージ"
-                        className="flex-1 rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-rose-200 focus:outline-none"
+                        className="flex-1 rounded-2xl border border-slate-200 px-3 py-2 text-base md:text-sm focus:border-rose-200 focus:outline-none"
                       />
                       <button
                         type="button"

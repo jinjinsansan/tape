@@ -414,7 +414,7 @@ export function CourseClient({ slug }: { slug: string }) {
                       }))
                     }
                     placeholder="気づきや次のアクションをメモ"
-                    className="h-40 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
+                    className="h-40 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-base md:text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
                     disabled={!viewerCanInteract || !activeLesson.isUnlocked}
                   />
                   <div className="mt-3 text-right">

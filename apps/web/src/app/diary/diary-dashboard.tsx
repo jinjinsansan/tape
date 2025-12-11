@@ -628,14 +628,14 @@ export function DiaryDashboard() {
                   value={eventSummary}
                   onChange={(event) => setEventSummary(event.target.value)}
                   placeholder="印象に残った出来事を具体的に"
-                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
                 />
               </label>
               <textarea
                 value={form.content}
                 onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
                 placeholder="出来事・感情・身体感覚を自由にメモ"
-                className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-base md:text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
               />
               <div>
                 <p className="text-xs font-semibold text-tape-light-brown">今日感じた感情を選ぶ</p>
@@ -693,7 +693,7 @@ export function DiaryDashboard() {
                   value={realization}
                   onChange={(event) => setRealization(event.target.value)}
                   placeholder="なぜそう感じたのか、どんな発見があったか"
-                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                  className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
                 />
               </label>
 

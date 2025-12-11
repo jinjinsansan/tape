@@ -285,7 +285,7 @@ export function CounselorPage({ slug }: { slug: string }) {
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="w-full h-24 rounded-xl border border-tape-beige bg-white px-4 py-3 text-xs text-tape-brown focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
+                  className="w-full h-24 rounded-xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
                   placeholder="ご相談内容や目的を入力"
                   disabled={!isAuthenticated}
                 />
@@ -365,7 +365,7 @@ export function CounselorPage({ slug }: { slug: string }) {
                 value={chatInput}
                 onChange={(event) => setChatInput(event.target.value)}
                 placeholder="挨拶や相談内容を送ってください"
-                className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-14"
+                className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-base md:text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-14"
               />
               <Button
                 onClick={handleSendMessage}
