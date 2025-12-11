@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type Course = {
   id: string;
@@ -52,32 +52,16 @@ export function CourseManagement() {
     key_points: [""],
   });
 
-  const fetchJson = async <T,>(url: string, options?: RequestInit) => {
+  const fetchJson = useCallback(async <T,>(url: string, options?: RequestInit) => {
     const res = await fetch(url, options);
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
       throw new Error(payload?.error ?? "リクエストに失敗しました");
     }
     return (await res.json()) as T;
-  };
-
-  useEffect(() => {
-    loadCourses();
   }, []);
 
-  useEffect(() => {
-    if (selectedCourse) {
-      loadModules();
-    }
-  }, [selectedCourse]);
-
-  useEffect(() => {
-    if (selectedModule) {
-      loadLessons();
-    }
-  }, [selectedModule]);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
       const data = await fetchJson<{ courses: Course[] }>("/api/admin/courses");
       setCourses(data.courses || []);
@@ -85,9 +69,9 @@ export function CourseManagement() {
       console.error(err);
       alert("コースの取得に失敗しました");
     }
-  };
+  }, [fetchJson]);
 
-  const loadModules = async () => {
+  const loadModules = useCallback(async () => {
     if (!selectedCourse) return;
     try {
       const data = await fetchJson<{ modules: Module[] }>(
@@ -98,9 +82,9 @@ export function CourseManagement() {
       console.error(err);
       alert("モジュールの取得に失敗しました");
     }
-  };
+  }, [selectedCourse, fetchJson]);
 
-  const loadLessons = async () => {
+  const loadLessons = useCallback(async () => {
     if (!selectedCourse || !selectedModule) return;
     try {
       const data = await fetchJson<{ lessons: Lesson[] }>(
@@ -111,7 +95,23 @@ export function CourseManagement() {
       console.error(err);
       alert("レッスンの取得に失敗しました");
     }
-  };
+  }, [selectedCourse, selectedModule, fetchJson]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
+
+  useEffect(() => {
+    if (selectedCourse) {
+      loadModules();
+    }
+  }, [selectedCourse, loadModules]);
+
+  useEffect(() => {
+    if (selectedModule) {
+      loadLessons();
+    }
+  }, [selectedModule, loadLessons]);
 
   const handleCreateModule = async (e: React.FormEvent) => {
     e.preventDefault();
