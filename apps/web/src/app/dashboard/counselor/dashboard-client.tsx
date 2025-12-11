@@ -56,6 +56,7 @@ export function CounselorDashboardClient() {
     hourly_rate_cents: 12000,
     intro_video_url: "",
   });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -110,6 +111,48 @@ export function CounselorDashboardClient() {
       console.error(err);
     }
   }, []);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size
+    if (file.size > 5 * 1024 * 1024) {
+      alert("画像サイズは5MB以下にしてください");
+      return;
+    }
+
+    // Validate file type
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
+      alert("JPEG、PNG、WebP形式の画像のみアップロードできます");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/counselors/me/avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "画像のアップロードに失敗しました");
+      }
+
+      const data = await res.json();
+      setProfileForm({ ...profileForm, avatar_url: data.url });
+      alert("画像をアップロードしました");
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "画像のアップロードに失敗しました");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     try {
@@ -214,14 +257,44 @@ export function CounselorDashboardClient() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">アバター画像URL</label>
-                <input
-                  type="url"
-                  value={profileForm.avatar_url}
-                  onChange={(e) => setProfileForm({ ...profileForm, avatar_url: e.target.value })}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">アバター画像</label>
+                <div className="flex items-center gap-4">
+                  {profileForm.avatar_url && (
+                    <img
+                      src={profileForm.avatar_url}
+                      alt="Preview"
+                      className="h-16 w-16 rounded-full object-cover border border-slate-200"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-purple-50 file:text-purple-700
+                        hover:file:bg-purple-100
+                        disabled:opacity-50"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      {uploadingAvatar ? "アップロード中..." : "JPEG、PNG、WebP形式、最大5MB"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">またはURLを直接入力</label>
+                  <input
+                    type="url"
+                    value={profileForm.avatar_url}
+                    onChange={(e) => setProfileForm({ ...profileForm, avatar_url: e.target.value })}
+                    placeholder="https://example.com/avatar.jpg"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">自己紹介</label>
