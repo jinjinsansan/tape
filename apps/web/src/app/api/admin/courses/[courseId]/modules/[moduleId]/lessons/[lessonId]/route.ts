@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
-import { getRouteUser } from "@/lib/auth/user";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { getRouteUser } from "@/lib/supabase/auth-helpers";
 
 export async function PUT(
   req: NextRequest,
@@ -8,7 +8,7 @@ export async function PUT(
     params,
   }: { params: { courseId: string; moduleId: string; lessonId: string } }
 ) {
-  const supabase = createSupabaseRouteHandlerClient();
+  const supabase = createSupabaseRouteClient();
   const user = await getRouteUser(supabase);
 
   if (!user) {
@@ -71,7 +71,7 @@ export async function DELETE(
     params,
   }: { params: { courseId: string; moduleId: string; lessonId: string } }
 ) {
-  const supabase = createSupabaseRouteHandlerClient();
+  const supabase = createSupabaseRouteClient();
   const user = await getRouteUser(supabase);
 
   if (!user) {

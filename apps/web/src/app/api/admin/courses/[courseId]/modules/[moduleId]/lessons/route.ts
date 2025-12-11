@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
-import { getRouteUser } from "@/lib/auth/user";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { getRouteUser } from "@/lib/supabase/auth-helpers";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { courseId: string; moduleId: string } }
 ) {
-  const supabase = createSupabaseRouteHandlerClient();
+  const supabase = createSupabaseRouteClient();
   const user = await getRouteUser(supabase);
 
   if (!user) {
@@ -72,7 +72,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { courseId: string; moduleId: string } }
 ) {
-  const supabase = createSupabaseRouteHandlerClient();
+  const supabase = createSupabaseRouteClient();
   const user = await getRouteUser(supabase);
 
   if (!user) {
