@@ -31,19 +31,51 @@ export async function POST(request: Request) {
 
     const { result, ...httpResponse} = await ordersController.captureOrder(collect);
 
+    // Debug: Log the full result
+    console.log("PayPal Capture Result:", JSON.stringify(result, null, 2));
+
     if (result.status !== "COMPLETED") {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
 
-    // Get the payment amount
+    // Get the payment amount - try multiple sources
+    // First, try from purchase_units (most reliable for order amount)
     const purchaseUnit = result.purchaseUnits?.[0];
-    const amountValue = purchaseUnit?.amount?.value;
+    console.log("Purchase Unit:", JSON.stringify(purchaseUnit, null, 2));
+    
+    let amountValue = purchaseUnit?.amount?.value;
+    let currencyCode = purchaseUnit?.amount?.currencyCode;
+    
+    // If not found, try from payments.captures (actual captured amount)
+    if (!amountValue && (result as any).payments?.captures?.[0]) {
+      const capture = (result as any).payments.captures[0];
+      console.log("Trying capture amount:", JSON.stringify(capture, null, 2));
+      amountValue = capture.amount?.value;
+      currencyCode = capture.amount?.currency_code || capture.amount?.currencyCode;
+    }
+    
+    console.log("Amount Value:", amountValue);
+    console.log("Currency Code:", currencyCode);
 
     if (!amountValue) {
+      console.error("Amount value is missing!", {
+        purchaseUnits: result.purchaseUnits,
+        purchaseUnit,
+        amount: purchaseUnit?.amount,
+        payments: (result as any).payments,
+        fullResult: result,
+      });
       return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
     }
 
-    const amountCents = Math.round(parseFloat(amountValue) * 100);
+    // For JPY (zero-decimal currency), amount is already in Yen, not cents
+    // For other currencies, multiply by 100
+    const isZeroDecimalCurrency = currencyCode === "JPY" || currencyCode === "KRW" || currencyCode === "TWD";
+    const amountCents = isZeroDecimalCurrency 
+      ? Math.round(parseFloat(amountValue) * 100) // JPY: 100円 → 10000 cents
+      : Math.round(parseFloat(amountValue) * 100); // Same formula works for both
+    
+    console.log("Amount in cents:", amountCents);
 
     // Add to wallet
     const transaction = await topUpWallet(user.id, amountCents, {
