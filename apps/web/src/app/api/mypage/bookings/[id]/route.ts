@@ -20,15 +20,26 @@ export async function GET(
 
     const adminSupabase = getSupabaseAdminClient();
 
-    // Get booking with counselor info
+    // Get booking with counselor and slot info using joins
     const { data: booking, error: bookingError } = await adminSupabase
       .from("counselor_bookings")
-      .select("id, status, payment_status, price_cents, notes, created_at, intro_chat_id, slot_id, counselor_id")
+      .select(`
+        id,
+        status,
+        payment_status,
+        price_cents,
+        notes,
+        created_at,
+        intro_chat_id,
+        counselor:counselors(display_name, avatar_url),
+        slot:counselor_slots(start_time, end_time)
+      `)
       .eq("id", params.id)
       .eq("client_user_id", user.id)
       .maybeSingle();
 
     if (bookingError) {
+      console.error("Booking query error:", bookingError);
       throw bookingError;
     }
 
@@ -36,47 +47,20 @@ export async function GET(
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Get slot info
-    const { data: slot, error: slotError } = await adminSupabase
-      .from("counselor_slots")
-      .select("start_time, end_time")
-      .eq("id", booking.slot_id)
-      .maybeSingle();
-
-    if (slotError) {
-      throw slotError;
-    }
-
-    // Get counselor info
-    const { data: counselor, error: counselorError } = await adminSupabase
-      .from("counselors")
-      .select("id, user_id")
-      .eq("id", booking.counselor_id)
-      .maybeSingle();
-
-    if (counselorError) {
-      throw counselorError;
-    }
-
-    // Get counselor profile
-    const { data: counselorProfile, error: profileError } = await adminSupabase
-      .from("profiles")
-      .select("display_name, avatar_url")
-      .eq("user_id", counselor?.user_id)
-      .maybeSingle();
-
-    if (profileError) {
-      throw profileError;
-    }
-
     return NextResponse.json({
       booking: {
-        ...booking,
-        start_time: slot?.start_time,
-        end_time: slot?.end_time,
+        id: booking.id,
+        status: booking.status,
+        payment_status: booking.payment_status,
+        price_cents: booking.price_cents,
+        notes: booking.notes,
+        created_at: booking.created_at,
+        intro_chat_id: booking.intro_chat_id,
+        start_time: booking.slot?.start_time,
+        end_time: booking.slot?.end_time,
         counselor: {
-          display_name: counselorProfile?.display_name ?? "カウンセラー",
-          avatar_url: counselorProfile?.avatar_url,
+          display_name: booking.counselor?.display_name ?? "カウンセラー",
+          avatar_url: booking.counselor?.avatar_url,
         },
       },
     });
