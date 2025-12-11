@@ -45,6 +45,21 @@ type CounselorSlot = {
   status: string;
 };
 
+type EarningsData = {
+  total: number;
+  pending: number;
+  thisMonth: number;
+  monthly: Array<{ month: string; earnings: number }>;
+};
+
+type EarningsStats = {
+  totalBookings: number;
+  paidBookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+  pendingBookings: number;
+};
+
 export function CounselorDashboardClient() {
   const [bookings, setBookings] = useState<DashboardBooking[]>([]);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -66,6 +81,8 @@ export function CounselorDashboardClient() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [mySlots, setMySlots] = useState<CounselorSlot[]>([]);
   const [slotForm, setSlotForm] = useState({ date: "", startTime: "10:00", endTime: "11:00" });
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsStats, setEarningsStats] = useState<EarningsStats | null>(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -241,10 +258,23 @@ export function CounselorDashboardClient() {
     }
   };
 
+  const fetchEarnings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/counselors/me/earnings");
+      if (!res.ok) throw new Error("売り上げの取得に失敗しました");
+      const data = await res.json();
+      setEarnings(data.earnings);
+      setEarningsStats(data.stats);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchBookings();
     fetchProfile();
-  }, [fetchBookings, fetchProfile]);
+    fetchEarnings();
+  }, [fetchBookings, fetchProfile, fetchEarnings]);
 
   useEffect(() => {
     const booking = bookings.find((item) => item.id === selectedBookingId);
@@ -290,6 +320,74 @@ export function CounselorDashboardClient() {
       </header>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}
+
+      {earnings && earningsStats && (
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-green-500">売り上げ管理</p>
+              <h2 className="text-xl font-black text-slate-900">収益統計</h2>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+            <div className="rounded-2xl border border-green-100 bg-green-50/50 p-4">
+              <p className="text-xs text-green-600 font-medium">総売上</p>
+              <p className="text-2xl font-black text-green-700 mt-1">
+                ¥{(earnings.total / 100).toLocaleString()}
+              </p>
+              <p className="text-xs text-green-600 mt-1">{earningsStats.paidBookings}件の予約</p>
+            </div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="text-xs text-blue-600 font-medium">今月の売上</p>
+              <p className="text-2xl font-black text-blue-700 mt-1">
+                ¥{(earnings.thisMonth / 100).toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-yellow-100 bg-yellow-50/50 p-4">
+              <p className="text-xs text-yellow-600 font-medium">未決済</p>
+              <p className="text-2xl font-black text-yellow-700 mt-1">
+                ¥{(earnings.pending / 100).toLocaleString()}
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">{earningsStats.pendingBookings}件</p>
+            </div>
+            <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
+              <p className="text-xs text-purple-600 font-medium">完了予約</p>
+              <p className="text-2xl font-black text-purple-700 mt-1">
+                {earningsStats.completedBookings}
+              </p>
+              <p className="text-xs text-purple-600 mt-1">全{earningsStats.totalBookings}件中</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">月別売上（直近6ヶ月）</h3>
+            <div className="space-y-2">
+              {earnings.monthly.map((item) => {
+                const maxEarnings = Math.max(...earnings.monthly.map(m => m.earnings), 1);
+                const percentage = (item.earnings / maxEarnings) * 100;
+                return (
+                  <div key={item.month} className="flex items-center gap-3">
+                    <p className="text-xs text-slate-600 w-20">{item.month}</p>
+                    <div className="flex-1 h-8 bg-white rounded-lg overflow-hidden border border-slate-200">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-end px-2"
+                        style={{ width: `${percentage}%` }}
+                      >
+                        {item.earnings > 0 && (
+                          <span className="text-xs font-bold text-white">
+                            ¥{(item.earnings / 100).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {profile && (
         <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
