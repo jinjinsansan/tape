@@ -1,4 +1,9 @@
+import { cookies } from "next/headers";
+
 import type { User } from "@supabase/supabase-js";
+
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { getRouteUser as getSupabaseRouteUser } from "@/lib/supabase/auth-helpers";
 import { getSupabaseAdminClient } from "@/server/supabase";
 
 const extractBearerToken = (request: Request): string | null => {
@@ -24,4 +29,10 @@ export const authenticateRequest = async (request: Request): Promise<User | null
   }
 
   return data.user;
+};
+
+export const getRouteUser = async () => {
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore);
+  return getSupabaseRouteUser(supabase, "Server getRouteUser");
 };
