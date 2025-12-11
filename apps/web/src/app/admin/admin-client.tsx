@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CourseManagement } from "./course-management";
 
 type AdminStats = {
   users: number;
@@ -1038,6 +1039,11 @@ export function AdminClient({ userRole }: { userRole: string }) {
           </div>
         </section>
       )}
+
+      {/* コース管理セクション */}
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <CourseManagement />
+      </section>
 
       {/* 日記詳細モーダル */}
 

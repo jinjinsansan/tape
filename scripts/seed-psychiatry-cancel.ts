@@ -206,6 +206,8 @@ const courseData: ModuleData[] = [
 
 async function seedPsychiatryCancelCourse() {
   console.log("🌱 Starting seed for 心療内科キャンセルプログラム...");
+  console.log(`📡 Using Supabase URL: ${supabaseUrl}`);
+  console.log(`🔑 Using Service Role Key: ${supabaseServiceKey ? supabaseServiceKey.substring(0, 20) + '...' : 'NOT SET'}`);
 
   try {
     // Get course
@@ -215,7 +217,12 @@ async function seedPsychiatryCancelCourse() {
       .eq("slug", "psychiatry-cancel")
       .single();
 
-    if (courseError || !course) {
+    if (courseError) {
+      console.error("❌ Supabase error:", courseError);
+      throw new Error(`Failed to fetch course: ${courseError.message}`);
+    }
+
+    if (!course) {
       throw new Error("Course not found: psychiatry-cancel");
     }
 
