@@ -18,6 +18,40 @@ export type AdminUser = {
 
 export const listUsersForAdmin = async (query?: string, limit = 20) => {
   const supabase = adminClient();
+  const authAdmin = supabase.auth.admin;
+
+  if (query && query.includes("@")) {
+    const { data: userResult } = await authAdmin.getUserByEmail(query);
+    if (!userResult.user) {
+      return [];
+    }
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("display_name, role, created_at")
+      .eq("id", userResult.user.id)
+      .maybeSingle();
+
+    const { data: walletData } = await supabase
+      .from("wallets")
+      .select("balance_cents, status")
+      .eq("user_id", userResult.user.id)
+      .maybeSingle();
+
+    return [
+      {
+        id: userResult.user.id,
+        displayName: profileData?.display_name ?? userResult.user.email ?? "",
+        role: profileData?.role ?? "user",
+        createdAt: profileData?.created_at ?? userResult.user.created_at ?? new Date().toISOString(),
+        email: userResult.user.email,
+        wallet: walletData
+          ? { balanceCents: walletData.balance_cents, status: walletData.status }
+          : null
+      }
+    ];
+  }
+
   let userQuery = supabase
     .from("profiles")
     .select("id, display_name, role, created_at")
@@ -45,11 +79,25 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
     walletMap = new Map((wallets ?? []).map((wallet) => [wallet.user_id, wallet]));
   }
 
+  const emailMap = new Map<string, string | null>();
+  await Promise.all(
+    userIds.map(async (id) => {
+      try {
+        const { data: userResult } = await authAdmin.getUserById(id);
+        emailMap.set(id, userResult.user?.email ?? null);
+      } catch (err) {
+        console.error("Failed to load user email", err);
+        emailMap.set(id, null);
+      }
+    })
+  );
+
   return users.map((user) => ({
     id: user.id,
     displayName: user.display_name,
     role: user.role,
     createdAt: user.created_at,
+    email: emailMap.get(user.id) ?? null,
     wallet: walletMap.has(user.id)
       ? {
           balanceCents: walletMap.get(user.id)!.balance_cents,

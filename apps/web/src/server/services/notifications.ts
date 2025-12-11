@@ -57,6 +57,7 @@ type CreateNotificationParams = {
   body?: string | null;
   data?: Json;
   category?: NotificationCategory;
+  userEmail?: string | null;
 };
 
 const deriveCategoryFromType = (type: string): NotificationCategory => {
@@ -119,12 +120,14 @@ export const createNotification = async (params: CreateNotificationParams) => {
   const notification = data as Database["public"]["Tables"]["notifications"]["Row"];
 
   try {
-    const { data: userResult, error: userError } = await client.auth.admin.getUserById(params.userId);
-    if (userError) {
-      throw userError;
+    let email = params.userEmail ?? null;
+    if (!email) {
+      const { data: userResult, error: userError } = await client.auth.admin.getUserById(params.userId);
+      if (userError) {
+        throw userError;
+      }
+      email = userResult.user?.email ?? null;
     }
-
-    const email = userResult.user?.email;
     if (email) {
       const subject = params.title ?? "テープ式心理学からのお知らせ";
       const html = buildEmailHtml(subject, params.body ?? "内容をご確認ください。");

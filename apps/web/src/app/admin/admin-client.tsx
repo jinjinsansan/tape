@@ -31,6 +31,7 @@ type AdminUserRow = {
   displayName: string | null;
   role: string;
   createdAt: string;
+  email: string | null;
   wallet: {
     balanceCents: number;
     status: string;
@@ -47,6 +48,16 @@ type NotificationRow = {
   created_at: string;
   sent_at: string | null;
   deliveries?: { channel: string; status: string; external_reference: string | null }[];
+};
+
+type AdminBroadcastRow = {
+  id: string;
+  subject: string;
+  body: string;
+  audience: "all" | "selected";
+  target_emails: string[];
+  target_count: number;
+  created_at: string;
 };
 
 type KnowledgeRow = {
@@ -148,6 +159,16 @@ export function AdminClient({ userRole }: { userRole: string }) {
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [userSearch, setUserSearch] = useState("");
+  const [broadcasts, setBroadcasts] = useState<AdminBroadcastRow[]>([]);
+  const [loadingBroadcasts, setLoadingBroadcasts] = useState(false);
+  const [broadcastSubject, setBroadcastSubject] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastAudience, setBroadcastAudience] = useState<"all" | "selected">("all");
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [recipientResults, setRecipientResults] = useState<AdminUserRow[]>([]);
+  const [recipientSearching, setRecipientSearching] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<AdminUserRow[]>([]);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeRow[]>([]);
   const [courses, setCourses] = useState<CourseRow[]>([]);
@@ -216,6 +237,39 @@ export function AdminClient({ userRole }: { userRole: string }) {
       } catch (err) {
         console.error(err);
         setError(err instanceof Error ? err.message : "ユーザーの取得に失敗しました");
+      }
+    },
+    []
+  );
+
+  const loadBroadcasts = useCallback(async () => {
+    setLoadingBroadcasts(true);
+    try {
+      const data = await fetchJson<{ broadcasts: AdminBroadcastRow[] }>("/api/admin/broadcasts");
+      setBroadcasts(data.broadcasts ?? []);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "配信履歴の取得に失敗しました");
+    } finally {
+      setLoadingBroadcasts(false);
+    }
+  }, []);
+
+  const searchRecipients = useCallback(
+    async (query: string) => {
+      if (!query) {
+        setRecipientResults([]);
+        return;
+      }
+      setRecipientSearching(true);
+      try {
+        const data = await fetchJson<{ users: AdminUserRow[] }>(`/api/admin/users?q=${encodeURIComponent(query)}`);
+        setRecipientResults(data.users ?? []);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "ユーザー検索に失敗しました");
+      } finally {
+        setRecipientSearching(false);
       }
     },
     []
@@ -389,6 +443,71 @@ export function AdminClient({ userRole }: { userRole: string }) {
     setEditingMemo(false);
   };
 
+  const handleAddRecipient = (user: AdminUserRow) => {
+    setSelectedRecipients((prev) => {
+      if (prev.some((item) => item.id === user.id)) {
+        return prev;
+      }
+      return [...prev, user];
+    });
+  };
+
+  const handleRemoveRecipient = (userId: string) => {
+    setSelectedRecipients((prev) => prev.filter((item) => item.id !== userId));
+  };
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastSubject.trim()) {
+      alert("件名を入力してください");
+      return;
+    }
+    if (!broadcastBody.trim()) {
+      alert("本文を入力してください");
+      return;
+    }
+    if (broadcastAudience === "selected" && selectedRecipients.length === 0) {
+      alert("配信対象のユーザーを選択してください");
+      return;
+    }
+
+    setSendingBroadcast(true);
+    try {
+      await fetchJson(`/api/admin/broadcasts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: broadcastSubject.trim(),
+          body: broadcastBody.trim(),
+          audience: broadcastAudience,
+          recipients: broadcastAudience === "selected" ? selectedRecipients.map((user) => user.id) : undefined
+        })
+      });
+      setBroadcastSubject("");
+      setBroadcastBody("");
+      setSelectedRecipients([]);
+      setRecipientResults([]);
+      setRecipientQuery("");
+      alert("配信を開始しました");
+      loadBroadcasts();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "配信に失敗しました");
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
+  const handleDeleteBroadcast = async (broadcastId: string) => {
+    if (!confirm("この配信履歴を削除しますか？")) return;
+    try {
+      await fetchJson(`/api/admin/broadcasts/${broadcastId}`, { method: "DELETE" });
+      setBroadcasts((prev) => prev.filter((item) => item.id !== broadcastId));
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "削除に失敗しました");
+    }
+  };
+
   useEffect(() => {
     loadStats();
     loadReports();
@@ -401,6 +520,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadHealth();
     loadDiaryEntries();
     loadPublicDiaries();
+    loadBroadcasts();
   }, [
     loadStats,
     loadReports,
@@ -412,8 +532,21 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadAuditLogs,
     loadHealth,
     loadDiaryEntries,
-    loadPublicDiaries
+    loadPublicDiaries,
+    loadBroadcasts
   ]);
+
+  useEffect(() => {
+    if (broadcastAudience !== "selected") {
+      setRecipientResults([]);
+      return;
+    }
+    const trimmed = recipientQuery.trim();
+    const handle = setTimeout(() => {
+      searchRecipients(trimmed);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [recipientQuery, broadcastAudience, searchRecipients]);
 
   const updateVisibility = async (entryId: string, visibility: "public" | "followers" | "private") => {
     try {
@@ -552,6 +685,159 @@ export function AdminClient({ userRole }: { userRole: string }) {
           </div>
         )}
       </header>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-rose-500">お知らせ配信</p>
+            <h2 className="text-xl font-black text-slate-900">ユーザーへのお知らせ受信箱 & メール配信</h2>
+          </div>
+          <div className="text-xs text-slate-500">未読: {broadcasts.length} 件</div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="件名"
+              value={broadcastSubject}
+              onChange={(event) => setBroadcastSubject(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+            />
+            <textarea
+              placeholder="本文 (ユーザーにそのまま送信されます)"
+              value={broadcastBody}
+              onChange={(event) => setBroadcastBody(event.target.value)}
+              className="h-40 w-full rounded-2xl border border-slate-200 px-4 py-3 text-base md:text-sm"
+            />
+
+            <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="broadcastAudience"
+                  value="all"
+                  checked={broadcastAudience === "all"}
+                  onChange={() => setBroadcastAudience("all")}
+                />
+                全体配信 (全ユーザー)
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="broadcastAudience"
+                  value="selected"
+                  checked={broadcastAudience === "selected"}
+                  onChange={() => setBroadcastAudience("selected")}
+                />
+                個別配信 (ユーザー検索)
+              </label>
+            </div>
+
+            {broadcastAudience === "selected" && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+                <input
+                  type="text"
+                  value={recipientQuery}
+                  onChange={(event) => setRecipientQuery(event.target.value)}
+                  placeholder="ユーザー名またはメールアドレスで検索"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                {recipientSearching ? (
+                  <p className="text-xs text-slate-500">検索中...</p>
+                ) : recipientResults.length > 0 ? (
+                  <div className="max-h-40 space-y-2 overflow-y-auto">
+                    {recipientResults.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => handleAddRecipient(user)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs hover:border-slate-300"
+                      >
+                        <p className="font-semibold text-slate-800">{user.displayName ?? "No Name"}</p>
+                        <p className="text-[11px] text-slate-500">{user.email ?? "メール未登録"}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : recipientQuery ? (
+                  <p className="text-xs text-slate-500">一致するユーザーが見つかりませんでした。</p>
+                ) : null}
+
+                {selectedRecipients.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRecipients.map((user) => (
+                      <span
+                        key={user.id}
+                        className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] text-slate-700"
+                      >
+                        {user.displayName ?? user.email ?? user.id}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRecipient(user.id)}
+                          className="text-slate-400 hover:text-slate-600"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="text-right">
+              <Button
+                onClick={handleSendBroadcast}
+                disabled={sendingBroadcast}
+                className="bg-rose-500 text-white hover:bg-rose-600"
+              >
+                {sendingBroadcast ? "送信中..." : "お知らせを配信"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-800">配信履歴</p>
+              <button type="button" className="text-xs text-slate-500" onClick={loadBroadcasts}>
+                再読み込み
+              </button>
+            </div>
+            {loadingBroadcasts ? (
+              <p className="mt-4 text-xs text-slate-500">読み込み中...</p>
+            ) : broadcasts.length === 0 ? (
+              <p className="mt-4 text-xs text-slate-500">まだ配信履歴がありません。</p>
+            ) : (
+              <div className="mt-4 space-y-3 max-h-80 overflow-y-auto">
+                {broadcasts.map((broadcast) => (
+                  <article key={broadcast.id} className="rounded-xl border border-white bg-white/80 p-4 text-sm text-slate-700">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>{new Date(broadcast.created_at).toLocaleString("ja-JP", { hour12: false })}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBroadcast(broadcast.id)}
+                        className="text-rose-500 hover:underline"
+                      >
+                        削除
+                      </button>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{broadcast.subject}</p>
+                    <p className="mt-1 line-clamp-3 text-xs text-slate-600 whitespace-pre-wrap">{broadcast.body}</p>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 mr-2">
+                        {broadcast.audience === "all" ? "全体配信" : `個別 (${broadcast.target_count}人)`}
+                      </span>
+                      {broadcast.target_emails.length > 0 && (
+                        <span>宛先例: {broadcast.target_emails.join(", ")}{broadcast.target_count > broadcast.target_emails.length ? " ほか" : ""}</span>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}
 
@@ -784,6 +1070,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate">{user.displayName ?? "No Name"}</p>
                 <p className="text-xs text-slate-400 truncate">{user.id} / {user.role}</p>
+                <p className="text-xs text-slate-500 truncate">{user.email ?? "メール未登録"}</p>
                 <p className="text-xs text-slate-500">Wallet: {user.wallet?.balanceCents} JPY ({user.wallet?.status})</p>
               </div>
               <div className="flex flex-wrap gap-2">

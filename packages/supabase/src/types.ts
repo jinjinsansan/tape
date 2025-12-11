@@ -194,6 +194,42 @@ export interface Database {
           external_reference?: string | null;
         };
       };
+      admin_broadcasts: {
+        Row: {
+          id: string;
+          author_id: string | null;
+          subject: string;
+          body: string;
+          audience: "all" | "selected";
+          target_user_ids: string[];
+          target_emails: string[];
+          target_count: number;
+          created_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          author_id?: string | null;
+          subject: string;
+          body: string;
+          audience: "all" | "selected";
+          target_user_ids?: string[];
+          target_emails?: string[];
+          target_count?: number;
+          created_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          author_id?: string | null;
+          subject?: string;
+          body?: string;
+          audience?: "all" | "selected";
+          target_user_ids?: string[];
+          target_emails?: string[];
+          target_count?: number;
+          deleted_at?: string | null;
+        };
+      };
       michelle_sessions: {
         Row: {
           id: string;
