@@ -226,7 +226,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-tape-light-brown">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12 sm:py-16 text-center text-sm text-tape-light-brown">
         読み込み中...
       </div>
     );
@@ -234,7 +234,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
 
   if (error || !booking) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12 sm:py-16 text-center">
         <p className="text-sm text-tape-pink mb-4">{error ?? "予約が見つかりませんでした"}</p>
         <button
           onClick={() => router.push("/mypage")}
@@ -250,7 +250,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
   const statusColor = booking.status === "confirmed" ? "bg-green-100 text-green-700" : booking.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700";
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 space-y-4 sm:space-y-6">
       <button
         onClick={() => router.push("/mypage")}
         className="flex items-center gap-2 text-sm text-tape-light-brown hover:text-tape-brown"
@@ -259,17 +259,17 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
         マイページに戻る
       </button>
 
-      <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-start justify-between">
-          <div className="flex items-center gap-4">
+      <div className="rounded-2xl sm:rounded-3xl border border-tape-beige bg-white p-4 sm:p-6 shadow-sm">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <img
               src={booking.counselor.avatar_url ?? "https://placehold.co/60x60/F5F2EA/5C554F?text=User"}
               alt={booking.counselor.display_name}
-              className="h-16 w-16 rounded-full object-cover border border-tape-beige"
+              className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover border border-tape-beige flex-shrink-0"
             />
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-tape-orange mb-1">COUNSELOR</p>
-              <h1 className="text-2xl font-bold text-tape-brown">{booking.counselor.display_name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-tape-brown truncate">{booking.counselor.display_name}</h1>
               <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
                 {statusText}
               </span>
@@ -314,7 +314,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
         )}
 
         {booking.status === "pending" && booking.payment_status === "unpaid" && (
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleConfirm}
               disabled={processing}
@@ -325,7 +325,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
             <button
               onClick={handleCancel}
               disabled={processing}
-              className="rounded-full border border-tape-pink text-tape-pink px-6 py-3 font-medium hover:bg-tape-pink/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-full border border-tape-pink text-tape-pink px-6 py-3 font-medium hover:bg-tape-pink/10 disabled:opacity-50 disabled:cursor-not-allowed sm:flex-shrink-0"
             >
               キャンセル
             </button>
@@ -355,10 +355,10 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
       </div>
 
       {booking.intro_chat_id && (
-        <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 border-b border-tape-beige pb-4">
-            <MessageSquare className="h-5 w-5 text-tape-orange" />
-            <h2 className="text-xl font-bold text-tape-brown">チャット</h2>
+        <div className="rounded-2xl sm:rounded-3xl border border-tape-beige bg-white p-4 sm:p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2 border-b border-tape-beige pb-3 sm:pb-4">
+            <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-tape-orange" />
+            <h2 className="text-lg sm:text-xl font-bold text-tape-brown">チャット</h2>
           </div>
 
           <div className="mb-4 space-y-3 max-h-[500px] overflow-y-auto">
@@ -389,12 +389,12 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
             )}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <textarea
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder="メッセージを入力..."
-              className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-20"
+              className="flex-1 rounded-xl sm:rounded-2xl border border-tape-beige bg-tape-cream/50 px-3 sm:px-4 py-2 sm:py-3 text-sm focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none h-16 sm:h-20"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -405,7 +405,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
             <button
               onClick={handleSendMessage}
               disabled={sending || !messageInput.trim()}
-              className="h-20 px-6 bg-tape-orange text-white hover:bg-tape-orange/90 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-16 sm:h-20 px-4 sm:px-6 bg-tape-orange text-white hover:bg-tape-orange/90 rounded-xl sm:rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
             >
               送信
             </button>

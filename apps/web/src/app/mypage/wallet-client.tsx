@@ -60,9 +60,9 @@ export function WalletClient() {
   const chargeOptions = [1000, 3000, 5000, 10000];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ウォレット残高 */}
-      <div className="rounded-3xl border border-tape-beige bg-gradient-to-br from-tape-orange/10 to-tape-pink/10 p-6 shadow-sm">
+      <div className="rounded-2xl sm:rounded-3xl border border-tape-beige bg-gradient-to-br from-tape-orange/10 to-tape-pink/10 p-4 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-tape-orange" />
@@ -92,9 +92,9 @@ export function WalletClient() {
 
       {/* チャージUI */}
       {showPayPal && (
-        <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <div className="rounded-2xl sm:rounded-3xl border border-tape-beige bg-white p-4 sm:p-6 shadow-sm">
           <h3 className="text-lg font-bold text-tape-brown mb-4">チャージ金額を選択</h3>
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {chargeOptions.map((amount) => (
               <button
                 key={amount}
@@ -171,7 +171,7 @@ export function WalletClient() {
       )}
 
       {/* トランザクション履歴 */}
-      <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+      <div className="rounded-2xl sm:rounded-3xl border border-tape-beige bg-white p-4 sm:p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <Clock className="h-5 w-5 text-tape-light-brown" />
           <h3 className="text-lg font-bold text-tape-brown">利用履歴</h3>

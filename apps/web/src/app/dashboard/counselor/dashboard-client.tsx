@@ -369,17 +369,17 @@ export function CounselorDashboardClient() {
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-12">
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 py-8 sm:py-12">
       <header className="space-y-2">
         <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">COUNSELOR DASHBOARD</p>
-        <h1 className="text-3xl font-black text-slate-900">カウンセラーダッシュボード</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">カウンセラーダッシュボード</h1>
         <p className="text-sm text-slate-500">予約、チャット、プロフィールをここから管理できます。</p>
       </header>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}
 
       {earnings && earningsStats && (
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <section className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/90 p-4 sm:p-6 shadow-xl shadow-slate-200/70">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-xs font-semibold text-green-500">売り上げ管理</p>
@@ -447,8 +447,8 @@ export function CounselorDashboardClient() {
       )}
 
       {profile && (
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
-          <div className="flex items-center justify-between mb-4">
+        <section className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/90 p-4 sm:p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <p className="text-xs font-semibold text-purple-500">プロフィール管理</p>
               <h2 className="text-xl font-black text-slate-900">カウンセラー情報</h2>
@@ -619,8 +619,8 @@ export function CounselorDashboardClient() {
       )}
 
       {profile && (
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
-          <div className="flex items-center justify-between mb-6">
+        <section className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/90 p-4 sm:p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
               <p className="text-xs font-semibold text-blue-500">予約枠管理</p>
               <h2 className="text-xl font-black text-slate-900">予約可能時間の設定</h2>
@@ -629,38 +629,38 @@ export function CounselorDashboardClient() {
           
           <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <h3 className="text-sm font-bold text-slate-700 mb-3">新規枠の追加</h3>
-            <div className="flex flex-wrap gap-4 items-end">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 sm:items-end">
+              <div className="flex-1 min-w-[200px]">
                 <label className="block text-xs text-slate-500 mb-1">日付</label>
                 <input
                   type="date"
                   value={slotForm.date}
                   onChange={(e) => setSlotForm({ ...slotForm, date: e.target.value })}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-xs text-slate-500 mb-1">開始時間</label>
                 <input
                   type="time"
                   value={slotForm.startTime}
                   onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-xs text-slate-500 mb-1">終了時間</label>
                 <input
                   type="time"
                   value={slotForm.endTime}
                   onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </div>
               <button
                 onClick={handleAddSlot}
                 disabled={!slotForm.date || !slotForm.startTime || !slotForm.endTime}
-                className="rounded-full bg-blue-500 px-6 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+                className="w-full sm:w-auto rounded-full bg-blue-500 px-6 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
               >
                 追加
               </button>
@@ -669,7 +669,7 @@ export function CounselorDashboardClient() {
 
           <div>
             <h3 className="text-sm font-bold text-slate-700 mb-3">現在の予約枠</h3>
-            <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {mySlots.map((slot) => (
                 <div key={slot.id} className={`p-3 rounded-xl border ${slot.status === 'available' ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-70'}`}>
                   <p className="text-xs font-bold text-slate-700">
@@ -700,7 +700,7 @@ export function CounselorDashboardClient() {
       )}
 
       <section className="grid gap-4 md:grid-cols-[280px_1fr]">
-        <div className="space-y-3">
+        <div className="space-y-3 md:sticky md:top-4 md:self-start">
           <h2 className="text-xs font-semibold text-slate-500">予約一覧</h2>
           <div className="space-y-2">
             {bookings.map((booking) => (
@@ -721,9 +721,9 @@ export function CounselorDashboardClient() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-xl shadow-slate-200/70">
+        <div className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/90 p-4 sm:p-5 shadow-xl shadow-slate-200/70">
           {selectedBooking ? (
-            <div className="flex h-full flex-col gap-4">
+            <div className="flex h-full min-h-[500px] flex-col gap-4">
               <div>
                 <p className="text-xs font-semibold text-rose-500">選択中の予約</p>
                 <h2 className="text-xl font-black text-slate-900">

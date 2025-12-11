@@ -805,7 +805,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-4 md:p-6 shadow-xl shadow-slate-200/70">
         <h2 className="text-xl font-black text-slate-900">ユーザー管理</h2>
         <input 
           value={userSearch} 
@@ -815,21 +815,29 @@ export function AdminClient({ userRole }: { userRole: string }) {
         />
         <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
           {users.map(user => (
-            <div key={user.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3 text-sm">
-              <div>
-                <p className="font-bold">{user.displayName ?? "No Name"}</p>
-                <p className="text-xs text-slate-400">{user.id} / {user.role}</p>
+            <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold truncate">{user.displayName ?? "No Name"}</p>
+                <p className="text-xs text-slate-400 truncate">{user.id} / {user.role}</p>
                 <p className="text-xs text-slate-500">Wallet: {user.wallet?.balanceCents} JPY ({user.wallet?.status})</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {userRole === "admin" && (
                   <>
-                    <button onClick={() => handleRoleChange(user.id, "admin")} className="text-xs text-blue-500">Admin化</button>
-                    <button onClick={() => handleMakeCounselor(user.id)} className="text-xs text-purple-500">カウンセラー化</button>
+                    <button onClick={() => handleRoleChange(user.id, "admin")} className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-100">
+                      Admin化
+                    </button>
+                    <button onClick={() => handleMakeCounselor(user.id)} className="rounded-full bg-purple-50 border border-purple-200 px-3 py-1.5 text-xs text-purple-600 hover:bg-purple-100">
+                      カウンセラー化
+                    </button>
                   </>
                 )}
-                <button onClick={() => handleWalletAdjust(user.id, "credit")} className="text-xs text-green-500">付与</button>
-                <button onClick={() => handleWalletStatus(user.id, user.wallet?.status === "active" ? "locked" : "active")} className="text-xs text-red-500">凍結/解除</button>
+                <button onClick={() => handleWalletAdjust(user.id, "credit")} className="rounded-full bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-600 hover:bg-green-100">
+                  付与
+                </button>
+                <button onClick={() => handleWalletStatus(user.id, user.wallet?.status === "active" ? "locked" : "active")} className="rounded-full bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100">
+                  凍結/解除
+                </button>
               </div>
             </div>
           ))}
@@ -919,17 +927,19 @@ export function AdminClient({ userRole }: { userRole: string }) {
       </section>
 
       {userRole === "admin" && (
-        <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
-          <div className="flex items-center justify-between">
+        <section className="rounded-3xl border border-slate-100 bg-white/90 p-4 md:p-6 shadow-xl shadow-slate-200/70">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-xs font-semibold text-blue-500">予約管理</p>
               <h2 className="text-xl font-black text-slate-900">全予約一覧</h2>
             </div>
-            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500" onClick={loadBookings}>
+            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500 self-start sm:self-auto" onClick={loadBookings}>
               再読み込み
             </button>
           </div>
-          <div className="mt-4 overflow-x-auto">
+          
+          {/* デスクトップ: テーブル表示 */}
+          <div className="mt-4 overflow-x-auto hidden md:block">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 bg-slate-50">
                 <tr>
@@ -981,15 +991,60 @@ export function AdminClient({ userRole }: { userRole: string }) {
               </tbody>
             </table>
           </div>
+
+          {/* モバイル: カード表示 */}
+          <div className="mt-4 space-y-3 md:hidden">
+            {bookingList.length === 0 ? (
+              <p className="text-sm text-center text-slate-500 py-8">予約はありません。</p>
+            ) : (
+              bookingList.map((booking) => (
+                <div key={booking.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-slate-500">
+                        {new Date(booking.start_time).toLocaleString("ja-JP")}
+                      </p>
+                      <p className="text-sm font-bold text-slate-900 mt-1">
+                        {booking.counselor?.display_name ?? "-"}
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        クライアント: {booking.client?.display_name ?? "-"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
+                        booking.status === "confirmed" ? "bg-green-100 text-green-700" :
+                        booking.status === "cancelled" ? "bg-red-100 text-red-700" :
+                        "bg-yellow-100 text-yellow-700"
+                      }`}>
+                        {booking.status}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {booking.payment_status}
+                      </span>
+                    </div>
+                  </div>
+                  {booking.status !== "cancelled" && (
+                    <button
+                      onClick={() => handleCancelBooking(booking.id)}
+                      className="w-full rounded-full bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-100"
+                    >
+                      キャンセル
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </section>
       )}
 
       {/* 日記詳細モーダル */}
 
       {selectedEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedEntry(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4" onClick={() => setSelectedEntry(null)}>
           <div
-            className="max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl"
+            className="max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-slate-100 bg-white p-4 sm:p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">

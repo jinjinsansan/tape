@@ -76,9 +76,9 @@ export function MyBookingsClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {bookings.map((booking) => (
-        <div key={booking.id} className="rounded-2xl border border-tape-beige bg-white p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div key={booking.id} className="rounded-xl sm:rounded-2xl border border-tape-beige bg-white p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold">
               <span className={`px-2 py-0.5 rounded-full ${
@@ -115,21 +115,21 @@ export function MyBookingsClient() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 justify-end">
+          <div className="flex flex-wrap items-center gap-2 justify-end md:justify-start">
             <Link href={`/mypage/bookings/${booking.id}`}>
-              <button className="text-xs text-white bg-tape-orange border border-tape-orange rounded-full px-4 py-1.5 hover:bg-tape-orange/90 font-medium">
+              <button className="text-xs text-white bg-tape-orange border border-tape-orange rounded-full px-4 py-1.5 hover:bg-tape-orange/90 font-medium whitespace-nowrap">
                 詳細・チャット
               </button>
             </Link>
             <Link href={`/counselor/${booking.counselor.slug}`}>
-              <button className="text-xs text-tape-brown border border-tape-beige rounded-full px-3 py-1.5 hover:bg-tape-cream">
+              <button className="text-xs text-tape-brown border border-tape-beige rounded-full px-3 py-1.5 hover:bg-tape-cream whitespace-nowrap">
                 プロフィール
               </button>
             </Link>
             {booking.status !== "cancelled" && (
               <button 
                 onClick={() => handleCancel(booking)}
-                className="text-xs text-tape-pink border border-tape-pink/20 rounded-full px-3 py-1.5 hover:bg-tape-pink/10"
+                className="text-xs text-tape-pink border border-tape-pink/20 rounded-full px-3 py-1.5 hover:bg-tape-pink/10 whitespace-nowrap"
               >
                 キャンセル
               </button>
