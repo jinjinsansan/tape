@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 export async function POST(
   req: NextRequest,
@@ -12,13 +13,14 @@ export async function POST(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin create course module");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
     const body = await req.json();
     const { title, summary, order_index } = body;
 
     // Create module
-    const { data: module, error } = await supabase
+    const { data: module, error } = await adminClient
       .from("learning_course_modules")
       .insert({
         course_id: params.courseId,
@@ -49,9 +51,10 @@ export async function GET(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin list course modules");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
-    const { data: modules, error } = await supabase
+    const { data: modules, error } = await adminClient
       .from("learning_course_modules")
       .select(`
         *,

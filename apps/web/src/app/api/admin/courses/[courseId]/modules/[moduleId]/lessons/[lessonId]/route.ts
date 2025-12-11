@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 export async function PUT(
   req: NextRequest,
@@ -14,6 +15,7 @@ export async function PUT(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin update course lesson");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
     const body = await req.json();
@@ -26,7 +28,7 @@ export async function PUT(
     } = body;
 
     // Update lesson
-    const { data: lesson, error } = await supabase
+    const { data: lesson, error } = await adminClient
       .from("learning_lessons")
       .update({
         title,
@@ -42,7 +44,7 @@ export async function PUT(
     if (error) throw error;
 
     // Update course total duration
-    await updateCourseDuration(supabase, params.courseId);
+    await updateCourseDuration(adminClient, params.courseId);
 
     return NextResponse.json({ lesson });
   } catch (error) {
@@ -64,9 +66,10 @@ export async function DELETE(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin delete course lesson");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
-    const { error } = await supabase
+    const { error } = await adminClient
       .from("learning_lessons")
       .delete()
       .eq("id", params.lessonId);
@@ -74,7 +77,7 @@ export async function DELETE(
     if (error) throw error;
 
     // Update course total duration
-    await updateCourseDuration(supabase, params.courseId);
+    await updateCourseDuration(adminClient, params.courseId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -86,7 +89,7 @@ export async function DELETE(
   }
 }
 
-async function updateCourseDuration(supabase: any, courseId: string) {
+async function updateCourseDuration(supabase: ReturnType<typeof getSupabaseAdminClient>, courseId: string) {
   try {
     const { data: modules } = await supabase
       .from("learning_course_modules")

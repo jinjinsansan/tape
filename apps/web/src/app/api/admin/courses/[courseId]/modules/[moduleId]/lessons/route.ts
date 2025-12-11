@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 export async function POST(
   req: NextRequest,
@@ -12,6 +13,7 @@ export async function POST(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin create course lesson");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
     const body = await req.json();
@@ -26,7 +28,7 @@ export async function POST(
     } = body;
 
     // Create lesson
-    const { data: lesson, error } = await supabase
+    const { data: lesson, error } = await adminClient
       .from("learning_lessons")
       .insert({
         module_id: params.moduleId,
@@ -45,7 +47,7 @@ export async function POST(
     if (error) throw error;
 
     // Update course total duration
-    await updateCourseDuration(supabase, params.courseId);
+    await updateCourseDuration(adminClient, params.courseId);
 
     return NextResponse.json({ lesson });
   } catch (error) {
@@ -65,9 +67,10 @@ export async function GET(
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin list course lessons");
   if (response) return response;
+  const adminClient = getSupabaseAdminClient();
 
   try {
-    const { data: lessons, error } = await supabase
+    const { data: lessons, error } = await adminClient
       .from("learning_lessons")
       .select("*")
       .eq("module_id", params.moduleId)
@@ -85,7 +88,7 @@ export async function GET(
   }
 }
 
-async function updateCourseDuration(supabase: any, courseId: string) {
+async function updateCourseDuration(supabase: ReturnType<typeof getSupabaseAdminClient>, courseId: string) {
   try {
     const { data: modules } = await supabase
       .from("learning_course_modules")
