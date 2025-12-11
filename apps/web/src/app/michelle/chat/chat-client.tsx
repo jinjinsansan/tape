@@ -81,6 +81,8 @@ export function MichelleChatClient() {
   const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
   const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const loadSessions = async () => {
     const res = await fetch("/api/michelle/sessions", { cache: "no-store" });
@@ -113,6 +115,21 @@ export function MichelleChatClient() {
 
   useEffect(() => {
     loadSessions();
+    
+    // モバイル判定
+    setIsMobile(window.innerWidth < 768);
+    
+    // モバイルでは初回ロード時に意図しないフォーカスを防ぐ
+    if (window.innerWidth < 768 && textareaRef.current) {
+      textareaRef.current.blur();
+    }
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -126,6 +143,13 @@ export function MichelleChatClient() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+    }
+  }, [input]);
 
   const handleDeleteSession = async (sessionId: string) => {
     const confirmed = window.confirm("このセッションを削除しますか？");
@@ -145,6 +169,11 @@ export function MichelleChatClient() {
   const handleSend = async (message?: string) => {
     const textToSend = message || input.trim();
     if (!textToSend) return;
+    
+    // モバイルでは送信後にキーボードを閉じる
+    if (isMobile && textareaRef.current) {
+      textareaRef.current.blur();
+    }
 
     setIsLoading(true);
     setError(null);
@@ -518,6 +547,7 @@ export function MichelleChatClient() {
             )}
             <div className="flex items-end gap-3">
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -526,9 +556,21 @@ export function MichelleChatClient() {
                     handleSend();
                   }
                 }}
+                onFocus={(event) => {
+                  // モバイルでフォーカス時にスムーズにスクロール（URLバーを隠す）
+                  if (isMobile) {
+                    setTimeout(() => {
+                      event.target.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 300);
+                  }
+                }}
                 placeholder="ミシェルに話しかける..."
+                enterKeyHint="send"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
                 disabled={isLoading}
-                className="flex-1 resize-none rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown shadow-sm outline-none focus:border-tape-green focus:ring-2 focus:ring-tape-green/20 disabled:opacity-50"
+                className="max-h-40 flex-1 resize-none rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base leading-relaxed text-tape-brown shadow-sm outline-none focus:border-tape-green focus:ring-2 focus:ring-tape-green/20 disabled:opacity-50 md:text-sm"
                 rows={1}
               />
               <button
