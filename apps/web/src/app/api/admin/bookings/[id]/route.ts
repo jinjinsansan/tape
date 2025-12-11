@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { adminCancelBooking } from "@/server/services/counselors";
 import { sendBookingCancelledEmail } from "@/server/emails";
@@ -13,6 +14,7 @@ export async function DELETE(_: Request, context: { params: { id: string } }) {
   const { id } = paramsSchema.parse(context.params);
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore);
+  const adminSupabase = createSupabaseAdminClient();
 
   try {
     const user = await getRouteUser(supabase, "Admin cancel booking");
@@ -23,15 +25,9 @@ export async function DELETE(_: Request, context: { params: { id: string } }) {
     const booking = await adminCancelBooking(id);
 
     // Send email if user email is available
-    // Note: adminCancelBooking returns the booking object with joined profile
-    // But getting the email is tricky as mentioned before.
-    // For now, we will skip sending email here unless we fetch the auth email explicitly
-    // Or we rely on the profile join having email (which it usually doesn't).
-    // Let's try to fetch user email separately to be safe.
-    
     if (booking) {
-      // Fetch user email by ID
-      const { data: userData } = await supabase.auth.admin.getUserById(booking.client_user_id);
+      // Fetch user email by ID using admin client
+      const { data: userData } = await adminSupabase.auth.admin.getUserById(booking.client_user_id);
       const email = userData.user?.email;
       
       if (email) {

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
-import { deleteSlot } from "@/server/services/counselors";
+import { deleteSlot, getSlot, getCounselorByAuthUser } from "@/server/services/counselors";
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -17,6 +17,15 @@ export async function DELETE(_: Request, context: { params: { id: string } }) {
     const user = await getRouteUser(supabase, "Admin delete slot");
     if (!user || (user.role !== "admin" && user.role !== "counselor")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role === "counselor") {
+      const slot = await getSlot(id);
+      const myCounselor = await getCounselorByAuthUser(user.id);
+      
+      if (!myCounselor || !slot || slot.counselor_id !== myCounselor.id) {
+        return NextResponse.json({ error: "Unauthorized to delete this slot" }, { status: 403 });
+      }
     }
 
     await deleteSlot(id);

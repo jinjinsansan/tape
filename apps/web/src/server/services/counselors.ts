@@ -409,14 +409,6 @@ export const adminCancelBooking = async (bookingId: string) => {
   if (error) throw error;
   if (!booking) throw new Error("Booking not found");
 
-  // Refund if paid
-  if (booking.payment_status === "paid") {
-    await topUpWallet(booking.client_user_id, booking.price_cents, {
-      reason: "Admin cancellation refund",
-      bookingId
-    });
-  }
-
   // Release slot
   await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
 
@@ -426,6 +418,19 @@ export const adminCancelBooking = async (bookingId: string) => {
     .eq("id", bookingId);
 
   if (cancelError) throw cancelError;
+
+  // Refund if paid (after status update to prevent race)
+  if (booking.payment_status === "paid") {
+    try {
+      await topUpWallet(booking.client_user_id, booking.price_cents, {
+        reason: "Admin cancellation refund",
+        bookingId
+      });
+    } catch (refundError) {
+      console.error("Failed to refund wallet after booking cancellation", { bookingId, userId: booking.client_user_id, error: refundError });
+      // In a real system, this should trigger an alert for manual intervention
+    }
+  }
   
   // Return booking for email notification
   const { data: cancelledBooking } = await supabase
@@ -472,6 +477,18 @@ export const createSlot = async (counselorId: string, startTime: string, endTime
       status: "available"
     })
     .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getSlot = async (slotId: string) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("counselor_slots")
+    .select("id, counselor_id, status")
+    .eq("id", slotId)
     .single();
 
   if (error) throw error;
