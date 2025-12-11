@@ -31,7 +31,7 @@ export async function GET(
         notes,
         created_at,
         intro_chat_id,
-        counselor:counselors(display_name, avatar_url),
+        counselor:counselors(display_name, avatar_url, slug),
         slot:counselor_slots(start_time, end_time)
       `)
       .eq("id", params.id)
@@ -61,6 +61,7 @@ export async function GET(
         counselor: {
           display_name: booking.counselor?.display_name ?? "カウンセラー",
           avatar_url: booking.counselor?.avatar_url,
+          slug: booking.counselor?.slug ?? "",
         },
       },
     });

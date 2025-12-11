@@ -18,6 +18,7 @@ type BookingDetail = {
   counselor: {
     display_name: string;
     avatar_url: string | null;
+    slug: string;
   };
 };
 
@@ -40,7 +41,9 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
   const [messageInput, setMessageInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const loadBooking = useCallback(async () => {
     try {
@@ -161,6 +164,66 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
     }
   };
 
+  const handleConfirm = async () => {
+    if (!booking) return;
+
+    if (!confirm("ウォレットから支払いますか？\n予約が確定されます。")) return;
+
+    setProcessing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`/api/counselors/${booking.counselor.slug}/bookings/${booking.id}/confirm`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error ?? "決済に失敗しました");
+      }
+
+      setSuccess("決済が完了し、予約が確定しました！");
+      // Reload booking to update status
+      await loadBooking();
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "決済に失敗しました");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!booking) return;
+
+    if (!confirm("予約をキャンセルしますか？\n（規定のキャンセル料がかかる場合があります）")) return;
+
+    setProcessing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`/api/counselors/${booking.counselor.slug}/bookings/${booking.id}/cancel`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error ?? "キャンセルに失敗しました");
+      }
+
+      setSuccess("予約をキャンセルしました。");
+      // Reload booking to update status
+      await loadBooking();
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "キャンセルに失敗しました");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-tape-light-brown">
@@ -237,6 +300,58 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
             </span>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-4 rounded-2xl border border-tape-pink/20 bg-tape-pink/10 p-3 text-sm text-tape-pink">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+            {success}
+          </div>
+        )}
+
+        {booking.status === "pending" && booking.payment_status === "unpaid" && (
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={handleConfirm}
+              disabled={processing}
+              className="flex-1 rounded-full bg-tape-orange text-white px-6 py-3 font-bold hover:bg-tape-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {processing ? "処理中..." : "ウォレットで支払う"}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={processing}
+              className="rounded-full border border-tape-pink text-tape-pink px-6 py-3 font-medium hover:bg-tape-pink/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              キャンセル
+            </button>
+          </div>
+        )}
+
+        {booking.status === "confirmed" && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-green-600 font-medium mb-3">✅ 予約確定済み</p>
+            {booking.status !== "cancelled" && (
+              <button
+                onClick={handleCancel}
+                disabled={processing}
+                className="rounded-full border border-tape-pink text-tape-pink px-6 py-2 text-sm font-medium hover:bg-tape-pink/10 disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+            )}
+          </div>
+        )}
+
+        {booking.status === "cancelled" && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-tape-light-brown">この予約はキャンセル済みです。</p>
+          </div>
+        )}
       </div>
 
       {booking.intro_chat_id && (
