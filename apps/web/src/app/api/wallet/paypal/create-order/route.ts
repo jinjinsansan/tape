@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import * as paypal from "@paypal/paypal-server-sdk";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
@@ -25,32 +24,32 @@ export async function POST(request: Request) {
 
     const amountInYen = (amount_cents / 100).toFixed(0);
 
-    const orderRequest = new paypal.orders.OrdersCreateRequest();
-    orderRequest.requestBody({
-      intent: "CAPTURE",
-      purchase_units: [
-        {
-          amount: {
-            currency_code: "JPY",
-            value: amountInYen,
+    const collect = {
+      body: {
+        intent: "CAPTURE",
+        purchaseUnits: [
+          {
+            amount: {
+              currencyCode: "JPY",
+              value: amountInYen,
+            },
+            description: `namisapo ウォレットチャージ ¥${amountInYen}`,
           },
-          description: `namisapo ウォレットチャージ ¥${amountInYen}`,
+        ],
+        applicationContext: {
+          brandName: "namisapo",
+          landingPage: "NO_PREFERENCE",
+          userAction: "PAY_NOW",
+          returnUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://namisapo.app"}/mypage`,
+          cancelUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://namisapo.app"}/mypage`,
         },
-      ],
-      application_context: {
-        brand_name: "namisapo",
-        landing_page: "NO_PREFERENCE",
-        user_action: "PAY_NOW",
-        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://namisapo.app"}/mypage`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://namisapo.app"}/mypage`,
       },
-    });
+    };
 
-    const response = await paypalClient.execute(orderRequest);
-    const order = response.result;
+    const { result, ...httpResponse } = await paypalClient.ordersController.ordersCreate(collect);
 
     return NextResponse.json({
-      orderId: order.id,
+      orderId: result.id,
     });
   } catch (error) {
     console.error("Failed to create PayPal order", error);

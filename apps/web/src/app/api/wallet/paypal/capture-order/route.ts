@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import * as paypal from "@paypal/paypal-server-sdk";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
@@ -26,16 +25,18 @@ export async function POST(request: Request) {
     }
 
     // Capture the order
-    const captureRequest = new paypal.orders.OrdersCaptureRequest(orderId);
-    const response = await paypalClient.execute(captureRequest);
-    const capturedOrder = response.result;
+    const collect = {
+      id: orderId,
+    };
 
-    if (capturedOrder.status !== "COMPLETED") {
+    const { result, ...httpResponse } = await paypalClient.ordersController.ordersCapture(collect);
+
+    if (result.status !== "COMPLETED") {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
 
     // Get the payment amount
-    const purchaseUnit = capturedOrder.purchase_units?.[0];
+    const purchaseUnit = result.purchaseUnits?.[0];
     const amountValue = purchaseUnit?.amount?.value;
 
     if (!amountValue) {
