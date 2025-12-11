@@ -45,31 +45,56 @@ export function CounselorsListClient() {
     return <p className="text-sm text-tape-pink">{error}</p>;
   }
 
+  if (counselors.length === 0) {
+    return (
+      <div className="rounded-3xl border border-dashed border-tape-beige bg-white/50 p-12 text-center">
+        <p className="text-sm font-bold text-tape-brown">現在、予約可能なカウンセラーがいません</p>
+        <p className="mt-2 text-xs text-tape-light-brown">
+          恐れ入りますが、しばらく経ってから再度ご確認ください。<br />
+          新しいスケジュールは随時追加されます。
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {counselors.map((counselor) => (
-        <Link key={counselor.slug} href={`/counselor/${counselor.slug}`}>
-          <Card className="h-full border-tape-beige shadow-sm transition-all hover:shadow-md hover:border-tape-green/50">
-            <CardContent className="flex items-center gap-4 p-4">
+        <Card key={counselor.slug} className="h-full border-tape-beige shadow-sm transition-all hover:shadow-md">
+          <CardContent className="flex flex-col gap-4 p-5 h-full">
+            <div className="flex items-start gap-4">
               <img
                 src={counselor.avatar_url ?? "https://placehold.co/128x128/F5F2EA/5C554F?text=User"}
                 alt={counselor.display_name}
-                className="h-16 w-16 rounded-full object-cover border border-tape-beige"
+                className="h-20 w-20 rounded-full object-cover border border-tape-beige flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-bold text-tape-brown truncate">{counselor.display_name}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-tape-brown truncate">{counselor.display_name}</p>
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    予約受付中
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
                   {counselor.specialties?.slice(0, 3).map(tag => (
-                    <span key={tag} className="text-[10px] bg-tape-green/10 text-tape-brown px-2 py-0.5 rounded-full">
+                    <span key={tag} className="text-[10px] bg-tape-beige/30 text-tape-brown px-2 py-0.5 rounded-full">
                       {tag}
                     </span>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-tape-light-brown font-medium">初回 {yen(counselor.hourly_rate_cents)}</p>
+                <p className="mt-2 text-xs text-tape-light-brown font-medium">初回 {yen(counselor.hourly_rate_cents)} / 60分</p>
               </div>
-            </CardContent>
-          </Card>
-        </Link>
+            </div>
+            
+            <div className="mt-auto pt-2">
+              <Link href={`/counselor/${counselor.slug}`} className="block">
+                <button className="w-full rounded-full bg-tape-brown py-3 text-sm font-bold text-white transition-colors hover:bg-tape-brown/90 shadow-sm">
+                  予約・詳細を見る
+                </button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
