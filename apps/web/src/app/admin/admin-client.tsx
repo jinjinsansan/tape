@@ -221,6 +221,19 @@ export function AdminClient({ userRole }: { userRole: string }) {
   const [pointRedemptions, setPointRedemptions] = useState<PointRedemptionRow[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [savingPointRule, setSavingPointRule] = useState<string | null>(null);
+  const [shareStats, setShareStats] = useState<{
+    totalShares: number;
+    xShares: number;
+    usersWithTwitter: number;
+    recentShares: Array<{
+      id: string;
+      userName: string;
+      twitterUsername: string;
+      platform: string;
+      sharedAt: string;
+    }>;
+  } | null>(null);
+  const [loadingShareStats, setLoadingShareStats] = useState(false);
   const [rewardForm, setRewardForm] = useState({
     title: "",
     description: "",
@@ -429,6 +442,29 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   }, []);
 
+  const loadShareStats = useCallback(async () => {
+    setLoadingShareStats(true);
+    try {
+      const data = await fetchJson<{
+        totalShares: number;
+        xShares: number;
+        usersWithTwitter: number;
+        recentShares: Array<{
+          id: string;
+          userName: string;
+          twitterUsername: string;
+          platform: string;
+          sharedAt: string;
+        }>;
+      }>("/api/admin/share-stats");
+      setShareStats(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingShareStats(false);
+    }
+  }, []);
+
   const handleHideDiary = async (entryId: string) => {
     if (!confirm("この日記を非表示にしますか？")) return;
     try {
@@ -633,6 +669,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadBroadcasts();
     loadAiSettings();
     loadPointOverview();
+    loadShareStats();
   }, [
     loadStats,
     loadReports,
@@ -647,7 +684,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadPublicDiaries,
     loadBroadcasts,
     loadAiSettings,
-    loadPointOverview
+    loadPointOverview,
+    loadShareStats
   ]);
 
   useEffect(() => {
@@ -986,6 +1024,76 @@ export function AdminClient({ userRole }: { userRole: string }) {
               </Button>
             </div>
           </>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-blue-500">Xシェア監視</p>
+            <h2 className="text-xl font-black text-slate-900">SNSシェア統計とログ</h2>
+          </div>
+          <button type="button" onClick={loadShareStats} className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-500">
+            再読み込み
+          </button>
+        </div>
+
+        {loadingShareStats ? (
+          <p className="mt-4 text-sm text-slate-500">読み込み中...</p>
+        ) : shareStats ? (
+          <div className="mt-5 space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                <p className="text-xs text-blue-600">総シェア回数</p>
+                <p className="mt-1 text-2xl font-black text-blue-900">{shareStats.totalShares}</p>
+              </div>
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                <p className="text-xs text-blue-600">Xシェア回数</p>
+                <p className="mt-1 text-2xl font-black text-blue-900">{shareStats.xShares}</p>
+              </div>
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                <p className="text-xs text-blue-600">X登録ユーザー</p>
+                <p className="mt-1 text-2xl font-black text-blue-900">{shareStats.usersWithTwitter}</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+              <h3 className="text-sm font-semibold text-slate-800">最近のシェアログ（直近20件）</h3>
+              {shareStats.recentShares.length === 0 ? (
+                <p className="mt-3 text-xs text-slate-500">まだシェアログがありません。</p>
+              ) : (
+                <div className="mt-3 space-y-2 max-h-80 overflow-y-auto">
+                  {shareStats.recentShares.map((share) => (
+                    <div key={share.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{share.userName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-slate-500">
+                            {share.platform === "x" ? "🐦 X" : share.platform === "line" ? "💬 LINE" : "📋 Copy"}
+                          </span>
+                          {share.twitterUsername !== "-" && (
+                            <a
+                              href={`https://x.com/search?q=%23かんじょうにっき%20OR%20%23テープ式心理学%20from%3A${share.twitterUsername}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                            >
+                              @{share.twitterUsername}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 whitespace-nowrap">
+                        {new Date(share.sharedAt).toLocaleString("ja-JP", { hour12: false })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-500">シェア統計の取得に失敗しました。</p>
         )}
       </section>
 
