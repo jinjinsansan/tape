@@ -120,7 +120,9 @@ export async function POST(request: Request) {
       worthlessness_score: data.worthlessnessScore ?? null,
       visibility,
       journal_date: data.journalDate,
-      published_at
+      published_at,
+      is_ai_comment_public: data.isAiCommentPublic ?? false,
+      is_counselor_comment_public: data.isCounselorCommentPublic ?? false
     }, feelings);
 
     if (entry) {

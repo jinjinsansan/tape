@@ -33,6 +33,8 @@ type DiaryEntry = {
   ai_comment: string | null;
   ai_comment_generated_at: string | null;
   ai_comment_metadata: Record<string, unknown> | null;
+  is_ai_comment_public: boolean;
+  is_counselor_comment_public: boolean;
 };
 
 type EditFormState = {
@@ -45,6 +47,8 @@ type EditFormState = {
   journalDate: string;
   selfEsteemScore: string;
   worthlessnessScore: string;
+  shareAiComment: boolean;
+  shareCounselorComment: boolean;
 };
 
 type EmotionOption = {
@@ -178,7 +182,9 @@ function DiaryHistoryContent() {
       visibility: entry.visibility,
       journalDate: entry.journal_date,
       selfEsteemScore: entry.self_esteem_score != null ? String(entry.self_esteem_score) : "",
-      worthlessnessScore: entry.worthlessness_score != null ? String(entry.worthlessness_score) : ""
+      worthlessnessScore: entry.worthlessness_score != null ? String(entry.worthlessness_score) : "",
+      shareAiComment: entry.is_ai_comment_public,
+      shareCounselorComment: entry.is_counselor_comment_public
     });
   };
 
@@ -373,6 +379,8 @@ function DiaryHistoryContent() {
         emotionLabel: editForm.emotionLabel || null,
         visibility: editForm.visibility,
         journalDate: editForm.journalDate,
+        isAiCommentPublic: editForm.shareAiComment,
+        isCounselorCommentPublic: editForm.shareCounselorComment,
         ...(selfEsteemEmpty
           ? { selfEsteemScore: null }
           : parsedSelfEsteem !== undefined && { selfEsteemScore: parsedSelfEsteem }),
@@ -584,6 +592,41 @@ function DiaryHistoryContent() {
                           <option value="public">みんなの日記</option>
                         </select>
                       </label>
+                    </div>
+
+                    <div className="rounded-2xl border border-tape-beige bg-white/70 p-4 text-xs text-tape-brown">
+                      <p className="font-semibold text-tape-light-brown">コメント公開設定</p>
+                      <div className="mt-3 space-y-2 text-sm">
+                        <label className="flex items-center justify-between gap-3">
+                          <span>ミシェルAIのコメントを公開</span>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-tape-beige"
+                            checked={editForm.shareAiComment}
+                            disabled={editForm.visibility !== "public"}
+                            onChange={(event) =>
+                              setEditForm((prev) => prev && { ...prev, shareAiComment: event.target.checked })
+                            }
+                          />
+                        </label>
+                        <label className="flex items-center justify-between gap-3">
+                          <span>カウンセラーのコメントを公開</span>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-tape-beige"
+                            checked={editForm.shareCounselorComment}
+                            disabled={editForm.visibility !== "public"}
+                            onChange={(event) =>
+                              setEditForm((prev) => prev && { ...prev, shareCounselorComment: event.target.checked })
+                            }
+                          />
+                        </label>
+                      </div>
+                      {editForm.visibility !== "public" && (
+                        <p className="mt-2 text-[11px] text-tape-light-brown">
+                          「みんなの日記」に公開したときのみ表示されます。
+                        </p>
+                      )}
                     </div>
 
                     <label className="text-xs font-semibold text-tape-light-brown">

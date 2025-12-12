@@ -128,7 +128,11 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
     ...(payload.worthlessnessScore !== undefined && { worthlessness_score: payload.worthlessnessScore }),
     ...(visibility !== undefined && { visibility }),
     ...(payload.journalDate !== undefined && { journal_date: payload.journalDate }),
-    ...(published_at !== undefined && { published_at })
+    ...(published_at !== undefined && { published_at }),
+    ...(payload.isAiCommentPublic !== undefined && { is_ai_comment_public: payload.isAiCommentPublic }),
+    ...(payload.isCounselorCommentPublic !== undefined && {
+      is_counselor_comment_public: payload.isCounselorCommentPublic
+    })
   };
 
   try {

@@ -51,6 +51,8 @@ export async function GET() {
           journal_date,
           created_at,
           updated_at,
+          is_ai_comment_public,
+          is_counselor_comment_public,
           counselor_memo,
           counselor_name,
           is_visible_to_user,

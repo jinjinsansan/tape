@@ -20,7 +20,9 @@ export const entrySchema = z.object({
   worthlessnessScore: z.number().int().min(0).max(100).optional().nullable(),
   visibility: z.enum(["private", "followers", "public"]).optional(),
   journalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  feelings: z.array(feelingSchema).max(8).optional()
+  feelings: z.array(feelingSchema).max(8).optional(),
+  isAiCommentPublic: z.boolean().optional(),
+  isCounselorCommentPublic: z.boolean().optional()
 });
 
 export const updateEntrySchema = entrySchema.partial().extend({

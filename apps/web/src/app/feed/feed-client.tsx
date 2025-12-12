@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Flag, MessageCircle } from "lucide-react";
+import { Flag, MessageCircle, Sparkles } from "lucide-react";
 
 type FeedComment = {
   id: string;
@@ -36,6 +36,8 @@ type FeedEntry = {
     viewerReaction: string | null;
     total: number;
   };
+  aiComment: { content: string; generatedAt: string | null } | null;
+  counselorComment: { content: string; author: string } | null;
   comments?: FeedComment[];
   showComments?: boolean;
   commentInput?: string;
@@ -55,6 +57,15 @@ const reactionOptions = [
   { id: "insight", label: "💡" },
   { id: "support", label: "🤝" }
 ];
+
+const formatDateTime = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("ja-JP", { hour12: false });
+};
 
 // かんじょうにっきエリアと同じ感情の色マッピング
 const emotionToneMap: Record<string, string> = {
@@ -337,6 +348,28 @@ export function FeedPageClient() {
                         {feeling.label}
                       </span>
                     ))}
+                  </div>
+                )}
+                {entry.aiComment && (
+                  <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                    <p className="text-xs font-bold text-sky-800 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" /> ミシェルAIからのコメント
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed">{entry.aiComment.content}</p>
+                    {entry.aiComment.generatedAt && (
+                      <p className="mt-2 text-[11px] text-sky-700">生成日時: {formatDateTime(entry.aiComment.generatedAt)}</p>
+                    )}
+                  </div>
+                )}
+                {entry.counselorComment && (
+                  <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                    <p className="text-xs font-bold flex items-center gap-2">
+                      <span role="img" aria-label="counselor">💬</span> カウンセラーからのコメント
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed text-yellow-900">
+                      {entry.counselorComment.content}
+                    </p>
+                    <p className="mt-2 text-[11px] text-yellow-800">— {entry.counselorComment.author}</p>
                   </div>
                 )}
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">

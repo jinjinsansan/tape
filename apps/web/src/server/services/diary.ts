@@ -30,6 +30,8 @@ export type DiaryEntryInput = {
   journal_date?: string;
   published_at?: string | null;
   ai_comment_status?: DiaryAiCommentStatus;
+  is_ai_comment_public?: boolean;
+  is_counselor_comment_public?: boolean;
 };
 
 export type DiaryEntryUpdateInput = Partial<Omit<DiaryEntryInput, 'content'>> & {
@@ -76,6 +78,8 @@ const diarySelect = `
   ai_comment_metadata,
   ai_summary,
   ai_highlights,
+  is_ai_comment_public,
+  is_counselor_comment_public,
   published_at,
   journal_date,
   created_at,
@@ -155,7 +159,9 @@ export const createDiaryEntry = async (
       visibility: payload.visibility ?? "private",
       journal_date: payload.journal_date ?? undefined,
       published_at: payload.published_at ?? null,
-      ai_comment_status: payload.ai_comment_status ?? "idle"
+      ai_comment_status: payload.ai_comment_status ?? "idle",
+      is_ai_comment_public: payload.is_ai_comment_public ?? false,
+      is_counselor_comment_public: payload.is_counselor_comment_public ?? false
     })
     .select("id, user_id")
     .single();
@@ -192,7 +198,9 @@ export const updateDiaryEntry = async (
       visibility: payload.visibility ?? undefined,
       journal_date: payload.journal_date ?? undefined,
       published_at: payload.published_at ?? undefined,
-      ai_comment_status: payload.ai_comment_status ?? undefined
+      ai_comment_status: payload.ai_comment_status ?? undefined,
+      is_ai_comment_public: payload.is_ai_comment_public ?? undefined,
+      is_counselor_comment_public: payload.is_counselor_comment_public ?? undefined
     })
     .eq("id", entryId)
     .eq("user_id", userId);

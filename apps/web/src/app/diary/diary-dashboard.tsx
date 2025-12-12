@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 
-import type { DiaryVisibility } from "@tape/supabase";
+import type { DiaryVisibility, DiaryAiCommentStatus } from "@tape/supabase";
 
 type DiaryTab = "mine" | "public";
 
@@ -26,6 +26,14 @@ type DiaryEntry = {
   self_esteem_score: number | null;
   worthlessness_score: number | null;
   visibility: DiaryVisibility;
+  ai_comment_status: DiaryAiCommentStatus;
+  ai_comment: string | null;
+  ai_comment_generated_at: string | null;
+  counselor_memo: string | null;
+  counselor_name: string | null;
+  is_visible_to_user: boolean;
+  is_ai_comment_public: boolean;
+  is_counselor_comment_public: boolean;
   published_at: string | null;
   journal_date: string;
   created_at: string;
@@ -37,7 +45,9 @@ const defaultForm = {
   title: "",
   content: "",
   visibility: "private" as DiaryVisibility,
-  journalDate: today()
+  journalDate: today(),
+  shareAiComment: false,
+  shareCounselorComment: false
 };
 
 type InitialScore = {
@@ -149,6 +159,7 @@ export function DiaryDashboard() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState(defaultForm);
+  const [commentVisibilitySavingId, setCommentVisibilitySavingId] = useState<string | null>(null);
   const [eventSummary, setEventSummary] = useState("");
   const [realization, setRealization] = useState("");
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
@@ -482,7 +493,9 @@ export function DiaryDashboard() {
         selfEsteemScore,
         worthlessnessScore,
         visibility: form.visibility,
-        journalDate: form.journalDate
+        journalDate: form.journalDate,
+        isAiCommentPublic: form.shareAiComment,
+        isCounselorCommentPublic: form.shareCounselorComment
       };
 
       const res = await fetch("/api/diary/entries", {
@@ -510,6 +523,14 @@ export function DiaryDashboard() {
           self_esteem_score: selfEsteemScore,
           worthlessness_score: worthlessnessScore,
           visibility: form.visibility,
+          ai_comment_status: "idle",
+          ai_comment: null,
+          ai_comment_generated_at: null,
+          counselor_memo: null,
+          counselor_name: null,
+          is_visible_to_user: true,
+          is_ai_comment_public: form.shareAiComment,
+          is_counselor_comment_public: form.shareCounselorComment,
           published_at: form.visibility === "public" ? new Date().toISOString() : null,
           journal_date: form.journalDate,
           created_at: new Date().toISOString()
@@ -596,6 +617,59 @@ export function DiaryDashboard() {
     } catch (err) {
       console.error(err);
       alert("公開設定の更新に失敗しました");
+    }
+  };
+
+  const handleCommentVisibilityPreferenceChange = async (
+    entryId: string,
+    updates: { is_ai_comment_public?: boolean; is_counselor_comment_public?: boolean }
+  ) => {
+    if (guestMode) {
+      const updated = ensureGuestEntries().map((entry) =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              ...updates
+            }
+          : entry
+      );
+      persistGuestEntries(updated);
+      return;
+    }
+
+    const body: Record<string, boolean> = {};
+    if (updates.is_ai_comment_public !== undefined) {
+      body.isAiCommentPublic = updates.is_ai_comment_public;
+    }
+    if (updates.is_counselor_comment_public !== undefined) {
+      body.isCounselorCommentPublic = updates.is_counselor_comment_public;
+    }
+    if (Object.keys(body).length === 0) {
+      return;
+    }
+
+    setCommentVisibilitySavingId(entryId);
+    try {
+      const res = await fetch(`/api/diary/entries/${entryId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await getAuthHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update comment visibility");
+      }
+
+      const data = (await res.json()) as { entry: DiaryEntry };
+      setEntries((prev) => prev.map((entry) => (entry.id === entryId ? data.entry : entry)));
+    } catch (err) {
+      console.error(err);
+      alert("コメント公開設定の更新に失敗しました");
+    } finally {
+      setCommentVisibilitySavingId(null);
     }
   };
 
@@ -745,6 +819,41 @@ export function DiaryDashboard() {
                 </label>
               </div>
 
+              <div className="rounded-2xl border border-tape-beige bg-white/70 p-4 text-xs text-tape-brown">
+                <p className="font-semibold text-tape-light-brown">コメント公開設定</p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <label className="flex items-center justify-between gap-3">
+                    <span>ミシェルAIのコメントを公開</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-tape-beige"
+                      checked={form.shareAiComment}
+                      disabled={form.visibility !== "public"}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, shareAiComment: event.target.checked }))
+                      }
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span>カウンセラーのコメントを公開</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-tape-beige"
+                      checked={form.shareCounselorComment}
+                      disabled={form.visibility !== "public"}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, shareCounselorComment: event.target.checked }))
+                      }
+                    />
+                  </label>
+                </div>
+                {form.visibility !== "public" && (
+                  <p className="mt-2 text-[11px] text-tape-light-brown">
+                    「みんなの日記」に公開したときのみ有効になります。
+                  </p>
+                )}
+              </div>
+
               {saveError && <p className="text-xs text-tape-pink">{saveError}</p>}
 
               <Button
@@ -871,6 +980,53 @@ export function DiaryDashboard() {
                       </div>
                     </div>
                   )}
+
+                  <div className="mt-4 rounded-2xl border border-tape-beige bg-white/60 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-tape-light-brown">
+                      <span>コメント公開設定</span>
+                      <span className="text-[11px]">
+                        {entry.visibility === "public" ? "みんなの日記に公開中" : "まだ非公開"}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-3 text-sm text-tape-brown">
+                      <label className="flex items-center justify-between gap-3">
+                        <span>ミシェルAIのコメントを公開</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-tape-beige"
+                          checked={entry.is_ai_comment_public}
+                          disabled={entry.visibility !== "public" || commentVisibilitySavingId === entry.id}
+                          onChange={(event) =>
+                            handleCommentVisibilityPreferenceChange(entry.id, {
+                              is_ai_comment_public: event.target.checked
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-3">
+                        <span>カウンセラーのコメントを公開</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-tape-beige"
+                          checked={entry.is_counselor_comment_public}
+                          disabled={entry.visibility !== "public" || commentVisibilitySavingId === entry.id}
+                          onChange={(event) =>
+                            handleCommentVisibilityPreferenceChange(entry.id, {
+                              is_counselor_comment_public: event.target.checked
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    {entry.visibility !== "public" && (
+                      <p className="mt-2 text-[11px] text-tape-light-brown">
+                        「みんなに公開」にすると設定できます。
+                      </p>
+                    )}
+                    {commentVisibilitySavingId === entry.id && (
+                      <p className="mt-2 text-[11px] text-tape-light-brown">更新中...</p>
+                    )}
+                  </div>
 
                   <div className="mt-6 flex flex-wrap gap-2">
                     <Button

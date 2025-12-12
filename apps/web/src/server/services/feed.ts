@@ -27,6 +27,8 @@ export type FeedEntry = {
     viewerReaction: string | null;
     total: number;
   };
+  aiComment: { content: string; generatedAt: string | null } | null;
+  counselorComment: { content: string; author: string } | null;
 };
 
 type FeedQueryParams = {
@@ -67,6 +69,14 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
         mood_label,
         mood_color,
         emotion_label,
+        ai_comment,
+        ai_comment_status,
+        ai_comment_generated_at,
+        is_ai_comment_public,
+        is_counselor_comment_public,
+        counselor_memo,
+        counselor_name,
+        is_visible_to_user,
         published_at,
         journal_date,
         created_at,
@@ -101,6 +111,14 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
 
   const entries = (data ?? []).map((item) => {
     const profile = profilesMap.get(item.user_id);
+    const aiComment =
+      item.is_ai_comment_public && item.ai_comment_status === "completed" && item.ai_comment
+        ? { content: item.ai_comment, generatedAt: item.ai_comment_generated_at }
+        : null;
+    const counselorComment =
+      item.is_counselor_comment_public && item.counselor_memo && item.counselor_name && item.is_visible_to_user
+        ? { content: item.counselor_memo, author: item.counselor_name }
+        : null;
     return {
       id: item.id,
       content: item.content,
@@ -118,7 +136,9 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       moodScore: item.mood_score,
       moodLabel: item.mood_label || item.emotion_label,
       moodColor: item.mood_color,
-      reactions: buildReactionSummary(item.reactions ?? [], params.viewerId)
+      reactions: buildReactionSummary(item.reactions ?? [], params.viewerId),
+      aiComment,
+      counselorComment
     };
   }) as FeedEntry[];
 
