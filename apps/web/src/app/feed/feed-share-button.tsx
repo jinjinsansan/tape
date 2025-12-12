@@ -23,6 +23,8 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
   const [shareUrl, setShareUrl] = useState(() => `${fallbackOrigin}/feed/${entryId}`.replace("//feed", "/feed"));
   const [count, setCount] = useState(shareCount);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [twitterUsername, setTwitterUsername] = useState<string | null>(null);
+  const [checkingTwitter, setCheckingTwitter] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -30,6 +32,23 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
     }
     setShareUrl(`${window.location.origin}/feed/${entryId}`);
   }, [entryId]);
+
+  useEffect(() => {
+    const loadTwitterProfile = async () => {
+      try {
+        const res = await fetch("/api/profile/twitter");
+        if (res.ok) {
+          const data = await res.json();
+          setTwitterUsername(data.twitterUsername ?? null);
+        }
+      } catch (err) {
+        console.error("Failed to load Twitter profile", err);
+      } finally {
+        setCheckingTwitter(false);
+      }
+    };
+    loadTwitterProfile();
+  }, []);
 
   const clippedPreview = useMemo(() => {
     if (!contentPreview) return "";
@@ -60,6 +79,13 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
   const handleShare = useCallback(
     async (platform: SharePlatform) => {
       if (!shareUrl) return;
+      
+      // Xシェアの場合、アカウント登録チェック
+      if (platform === "x" && !twitterUsername) {
+        setShareError("Xでシェアするには、マイページでXアカウントを登録してください");
+        return;
+      }
+      
       setShareError(null);
       try {
         if (platform === "copy") {
@@ -67,9 +93,11 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
         } else if (platform === "x") {
           const url = new URL("https://x.com/intent/post");
           url.searchParams.set("url", shareUrl);
-          if (clippedPreview) {
-            url.searchParams.set("text", clippedPreview);
-          }
+          // ハッシュタグを自動挿入
+          const textWithHashtags = clippedPreview 
+            ? `${clippedPreview}\n\n#かんじょうにっき #テープ式心理学`
+            : "#かんじょうにっき #テープ式心理学";
+          url.searchParams.set("text", textWithHashtags);
           window.open(url.toString(), "_blank", "noopener,noreferrer");
         } else if (platform === "line") {
           const url = new URL("https://social-plugins.line.me/lineit/share");
@@ -87,7 +115,7 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
         setShareError("シェアに失敗しました。もう一度お試しください。");
       }
     },
-    [shareUrl, clippedPreview, recordShare]
+    [shareUrl, clippedPreview, recordShare, twitterUsername]
   );
 
   if (disabled) {
@@ -126,10 +154,14 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
             <button
               type="button"
               onClick={() => handleShare("x")}
-              className="flex w-full items-center justify-between rounded-xl border border-tape-beige px-3 py-2 text-left text-sm text-tape-brown hover:bg-tape-cream"
+              disabled={!twitterUsername}
+              className={cn(
+                "flex w-full items-center justify-between rounded-xl border border-tape-beige px-3 py-2 text-left text-sm text-tape-brown hover:bg-tape-cream",
+                !twitterUsername && "opacity-50 cursor-not-allowed"
+              )}
             >
               <span className="flex items-center gap-2">
-                <XIcon className="h-4 w-4" /> Xで投稿
+                <XIcon className="h-4 w-4" /> Xで投稿 {!twitterUsername && "(要登録)"}
               </span>
             </button>
             <button
@@ -144,7 +176,9 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
           </div>
           {shareError && <p className="mt-2 text-[11px] text-tape-pink">{shareError}</p>}
           <p className="mt-3 text-[11px] text-tape-light-brown">
-            クリップボードやSNSに共有すると、シェア回数にカウントされます。X (旧Twitter) でシェアした場合は +5pt 付与されます。
+            {twitterUsername 
+              ? `クリップボードやSNSに共有すると、シェア回数にカウントされます。Xでシェアした場合は +5pt 付与されます（ハッシュタグ #かんじょうにっき #テープ式心理学 が自動挿入されます）`
+              : "Xでシェアしてポイントを獲得するには、マイページでXアカウントを登録してください"}
           </p>
         </div>
       )}

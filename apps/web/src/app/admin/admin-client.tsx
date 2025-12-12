@@ -38,6 +38,8 @@ type AdminUserRow = {
     balanceCents: number;
     status: string;
   } | null;
+  twitterUsername?: string | null;
+  xShareCount?: number;
 };
 
 type NotificationRow = {
@@ -1575,6 +1577,21 @@ export function AdminClient({ userRole }: { userRole: string }) {
                 <p className="text-xs text-slate-400 truncate">{user.id} / {user.role}</p>
                 <p className="text-xs text-slate-500 truncate">{user.email ?? "メール未登録"}</p>
                 <p className="text-xs text-slate-500">Wallet: {user.wallet?.balanceCents} JPY ({user.wallet?.status})</p>
+                {user.twitterUsername && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-blue-600">
+                      X: @{user.twitterUsername} ({user.xShareCount ?? 0}回シェア)
+                    </p>
+                    <a
+                      href={`https://x.com/search?q=%23かんじょうにっき%20OR%20%23テープ式心理学%20from%3A${user.twitterUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      投稿確認
+                    </a>
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {userRole === "admin" && (

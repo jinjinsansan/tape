@@ -26,6 +26,11 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [twitterUsername, setTwitterUsername] = useState("");
+  const [twitterUpdatedAt, setTwitterUpdatedAt] = useState<string | null>(null);
+  const [twitterSubmitting, setTwitterSubmitting] = useState(false);
+  const [twitterMessage, setTwitterMessage] = useState<string | null>(null);
+  const [twitterError, setTwitterError] = useState<string | null>(null);
 
   const initials = useMemo(() => {
     if (displayName) {
@@ -76,6 +81,22 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
     };
   }, [previewObjectUrl]);
 
+  useEffect(() => {
+    const loadTwitterProfile = async () => {
+      try {
+        const res = await fetch("/api/profile/twitter");
+        if (res.ok) {
+          const data = await res.json();
+          setTwitterUsername(data.twitterUsername ?? "");
+          setTwitterUpdatedAt(data.updatedAt);
+        }
+      } catch (err) {
+        console.error("Failed to load Twitter profile", err);
+      }
+    };
+    loadTwitterProfile();
+  }, []);
+
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -114,6 +135,58 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
     },
     [avatarFile, displayName]
   );
+
+  const handleTwitterSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setTwitterSubmitting(true);
+      setTwitterError(null);
+      setTwitterMessage(null);
+
+      const username = twitterUsername.trim().replace(/^@/, "");
+
+      try {
+        const response = await fetch("/api/profile/twitter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ twitterUsername: username })
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Xアカウントの更新に失敗しました");
+        }
+
+        setTwitterUsername(payload.twitterUsername ?? "");
+        setTwitterUpdatedAt(payload.updatedAt);
+        setTwitterMessage("Xアカウントを更新しました");
+      } catch (err) {
+        console.error(err);
+        setTwitterError(err instanceof Error ? err.message : "Xアカウントの更新に失敗しました");
+      } finally {
+        setTwitterSubmitting(false);
+      }
+    },
+    [twitterUsername]
+  );
+
+  const canUpdateTwitter = useMemo(() => {
+    if (!twitterUpdatedAt) return true;
+    const lastUpdated = new Date(twitterUpdatedAt).getTime();
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return now - lastUpdated >= sevenDaysMs;
+  }, [twitterUpdatedAt]);
+
+  const daysUntilTwitterUpdate = useMemo(() => {
+    if (!twitterUpdatedAt || canUpdateTwitter) return 0;
+    const lastUpdated = new Date(twitterUpdatedAt).getTime();
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const remaining = sevenDaysMs - (now - lastUpdated);
+    return Math.ceil(remaining / (24 * 60 * 60 * 1000));
+  }, [twitterUpdatedAt, canUpdateTwitter]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -196,6 +269,73 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
               </Button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">X (TWITTER) ACCOUNT</p>
+        <h2 className="text-2xl font-bold text-tape-brown">Xアカウント連携</h2>
+        <p className="text-sm text-tape-light-brown">
+          「みんなの日記」をXでシェアしてポイントを獲得するには、Xアカウントの登録が必要です。
+        </p>
+
+        <form onSubmit={handleTwitterSubmit} className="mt-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-tape-light-brown" htmlFor="twitterUsername">
+              Xユーザー名（@なし）
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-tape-brown">@</span>
+              <input
+                id="twitterUsername"
+                name="twitterUsername"
+                value={twitterUsername}
+                onChange={(event) => setTwitterUsername(event.target.value)}
+                placeholder="username"
+                className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink disabled:opacity-50"
+                maxLength={15}
+                pattern="[A-Za-z0-9_]{1,15}"
+                disabled={!canUpdateTwitter}
+                required
+              />
+            </div>
+            <p className="text-xs text-tape-light-brown">
+              英数字とアンダースコアのみ、1〜15文字
+            </p>
+            {!canUpdateTwitter && (
+              <p className="text-xs text-tape-pink">
+                ⚠️ Xアカウントは7日間変更できません。あと{daysUntilTwitterUpdate}日後に変更可能です。
+              </p>
+            )}
+            {twitterUpdatedAt && (
+              <p className="text-xs text-tape-light-brown">
+                最終更新: {new Date(twitterUpdatedAt).toLocaleString("ja-JP")}
+              </p>
+            )}
+          </div>
+
+          {twitterError && <p className="text-sm text-tape-pink">{twitterError}</p>}
+          {twitterMessage && <p className="text-sm text-tape-green">{twitterMessage}</p>}
+
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={twitterSubmitting || !canUpdateTwitter}
+              className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90 disabled:opacity-50"
+            >
+              {twitterSubmitting ? "更新中..." : twitterUsername ? "Xアカウントを更新" : "Xアカウントを登録"}
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-6 rounded-2xl border border-tape-beige bg-tape-cream/30 p-4 text-xs text-tape-light-brown">
+          <h4 className="font-semibold text-tape-brown">重要事項</h4>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Xアカウントを登録すると、シェア時に自動的にハッシュタグ #かんじょうにっき #テープ式心理学 が追加されます</li>
+            <li>不正なポイント獲得を防ぐため、アカウントの変更は<strong>7日間に1度のみ</strong>可能です</li>
+            <li>シェアした投稿は管理者が定期的に確認します</li>
+            <li>実際にXへ投稿せずにポイントを獲得した場合、アカウント停止の対象となります</li>
+          </ul>
         </div>
       </section>
 

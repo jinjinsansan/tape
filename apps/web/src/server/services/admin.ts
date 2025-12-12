@@ -14,6 +14,8 @@ export type AdminUser = {
     balanceCents: number;
     status: string;
   } | null;
+  twitterUsername?: string | null;
+  xShareCount?: number;
 };
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -48,17 +50,22 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
       return [];
     }
 
-    const [{ data: profileData }, { data: walletData }] = await Promise.all([
+    const [{ data: profileData }, { data: walletData }, { count: xShareCount }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, role, created_at")
+        .select("display_name, role, created_at, twitter_username")
         .eq("id", targetUser.id)
         .maybeSingle(),
       supabase
         .from("wallets")
         .select("balance_cents, status")
         .eq("user_id", targetUser.id)
-        .maybeSingle()
+        .maybeSingle(),
+      supabase
+        .from("feed_share_log")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", targetUser.id)
+        .eq("platform", "x")
     ]);
 
     return [
@@ -70,14 +77,16 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
         email: targetUser.email,
         wallet: walletData
           ? { balanceCents: walletData.balance_cents, status: walletData.status }
-          : null
+          : null,
+        twitterUsername: profileData?.twitter_username ?? null,
+        xShareCount: xShareCount ?? 0
       }
     ];
   }
 
   let userQuery = supabase
     .from("profiles")
-    .select("id, display_name, role, created_at")
+    .select("id, display_name, role, created_at, twitter_username")
     .limit(limit)
     .order("created_at", { ascending: false });
 
@@ -94,12 +103,27 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
   const userIds = users.map((user) => user.id);
 
   let walletMap = new Map<string, { balance_cents: number; status: string }>();
+  let xShareMap = new Map<string, number>();
   if (userIds.length > 0) {
-    const { data: wallets } = await supabase
-      .from("wallets")
-      .select("user_id, balance_cents, status")
-      .in("user_id", userIds);
+    const [{ data: wallets }, { data: shareLogs }] = await Promise.all([
+      supabase
+        .from("wallets")
+        .select("user_id, balance_cents, status")
+        .in("user_id", userIds),
+      supabase
+        .from("feed_share_log")
+        .select("user_id")
+        .eq("platform", "x")
+        .in("user_id", userIds)
+    ]);
     walletMap = new Map((wallets ?? []).map((wallet) => [wallet.user_id, wallet]));
+    
+    // シェア回数をカウント
+    const shareCountMap = new Map<string, number>();
+    (shareLogs ?? []).forEach((log) => {
+      shareCountMap.set(log.user_id, (shareCountMap.get(log.user_id) ?? 0) + 1);
+    });
+    xShareMap = shareCountMap;
   }
 
   const emailMap = new Map<string, string | null>();
@@ -126,7 +150,9 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
           balanceCents: walletMap.get(user.id)!.balance_cents,
           status: walletMap.get(user.id)!.status
         }
-      : null
+      : null,
+    twitterUsername: (user as any).twitter_username ?? null,
+    xShareCount: xShareMap.get(user.id) ?? 0
   }));
 };
 
