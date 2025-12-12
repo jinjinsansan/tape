@@ -10,6 +10,8 @@ import {
   type DiaryFeelingInput
 } from "@/server/services/diary";
 import { scheduleDiaryAiCommentJob } from "@/server/services/diary-ai-comments";
+import { awardPoints } from "@/server/services/points";
+import { recordReferralDiaryDay } from "@/server/services/referrals";
 import { entrySchema, scopeSchema } from "./_schemas";
 
 const handleAuthError = (error: unknown) => {
@@ -127,6 +129,20 @@ export async function POST(request: Request) {
     }, feelings);
 
     if (entry) {
+      try {
+        await awardPoints({ userId: user!.id, action: "diary_post", referenceId: entry.id });
+      } catch (awardError) {
+        console.error("Failed to award diary points", awardError);
+      }
+
+      if (entry.journal_date) {
+        try {
+          await recordReferralDiaryDay(user!.id, entry.journal_date);
+        } catch (referralError) {
+          console.error("Failed to record referral day", referralError);
+        }
+      }
+
       try {
         await scheduleDiaryAiCommentJob({
           entryId: entry.id,

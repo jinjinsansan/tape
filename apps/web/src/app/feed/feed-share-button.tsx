@@ -37,9 +37,13 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
     return trimmed.length > 80 ? `${trimmed.slice(0, 80)}…` : trimmed;
   }, [contentPreview]);
 
-  const recordShare = useCallback(async () => {
+  const recordShare = useCallback(async (platform?: SharePlatform) => {
     try {
-      const res = await fetch(`/api/feed/${entryId}/share`, { method: "POST" });
+      const res = await fetch(`/api/feed/${entryId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform })
+      });
       if (res.ok) {
         const data = await res.json();
         if (typeof data.shareCount === "number") {
@@ -73,7 +77,7 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
           window.open(url.toString(), "_blank", "noopener,noreferrer");
         }
 
-        await recordShare();
+        await recordShare(platform);
         setOpen(false);
         if (platform === "copy") {
           alert("リンクをコピーしました");
@@ -140,7 +144,7 @@ export function FeedShareButton({ entryId, contentPreview, shareCount, disabled,
           </div>
           {shareError && <p className="mt-2 text-[11px] text-tape-pink">{shareError}</p>}
           <p className="mt-3 text-[11px] text-tape-light-brown">
-            クリップボードやSNSに共有すると、シェア回数にカウントされます。
+            クリップボードやSNSに共有すると、シェア回数にカウントされます。X (旧Twitter) でシェアした場合は +5pt 付与されます。
           </p>
         </div>
       )}

@@ -6,6 +6,7 @@ export type {
   Json,
   TransactionType,
   NotificationChannel,
+  NotificationCategory,
   DiaryVisibility,
   DiaryCommentSource,
   DiaryReactionType,
@@ -14,7 +15,9 @@ export type {
   LearningLessonStatus,
   BookingStatus,
   SlotStatus,
-  IntroChatStatus
+  IntroChatStatus,
+  PointAction,
+  PointRedemptionStatus
 } from "./types";
 
 export type SupabaseClientOptions = {

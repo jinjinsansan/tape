@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
+import { awardPoints } from "@/server/services/points";
 
 export async function GET(
   request: NextRequest,
@@ -154,6 +155,12 @@ export async function POST(
         avatarUrl: profile?.avatar_url || null
       }
     };
+
+    try {
+      await awardPoints({ userId: user.id, action: "feed_comment", referenceId: entryId });
+    } catch (awardError) {
+      console.error("Failed to award comment points", awardError);
+    }
 
     return NextResponse.json({ comment: formattedComment });
   } catch (error) {

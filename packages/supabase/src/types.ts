@@ -11,13 +11,23 @@ export type TransactionType =
   | "consume"
   | "refund"
   | "hold"
-  | "release";
+  | "release"
+  | "bonus"
+  | "reward";
 
 export type NotificationChannel = "in_app" | "email" | "push";
 export type NotificationCategory = "announcement" | "booking" | "wallet" | "other";
 
 export type DiaryVisibility = "private" | "followers" | "public";
 export type DiaryCommentSource = "user" | "ai" | "counselor" | "moderator";
+export type PointAction =
+  | "diary_post"
+  | "feed_comment"
+  | "feed_share_x"
+  | "referral_5days"
+  | "referral_10days"
+  | "admin_adjustment";
+export type PointRedemptionStatus = "pending" | "approved" | "fulfilled" | "cancelled";
 export type DiaryReactionType = "cheer" | "hug" | "empathy" | "insight";
 export type DiaryAiCommentStatus = "idle" | "pending" | "processing" | "completed" | "failed" | "skipped";
 export type DiaryAssessmentAgePath = "teen" | "adult" | "senior";
@@ -38,6 +48,8 @@ export interface Database {
           onboarding_state: Json;
           created_at: string;
           updated_at: string;
+          referral_code: string;
+          referred_by: string | null;
         };
         Insert: {
           id: string;
@@ -45,6 +57,8 @@ export interface Database {
           avatar_url?: string | null;
           role?: string;
           onboarding_state?: Json;
+          referral_code?: string;
+          referred_by?: string | null;
         };
         Update: {
           display_name?: string | null;
@@ -52,6 +66,8 @@ export interface Database {
           role?: string;
           onboarding_state?: Json;
           updated_at?: string;
+          referral_code?: string;
+          referred_by?: string | null;
         };
       };
       wallets: {
@@ -100,6 +116,178 @@ export interface Database {
         };
         Update: {
           metadata?: Json;
+        };
+      };
+      point_award_rules: {
+        Row: {
+          action: PointAction;
+          points: number;
+          description: string | null;
+          is_active: boolean;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          action: PointAction;
+          points: number;
+          description?: string | null;
+          is_active?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          points?: number;
+          description?: string | null;
+          is_active?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+      };
+      point_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          action: PointAction;
+          points: number;
+          wallet_transaction_id: string | null;
+          reference_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          action: PointAction;
+          points: number;
+          wallet_transaction_id?: string | null;
+          reference_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          action?: PointAction;
+          points?: number;
+          wallet_transaction_id?: string | null;
+          reference_id?: string | null;
+          metadata?: Json;
+        };
+      };
+      point_rewards: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          image_url: string | null;
+          cost_points: number;
+          stock: number | null;
+          is_active: boolean;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          image_url?: string | null;
+          cost_points: number;
+          stock?: number | null;
+          is_active?: boolean;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          image_url?: string | null;
+          cost_points?: number;
+          stock?: number | null;
+          is_active?: boolean;
+          metadata?: Json;
+          updated_at?: string;
+        };
+      };
+      point_redemptions: {
+        Row: {
+          id: string;
+          reward_id: string;
+          user_id: string;
+          points_spent: number;
+          quantity: number;
+          status: PointRedemptionStatus;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          reward_id: string;
+          user_id: string;
+          points_spent: number;
+          quantity?: number;
+          status?: PointRedemptionStatus;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          reward_id?: string;
+          user_id?: string;
+          points_spent?: number;
+          quantity?: number;
+          status?: PointRedemptionStatus;
+          metadata?: Json;
+          updated_at?: string;
+        };
+      };
+      referrals: {
+        Row: {
+          id: string;
+          referral_code: string;
+          referrer_user_id: string;
+          invitee_user_id: string | null;
+          invitee_joined_at: string | null;
+          invitee_day_count: number;
+          reward_5day_awarded: boolean;
+          reward_10day_awarded: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          referral_code: string;
+          referrer_user_id: string;
+          invitee_user_id?: string | null;
+          invitee_joined_at?: string | null;
+          invitee_day_count?: number;
+          reward_5day_awarded?: boolean;
+          reward_10day_awarded?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          referral_code?: string;
+          referrer_user_id?: string;
+          invitee_user_id?: string | null;
+          invitee_joined_at?: string | null;
+          invitee_day_count?: number;
+          reward_5day_awarded?: boolean;
+          reward_10day_awarded?: boolean;
+        };
+      };
+      referral_diary_days: {
+        Row: {
+          referral_id: string;
+          journal_date: string;
+          created_at: string;
+        };
+        Insert: {
+          referral_id: string;
+          journal_date: string;
+          created_at?: string;
+        };
+        Update: {
+          referral_id?: string;
+          journal_date?: string;
         };
       };
       notifications: {
@@ -1393,6 +1581,31 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["transactions"]["Row"];
       };
+      award_points: {
+        Args: {
+          p_user_id: string;
+          p_action: PointAction;
+          p_reference_id?: string | null;
+          p_metadata?: Json | null;
+        };
+        Returns: Database["public"]["Tables"]["point_events"]["Row"] | null;
+      };
+      redeem_points: {
+        Args: {
+          p_user_id: string;
+          p_reward_id: string;
+          p_quantity?: number;
+          p_metadata?: Json | null;
+        };
+        Returns: Database["public"]["Tables"]["point_redemptions"]["Row"];
+      };
+      record_referral_diary_day: {
+        Args: {
+          p_invitee_user_id: string;
+          p_journal_date: string;
+        };
+        Returns: undefined;
+      };
       enqueue_notification: {
         Args: {
           p_user_id: string;
@@ -1465,6 +1678,8 @@ export interface Database {
       slot_status: SlotStatus;
       intro_chat_status: IntroChatStatus;
       notification_category: NotificationCategory;
+      point_action: PointAction;
+      point_redemption_status: PointRedemptionStatus;
     };
   };
 }

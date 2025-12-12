@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { Database } from "@tape/supabase";
 import { Button } from "@/components/ui/button";
 import { CourseManagement } from "./course-management";
 
@@ -122,6 +123,13 @@ type DiaryComment = {
   commenter_name: string;
 };
 
+type PointRule = Database["public"]["Tables"]["point_award_rules"]["Row"];
+type PointRewardRow = Database["public"]["Tables"]["point_rewards"]["Row"];
+type PointRedemptionRow = Database["public"]["Tables"]["point_redemptions"]["Row"] & {
+  reward?: PointRewardRow | null;
+  user?: { id: string; display_name: string | null } | null;
+};
+
 const StatCard = ({ label, value }: { label: string; value: number | undefined }) => (
   <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
     <p className="text-xs text-slate-500">{label}</p>
@@ -130,6 +138,15 @@ const StatCard = ({ label, value }: { label: string; value: number | undefined }
     </p>
   </div>
 );
+
+const pointActionLabels: Record<string, { label: string; hint: string }> = {
+  diary_post: { label: "かんじょうにっき投稿", hint: "+3pt" },
+  feed_comment: { label: "みんなの日記コメント", hint: "+2pt" },
+  feed_share_x: { label: "Xシェア", hint: "+5pt" },
+  referral_5days: { label: "紹介特典(5日)", hint: "+10pt" },
+  referral_10days: { label: "紹介特典(10日)", hint: "+20pt" },
+  admin_adjustment: { label: "管理者調整", hint: "任意" }
+};
 
 type DiaryEntry = {
   id: string;
@@ -197,6 +214,20 @@ export function AdminClient({ userRole }: { userRole: string }) {
     entryId: string;
     comments: DiaryComment[];
   } | null>(null);
+  const [pointRules, setPointRules] = useState<PointRule[]>([]);
+  const [pointRewards, setPointRewards] = useState<PointRewardRow[]>([]);
+  const [pointRedemptions, setPointRedemptions] = useState<PointRedemptionRow[]>([]);
+  const [loadingPoints, setLoadingPoints] = useState(false);
+  const [savingPointRule, setSavingPointRule] = useState<string | null>(null);
+  const [rewardForm, setRewardForm] = useState({
+    title: "",
+    description: "",
+    imageUrl: "",
+    costPoints: 1000,
+    stock: "",
+    isActive: true
+  });
+  const [creatingReward, setCreatingReward] = useState(false);
 
   const fetchJson = async <T,>(url: string, options?: RequestInit) => {
     const res = await fetch(url, options);
@@ -373,6 +404,24 @@ export function AdminClient({ userRole }: { userRole: string }) {
       setPublicDiaries(data.entries ?? []);
     } catch (err) {
       console.error(err);
+    }
+  }, []);
+
+  const loadPointOverview = useCallback(async () => {
+    setLoadingPoints(true);
+    try {
+      const data = await fetchJson<{
+        rules: PointRule[];
+        rewards: PointRewardRow[];
+        redemptions: PointRedemptionRow[];
+      }>("/api/admin/points/overview");
+      setPointRules(data.rules ?? []);
+      setPointRewards(data.rewards ?? []);
+      setPointRedemptions(data.redemptions ?? []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPoints(false);
     }
   }, []);
 
@@ -579,6 +628,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadPublicDiaries();
     loadBroadcasts();
     loadAiSettings();
+    loadPointOverview();
   }, [
     loadStats,
     loadReports,
@@ -592,7 +642,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadDiaryEntries,
     loadPublicDiaries,
     loadBroadcasts,
-    loadAiSettings
+    loadAiSettings,
+    loadPointOverview
   ]);
 
   useEffect(() => {
@@ -671,6 +722,79 @@ export function AdminClient({ userRole }: { userRole: string }) {
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "ウォレット調整に失敗しました");
+    }
+  };
+
+  const handleRuleValueChange = (action: string, field: "points" | "is_active", value: number | boolean) => {
+    setPointRules((prev) =>
+      prev.map((rule) =>
+        rule.action === action
+          ? {
+              ...rule,
+              [field]: value
+            }
+          : rule
+      )
+    );
+  };
+
+  const handleSaveRule = async (rule: PointRule) => {
+    setSavingPointRule(rule.action);
+    try {
+      await fetchJson(`/api/admin/points/rules/${rule.action}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points: rule.points, isActive: rule.is_active })
+      });
+      loadPointOverview();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "ポイント設定の更新に失敗しました");
+    } finally {
+      setSavingPointRule(null);
+    }
+  };
+
+  const handleCreateReward = async () => {
+    if (!rewardForm.title.trim()) {
+      alert("景品名を入力してください");
+      return;
+    }
+    setCreatingReward(true);
+    try {
+      await fetchJson("/api/admin/points/rewards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: rewardForm.title,
+          description: rewardForm.description || undefined,
+          imageUrl: rewardForm.imageUrl || undefined,
+          costPoints: rewardForm.costPoints,
+          stock: rewardForm.stock ? Number(rewardForm.stock) : null,
+          isActive: rewardForm.isActive
+        })
+      });
+      setRewardForm({ title: "", description: "", imageUrl: "", costPoints: 1000, stock: "", isActive: true });
+      loadPointOverview();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "景品の作成に失敗しました");
+    } finally {
+      setCreatingReward(false);
+    }
+  };
+
+  const handleRewardToggle = async (rewardId: string, isActive: boolean) => {
+    try {
+      await fetchJson(`/api/admin/points/rewards/${rewardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive })
+      });
+      loadPointOverview();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "景品の更新に失敗しました");
     }
   };
 
@@ -805,6 +929,193 @@ export function AdminClient({ userRole }: { userRole: string }) {
               </Button>
             </div>
           </>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/95 p-6 shadow-xl shadow-slate-200/70">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-emerald-500">ポイント管理</p>
+            <h2 className="text-xl font-black text-slate-900">獲得ルールと景品カタログ</h2>
+          </div>
+          <div className="text-xs text-slate-500">
+            {loadingPoints ? "読み込み中..." : `景品 ${pointRewards.length} 件 / 交換履歴 ${pointRedemptions.length} 件`}
+          </div>
+        </div>
+
+        {loadingPoints ? (
+          <p className="mt-4 text-sm text-slate-500">ポイント情報を読み込んでいます...</p>
+        ) : (
+          <div className="mt-5 space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {pointRules.map((rule) => {
+                const info = pointActionLabels[rule.action] ?? { label: rule.action, hint: "" };
+                return (
+                  <div key={rule.action} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{info.label}</p>
+                        <p className="text-xs text-slate-500">{info.hint}</p>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-slate-500">
+                        <input
+                          type="checkbox"
+                          checked={rule.is_active}
+                          onChange={(event) =>
+                            handleRuleValueChange(rule.action, "is_active", event.target.checked)
+                          }
+                        />
+                        有効
+                      </label>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={rule.points}
+                        onChange={(event) =>
+                          handleRuleValueChange(rule.action, "points", Number(event.target.value) || 0)
+                        }
+                        className="w-24 rounded-full border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                      />
+                      <span className="text-xs text-slate-500">pt / 回</span>
+                      <Button
+                        size="sm"
+                        className="ml-auto bg-emerald-500 text-white hover:bg-emerald-600"
+                        disabled={savingPointRule === rule.action}
+                        onClick={() => handleSaveRule(rule)}
+                      >
+                        {savingPointRule === rule.action ? "更新中" : "更新"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-800">景品を追加</h3>
+                <input
+                  type="text"
+                  placeholder="景品名"
+                  value={rewardForm.title}
+                  onChange={(event) => setRewardForm((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <textarea
+                  placeholder="説明 (任意)"
+                  value={rewardForm.description}
+                  onChange={(event) => setRewardForm((prev) => ({ ...prev, description: event.target.value }))}
+                  className="h-20 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <input
+                  type="url"
+                  placeholder="画像URL (任意)"
+                  value={rewardForm.imageUrl}
+                  onChange={(event) => setRewardForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <label className="flex flex-col gap-1">
+                    必要ポイント
+                    <input
+                      type="number"
+                      min={1}
+                      value={rewardForm.costPoints}
+                      onChange={(event) => setRewardForm((prev) => ({ ...prev, costPoints: Number(event.target.value) || 0 }))}
+                      className="rounded-2xl border border-slate-200 px-3 py-2"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    在庫 (空欄で無制限)
+                    <input
+                      type="number"
+                      min={0}
+                      value={rewardForm.stock}
+                      onChange={(event) => setRewardForm((prev) => ({ ...prev, stock: event.target.value }))}
+                      className="rounded-2xl border border-slate-200 px-3 py-2"
+                    />
+                  </label>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={rewardForm.isActive}
+                    onChange={(event) => setRewardForm((prev) => ({ ...prev, isActive: event.target.checked }))}
+                  />
+                  公開状態で追加する
+                </label>
+                <Button
+                  onClick={handleCreateReward}
+                  disabled={creatingReward}
+                  className="w-full bg-tape-brown text-white hover:bg-tape-brown/90"
+                >
+                  {creatingReward ? "作成中..." : "景品を登録"}
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                <h3 className="text-sm font-semibold text-slate-800">公開中の景品</h3>
+                {pointRewards.length === 0 ? (
+                  <p className="mt-3 text-xs text-slate-500">まだ登録された景品がありません。</p>
+                ) : (
+                  <div className="mt-3 space-y-3 text-sm">
+                    {pointRewards.map((reward) => (
+                      <div
+                        key={reward.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3"
+                      >
+                        <div>
+                          <p className="font-semibold text-slate-900">{reward.title}</p>
+                          <p className="text-xs text-slate-500">
+                            {reward.cost_points.toLocaleString()}pt / 在庫:
+                            {reward.stock === null ? "∞" : reward.stock}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold ${reward.is_active ? "text-emerald-500" : "text-slate-400"}`}>
+                            {reward.is_active ? "公開" : "非公開"}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRewardToggle(reward.id, !reward.is_active)}
+                          >
+                            {reward.is_active ? "公開停止" : "公開"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-white p-4">
+              <h3 className="text-sm font-semibold text-slate-800">最近のポイント交換</h3>
+              {pointRedemptions.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">まだ交換履歴がありません。</p>
+              ) : (
+                <div className="mt-3 space-y-2 text-xs text-slate-600">
+                  {pointRedemptions.slice(0, 8).map((redeem) => (
+                    <div key={redeem.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-2">
+                      <div>
+                        <p className="font-semibold text-slate-800">{redeem.reward?.title ?? "景品"}</p>
+                        <p>
+                          {redeem.user?.display_name ?? redeem.user?.id ?? "ユーザー"} / {new Date(redeem.created_at).toLocaleString("ja-JP")}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-tape-pink">-{redeem.points_spent}pt</p>
+                        <p>{redeem.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </section>
 

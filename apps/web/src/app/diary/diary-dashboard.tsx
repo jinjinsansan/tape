@@ -688,6 +688,7 @@ export function DiaryDashboard() {
         <Card className="border-none shadow-md">
           <CardContent className="p-6">
             <p className="mb-4 text-xs font-semibold text-tape-pink">今日の記録</p>
+            <p className="mb-3 text-[11px] text-tape-light-brown">※ 日記を投稿するたびに +3pt がウォレットへ加算されます。</p>
             <div className="space-y-4">
               <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
                 タイトル

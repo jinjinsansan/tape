@@ -450,6 +450,7 @@ export function FeedPageClient() {
                 {entry.showComments && (
                   <div className="mt-4 space-y-3 border-t border-tape-beige pt-4">
                     <p className="text-sm font-bold text-tape-brown">コメント</p>
+                    <p className="text-[11px] text-tape-light-brown">※ コメント投稿で +2pt が付与されます。</p>
                     
                     {entry.commentsError ? (
                       <div className="rounded-lg bg-red-50 p-3 text-center">
