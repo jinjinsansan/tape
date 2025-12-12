@@ -13,11 +13,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   try {
     user = await getRouteUser(supabase, "Admin layout");
   } catch (error) {
-    redirect("/login?error=管理者パネルにアクセスするにはログインが必要です");
+    redirect("/?error=管理者パネルにアクセスするにはログインが必要です");
   }
 
   if (!user) {
-    redirect("/login?error=管理者パネルにアクセスするにはログインが必要です");
+    redirect("/?error=管理者パネルにアクセスするにはログインが必要です");
   }
 
   const { data: profile } = await supabase

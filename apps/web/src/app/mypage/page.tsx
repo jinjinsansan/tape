@@ -18,13 +18,13 @@ export default async function MyPage() {
     user = await getRouteUser(supabase, "My page");
   } catch (error) {
     if (error instanceof SupabaseAuthUnavailableError) {
-      redirect("/login?error=認証サービスに接続できませんでした。再度お試しください。");
+      redirect("/?error=認証サービスに接続できませんでした。再度お試しください。");
     }
     throw error;
   }
 
   if (!user) {
-    redirect("/login?error=マイページにアクセスするにはログインが必要です");
+    redirect("/?error=マイページにアクセスするにはログインが必要です");
   }
 
   const { data: profile } = await supabase
