@@ -8,8 +8,18 @@ const authorizeCron = (request: Request) => {
   if (!CRON_SECRET) {
     return true;
   }
+
   const header = request.headers.get("x-cron-secret");
-  return header === CRON_SECRET;
+  if (header && header === CRON_SECRET) {
+    return true;
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader && authHeader === `Bearer ${CRON_SECRET}`) {
+    return true;
+  }
+
+  return false;
 };
 
 export async function POST(request: Request) {
