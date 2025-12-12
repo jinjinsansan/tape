@@ -47,6 +47,10 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: "/admin/counselors", label: "カウンセラー", icon: UserCheck },
     { href: "/admin/settings", label: "設定", icon: Settings }
   ];
+  
+  const counselorNavItems: NavItem[] = userRole === "counselor" ? [
+    { href: "/dashboard/counselor", label: "カウンセラーダッシュボード", icon: UserCheck }
+  ] : [];
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -124,6 +128,37 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
                   </li>
                 );
               })}
+              
+              {/* Counselor-specific items */}
+              {counselorNavItems.length > 0 && (
+                <>
+                  <li className="my-3 border-t border-slate-200" />
+                  {counselorNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                            isActive
+                              ? "bg-purple-50 text-purple-600"
+                              : "text-slate-700 hover:bg-slate-100"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-5 w-5 flex-shrink-0" />
+                            <span>{item.label}</span>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </>
+              )}
             </ul>
           </nav>
 
