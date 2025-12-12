@@ -71,6 +71,7 @@ export function WalletClient() {
   const [redemptions, setRedemptions] = useState<PointRedemption[]>([]);
   const [referral, setReferral] = useState<ReferralSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pointError, setPointError] = useState<string | null>(null);
   const [chargeAmount, setChargeAmount] = useState<number>(1000);
   const [showPayPal, setShowPayPal] = useState(false);
   const [redeemTarget, setRedeemTarget] = useState<PointReward | null>(null);
@@ -81,6 +82,20 @@ export function WalletClient() {
   const [claimCode, setClaimCode] = useState("");
   const [claimingReferral, setClaimingReferral] = useState(false);
   const [referralMessage, setReferralMessage] = useState<string | null>(null);
+
+  const loadLegacyWallet = useCallback(async () => {
+    try {
+      const res = await fetch("/api/wallet/balance");
+      if (!res.ok) {
+        throw new Error("ウォレット情報の取得に失敗しました");
+      }
+      const data = await res.json();
+      setWallet(data.wallet ?? null);
+      setTransactions(data.transactions ?? []);
+    } catch (legacyError) {
+      console.error("Failed to load legacy wallet data", legacyError);
+    }
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -105,12 +120,16 @@ export function WalletClient() {
       setRewards(data.rewards ?? []);
       setRedemptions(data.redemptions ?? []);
       setReferral(data.referral ?? null);
+      setPointError(null);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "ポイント情報の取得に失敗しました";
+      setPointError(message);
       console.error("Failed to load wallet dashboard", err);
+      await loadLegacyWallet();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadLegacyWallet]);
 
   useEffect(() => {
     loadDashboard();
@@ -232,7 +251,12 @@ export function WalletClient() {
           <p className="text-4xl font-black text-tape-brown">¥{balance.toLocaleString()}</p>
           <p className="text-xs text-tape-light-brown">1ポイント = 1円 / 動画コース・予約・景品交換に利用可能（現金化不可）</p>
         </div>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            {pointError && (
+              <p className="rounded-2xl bg-red-50 px-4 py-2 text-xs text-red-600 shadow-sm">
+                {pointError}
+              </p>
+            )}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleChargeClick}
             className="flex flex-1 items-center justify-center gap-2 rounded-full bg-tape-orange px-6 py-3 text-sm font-bold text-white shadow hover:bg-tape-orange/90"
