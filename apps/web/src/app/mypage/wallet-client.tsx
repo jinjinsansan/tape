@@ -401,11 +401,11 @@ export function WalletClient() {
                 className="rounded-2xl border border-tape-beige bg-tape-cream/40 overflow-hidden flex flex-col"
               >
                 {reward.image_url && (
-                  <div className="w-full h-40 bg-tape-beige/30">
+                  <div className="w-full aspect-[4/3] bg-tape-beige/30 flex items-center justify-center">
                     <img 
                       src={reward.image_url} 
                       alt={reward.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 )}

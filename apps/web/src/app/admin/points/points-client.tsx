@@ -323,7 +323,7 @@ export function PointsManagementClient() {
                         <img
                           src={rewardImagePreview}
                           alt="プレビュー"
-                          className="h-24 w-32 rounded-lg border border-slate-200 object-cover"
+                          className="h-24 w-32 rounded-lg border border-slate-200 object-contain bg-slate-50"
                         />
                       </div>
                     )}
@@ -400,12 +400,21 @@ export function PointsManagementClient() {
                         key={reward.id}
                         className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3"
                       >
-                        <div>
-                          <p className="font-semibold text-slate-900">{reward.title}</p>
-                          <p className="text-xs text-slate-500">
-                            {reward.cost_points.toLocaleString()}pt / 在庫:
-                            {reward.stock === null ? "∞" : reward.stock}
-                          </p>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {reward.image_url && (
+                            <img
+                              src={reward.image_url}
+                              alt={reward.title}
+                              className="w-16 h-12 rounded-lg border border-slate-200 object-contain bg-white flex-shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">{reward.title}</p>
+                            <p className="text-xs text-slate-500">
+                              {reward.cost_points.toLocaleString()}pt / 在庫:
+                              {reward.stock === null ? "∞" : reward.stock}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span
