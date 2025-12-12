@@ -194,15 +194,47 @@ export const listRedemptions = async (userId: string, limit = 20) => {
 
 export const listAllRedemptions = async (limit = 50) => {
   const supabase = admin();
-  const { data, error } = await supabase
-    .from("point_redemptions")
-    .select("*, reward:point_rewards(*), user:profiles(id, display_name)")
-    .order("created_at", { ascending: false })
+  
+  // ビューを使用してprofilesとのリレーションシップ問題を回避
+  const { data: viewData, error: viewError } = await supabase
+    .from("admin_point_redemptions_view")
+    .select("*")
     .limit(limit);
-  if (error) {
-    throw error;
+  
+  if (viewError) {
+    // フォールバック: ビューが利用できない場合は別々にクエリ
+    console.warn("[listAllRedemptions] View query failed, using fallback:", viewError);
+    
+    const { data, error } = await supabase
+      .from("point_redemptions")
+      .select("*, reward:point_rewards(*)")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      throw error;
+    }
+    
+    // ユーザー情報を別途取得
+    const userIds = [...new Set(data?.map(d => d.user_id) ?? [])];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+    
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? []);
+    
+    return (data ?? []).map(d => ({
+      ...d,
+      user: profileMap.get(d.user_id) ?? null
+    })) as (PointRedemptionRow & {
+      reward: PointRewardRow | null;
+      user: { id: string; display_name: string | null } | null;
+    })[];
   }
-  return (data ?? []) as (PointRedemptionRow & {
+  
+  // ビューから正常にデータを取得できた場合
+  return (viewData ?? []) as (PointRedemptionRow & {
     reward: PointRewardRow | null;
     user: { id: string; display_name: string | null } | null;
   })[];
