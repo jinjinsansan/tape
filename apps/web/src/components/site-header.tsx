@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle } from "lucide-react";
+import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "ホーム", icon: Home },
@@ -150,6 +150,15 @@ export function SiteHeader() {
               </Link>
             ))}
             <hr className="my-2 border-tape-beige" />
+            <a
+              href="https://lin.ee/hwaj6UP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-[#06C755] hover:bg-[#06C755]/10"
+            >
+              <MessageCircle className="h-5 w-5" />
+              お問い合わせ（公式LINE）
+            </a>
             <Link
               href="/admin"
               className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-tape-light-brown hover:bg-tape-beige hover:text-tape-brown"

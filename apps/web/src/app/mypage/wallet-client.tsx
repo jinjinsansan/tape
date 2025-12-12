@@ -79,6 +79,7 @@ export function WalletClient() {
   const [redeemNotes, setRedeemNotes] = useState("");
   const [redeemShipping, setRedeemShipping] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const [redeemSuccess, setRedeemSuccess] = useState(false);
   const [claimCode, setClaimCode] = useState("");
   const [claimingReferral, setClaimingReferral] = useState(false);
   const [referralMessage, setReferralMessage] = useState<string | null>(null);
@@ -594,59 +595,130 @@ export function WalletClient() {
         </div>
       )}
 
-      {redeemTarget && (
+      {redeemTarget && !redeemSuccess && (() => {
+        const currentPoints = (wallet?.balance_cents ?? 0) / 100;
+        const requiredPoints = redeemTarget.cost_points * redeemQuantity;
+        const hasEnoughPoints = currentPoints >= requiredPoints;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="max-w-md w-full rounded-3xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-bold text-tape-brown">{redeemTarget.title}</h3>
+              <p className="mt-1 text-sm text-tape-light-brown">
+                必要ポイント: {requiredPoints.toLocaleString()}pt
+              </p>
+              <p className="mt-1 text-sm font-semibold text-tape-brown">
+                現在のポイント: {currentPoints.toLocaleString()}pt
+              </p>
+
+              {!hasEnoughPoints ? (
+                <div className="mt-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-center">
+                  <p className="text-sm font-bold text-red-600">ポイントが不足しています</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    あと {(requiredPoints - currentPoints).toLocaleString()}pt 必要です
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <label className="block">
+                      数量
+                      <input
+                        type="number"
+                        min={1}
+                        max={Math.max(1, redeemTarget.stock ?? 10)}
+                        value={redeemQuantity}
+                        onChange={(e) => setRedeemQuantity(Number(e.target.value))}
+                        className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      連絡メモ（任意）
+                      <textarea
+                        value={redeemNotes}
+                        onChange={(e) => setRedeemNotes(e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
+                        rows={3}
+                      />
+                    </label>
+                    <label className="block">
+                      受け取り先 / 住所等（任意）
+                      <textarea
+                        value={redeemShipping}
+                        onChange={(e) => setRedeemShipping(e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
+                        rows={3}
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-tape-cream/50 border border-tape-beige p-3 text-center">
+                    <p className="text-sm font-semibold text-tape-brown">この景品と交換しますか？</p>
+                  </div>
+                </>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {hasEnoughPoints && (
+                  <button
+                    onClick={handleRedeemSubmit}
+                    disabled={redeeming}
+                    className="flex-1 rounded-full bg-tape-brown px-4 py-2 text-sm font-bold text-white hover:bg-tape-brown/90 disabled:opacity-50"
+                  >
+                    {redeeming ? "交換中..." : "交換する"}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setRedeemTarget(null);
+                    setRedeemQuantity(1);
+                    setRedeemNotes("");
+                    setRedeemShipping("");
+                  }}
+                  className={`${hasEnoughPoints ? 'flex-1' : 'w-full'} rounded-full border border-tape-beige px-4 py-2 text-sm font-semibold text-tape-brown hover:bg-tape-cream`}
+                >
+                  {hasEnoughPoints ? 'キャンセル' : '閉じる'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {redeemSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-w-md w-full rounded-3xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-tape-brown">{redeemTarget.title} を交換</h3>
-            <p className="mt-1 text-sm text-tape-light-brown">
-              必要ポイント: {redeemTarget.cost_points.toLocaleString()}pt
+          <div className="max-w-md w-full rounded-3xl bg-white p-6 shadow-xl text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                <Gift className="w-8 h-8 text-green-600" />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-tape-brown mb-2">交換申請が完了しました！</h3>
+            <p className="text-sm text-tape-light-brown mb-6">
+              詳細はNAMIDAサポート協会にお問い合わせください
             </p>
-            <div className="mt-4 space-y-3 text-sm">
-              <label className="block">
-                数量
-                <input
-                  type="number"
-                  min={1}
-                  max={Math.max(1, redeemTarget.stock ?? 10)}
-                  value={redeemQuantity}
-                  onChange={(e) => setRedeemQuantity(Number(e.target.value))}
-                  className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
-                />
-              </label>
-              <label className="block">
-                連絡メモ（任意）
-                <textarea
-                  value={redeemNotes}
-                  onChange={(e) => setRedeemNotes(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
-                  rows={3}
-                />
-              </label>
-              <label className="block">
-                受け取り先 / 住所等（任意）
-                <textarea
-                  value={redeemShipping}
-                  onChange={(e) => setRedeemShipping(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
-                  rows={3}
-                />
-              </label>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={handleRedeemSubmit}
-                disabled={redeeming}
-                className="flex-1 rounded-full bg-tape-brown px-4 py-2 text-sm font-bold text-white hover:bg-tape-brown/90 disabled:opacity-50"
-              >
-                {redeeming ? "交換中..." : "ポイントで交換"}
-              </button>
-              <button
-                onClick={() => setRedeemTarget(null)}
-                className="flex-1 rounded-full border border-tape-beige px-4 py-2 text-sm font-semibold text-tape-brown hover:bg-tape-cream"
-              >
-                キャンセル
-              </button>
-            </div>
+            <a
+              href="https://lin.ee/hwaj6UP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#06C755] px-6 py-3 text-sm font-bold text-white hover:bg-[#06C755]/90 mb-3"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+              </svg>
+              公式LINEでお問い合わせ
+            </a>
+            <button
+              onClick={() => {
+                setRedeemSuccess(false);
+                setRedeemTarget(null);
+                setRedeemQuantity(1);
+                setRedeemNotes("");
+                setRedeemShipping("");
+              }}
+              className="w-full rounded-full border border-tape-beige px-4 py-2 text-sm font-semibold text-tape-brown hover:bg-tape-cream"
+            >
+              閉じる
+            </button>
           </div>
         </div>
       )}
