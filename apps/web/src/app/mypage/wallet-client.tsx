@@ -197,6 +197,15 @@ export function WalletClient() {
     }
   };
 
+  const sortedRewards = useMemo(() => rewards.filter((reward) => reward.is_active), [rewards]);
+  const referralUrl = useMemo(() => {
+    if (!referral?.referralCode) return null;
+    if (typeof window === "undefined") {
+      return `/invite/${referral.referralCode}`;
+    }
+    return `${window.location.origin}/invite/${referral.referralCode}`;
+  }, [referral?.referralCode]);
+
   const handleCopyReferral = async () => {
     if (!referralUrl) return;
     try {
@@ -222,15 +231,6 @@ export function WalletClient() {
   const balance = (wallet?.balance_cents ?? 0) / 100;
   const walletStatus = wallet?.status ?? "unknown";
   const chargeOptions = [1000, 3000, 5000, 10000];
-
-  const sortedRewards = useMemo(() => rewards.filter((reward) => reward.is_active), [rewards]);
-  const referralUrl = useMemo(() => {
-    if (!referral?.referralCode) return null;
-    if (typeof window === "undefined") {
-      return `/invite/${referral.referralCode}`;
-    }
-    return `${window.location.origin}/invite/${referral.referralCode}`;
-  }, [referral?.referralCode]);
 
   return (
     <div className="space-y-6">
