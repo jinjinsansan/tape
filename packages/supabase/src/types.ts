@@ -19,7 +19,7 @@ export type NotificationCategory = "announcement" | "booking" | "wallet" | "othe
 export type DiaryVisibility = "private" | "followers" | "public";
 export type DiaryCommentSource = "user" | "ai" | "counselor" | "moderator";
 export type DiaryReactionType = "cheer" | "hug" | "empathy" | "insight";
-export type DiaryAiCommentStatus = "idle" | "pending" | "processing" | "completed" | "failed";
+export type DiaryAiCommentStatus = "idle" | "pending" | "processing" | "completed" | "failed" | "skipped";
 export type LearningLessonStatus = "locked" | "in_progress" | "completed";
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 export type SlotStatus = "available" | "held" | "booked" | "unavailable";
@@ -550,6 +550,9 @@ export interface Database {
           worthlessness_score: number | null;
           visibility: DiaryVisibility;
           ai_comment_status: DiaryAiCommentStatus;
+          ai_comment: string | null;
+          ai_comment_generated_at: string | null;
+          ai_comment_metadata: Json;
           ai_summary: string | null;
           ai_highlights: Json;
           published_at: string | null;
@@ -574,6 +577,9 @@ export interface Database {
           worthlessness_score?: number | null;
           visibility?: DiaryVisibility;
           ai_comment_status?: DiaryAiCommentStatus;
+          ai_comment?: string | null;
+          ai_comment_generated_at?: string | null;
+          ai_comment_metadata?: Json;
           ai_summary?: string | null;
           ai_highlights?: Json;
           published_at?: string | null;
@@ -597,6 +603,9 @@ export interface Database {
           worthlessness_score?: number | null;
           visibility?: DiaryVisibility;
           ai_comment_status?: DiaryAiCommentStatus;
+          ai_comment?: string | null;
+          ai_comment_generated_at?: string | null;
+          ai_comment_metadata?: Json;
           ai_summary?: string | null;
           ai_highlights?: Json;
           published_at?: string | null;
@@ -604,6 +613,25 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+        };
+      };
+      admin_settings: {
+        Row: {
+          key: string;
+          value: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          value?: Json;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       diary_initial_scores: {
@@ -681,6 +709,49 @@ export interface Database {
           content?: string;
           metadata?: Json;
           created_at?: string;
+        };
+      };
+      diary_ai_comment_jobs: {
+        Row: {
+          id: string;
+          entry_id: string;
+          user_id: string;
+          status: "pending" | "processing" | "completed" | "failed" | "skipped";
+          scheduled_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+          attempt_count: number;
+          last_error: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          entry_id: string;
+          user_id: string;
+          status?: "pending" | "processing" | "completed" | "failed" | "skipped";
+          scheduled_at: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          attempt_count?: number;
+          last_error?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          entry_id?: string;
+          user_id?: string;
+          status?: "pending" | "processing" | "completed" | "failed" | "skipped";
+          scheduled_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          attempt_count?: number;
+          last_error?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       emotion_diary_reactions: {

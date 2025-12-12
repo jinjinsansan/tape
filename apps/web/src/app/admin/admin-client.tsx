@@ -170,6 +170,11 @@ export function AdminClient({ userRole }: { userRole: string }) {
   const [recipientSearching, setRecipientSearching] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState<AdminUserRow[]>([]);
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [aiDelayMinutes, setAiDelayMinutes] = useState(10);
+  const [aiDelayOptions, setAiDelayOptions] = useState<number[]>([1, 10, 60, 1440]);
+  const [aiPendingJobs, setAiPendingJobs] = useState(0);
+  const [loadingAiSettings, setLoadingAiSettings] = useState(false);
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeRow[]>([]);
   const [courses, setCourses] = useState<CourseRow[]>([]);
@@ -253,6 +258,27 @@ export function AdminClient({ userRole }: { userRole: string }) {
       setError(err instanceof Error ? err.message : "配信履歴の取得に失敗しました");
     } finally {
       setLoadingBroadcasts(false);
+    }
+  }, []);
+
+  const loadAiSettings = useCallback(async () => {
+    setLoadingAiSettings(true);
+    try {
+      const data = await fetchJson<{ delayMinutes: number; options: number[]; stats: { pending: number } }>(
+        "/api/admin/settings/diary-ai"
+      );
+      if (data.options?.length) {
+        setAiDelayOptions(data.options);
+      }
+      if (typeof data.delayMinutes === "number") {
+        setAiDelayMinutes(data.delayMinutes);
+      }
+      setAiPendingJobs(data.stats?.pending ?? 0);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "AI設定の取得に失敗しました");
+    } finally {
+      setLoadingAiSettings(false);
     }
   }, []);
 
@@ -509,6 +535,34 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   };
 
+  const handleSaveAiSettings = async () => {
+    setSavingAiSettings(true);
+    try {
+      await fetchJson(`/api/admin/settings/diary-ai`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delayMinutes: aiDelayMinutes })
+      });
+      await loadAiSettings();
+      alert("AIコメント設定を保存しました");
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "設定の保存に失敗しました");
+    } finally {
+      setSavingAiSettings(false);
+    }
+  };
+
+  const formatDelayLabel = (value: number) => {
+    if (value === 1) return "1分後";
+    if (value === 10) return "10分後";
+    if (value === 60) return "1時間後";
+    if (value === 1440) return "24時間後";
+    if (value < 60) return `${value}分後`;
+    const hours = value / 60;
+    return `${hours}時間後`;
+  };
+
   useEffect(() => {
     loadStats();
     loadReports();
@@ -522,6 +576,7 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadDiaryEntries();
     loadPublicDiaries();
     loadBroadcasts();
+    loadAiSettings();
   }, [
     loadStats,
     loadReports,
@@ -534,7 +589,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
     loadHealth,
     loadDiaryEntries,
     loadPublicDiaries,
-    loadBroadcasts
+    loadBroadcasts,
+    loadAiSettings
   ]);
 
   useEffect(() => {
@@ -686,6 +742,69 @@ export function AdminClient({ userRole }: { userRole: string }) {
           </div>
         )}
       </header>
+
+      <section className="rounded-3xl border border-slate-100 bg-white/95 p-6 shadow-xl shadow-slate-200/60">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-sky-500">AIコメント設定</p>
+            <h2 className="text-xl font-black text-slate-900">ミシェルAIの返信タイミング</h2>
+          </div>
+          <div className="text-xs text-slate-500">保留中: {aiPendingJobs} 件</div>
+        </div>
+
+        {loadingAiSettings ? (
+          <p className="mt-4 text-sm text-slate-500">読み込み中...</p>
+        ) : (
+          <>
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <div className="space-y-3">
+                {aiDelayOptions.map((option) => (
+                  <label
+                    key={option}
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-900">{formatDelayLabel(option)}</p>
+                      <p className="text-xs text-slate-500">
+                        {option <= 10
+                          ? "すぐに寄り添う応答"
+                          : option === 1440
+                            ? "翌日に落ち着いて返信"
+                            : "適度な間隔で返信"}
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="aiDelay"
+                      value={option}
+                      checked={aiDelayMinutes === option}
+                      onChange={() => setAiDelayMinutes(option)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-600">
+                <p className="font-semibold text-slate-800">自動コメントについて</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed">
+                  <li>ユーザーの日記投稿から設定時間後にミシェルがコメントを生成します。</li>
+                  <li>短文や内容が判断できない日記は自動的にスキップされます。</li>
+                  <li>設定変更は新しい投稿のみ対象です。</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">※ Vercel Cron 等で <code>/api/internal/cron/diary-ai-comments</code> を定期実行してください。</p>
+              <Button
+                onClick={handleSaveAiSettings}
+                disabled={savingAiSettings}
+                className="bg-sky-600 text-white hover:bg-sky-700"
+              >
+                {savingAiSettings ? "保存中..." : "設定を保存"}
+              </Button>
+            </div>
+          </>
+        )}
+      </section>
 
       <section className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/70">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/cron/diary-ai-comments",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

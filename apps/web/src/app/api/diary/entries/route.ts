@@ -9,6 +9,7 @@ import {
   listDiaryEntries,
   type DiaryFeelingInput
 } from "@/server/services/diary";
+import { scheduleDiaryAiCommentJob } from "@/server/services/diary-ai-comments";
 import { entrySchema, scopeSchema } from "./_schemas";
 
 const handleAuthError = (error: unknown) => {
@@ -121,6 +122,16 @@ export async function POST(request: Request) {
       journal_date: data.journalDate,
       published_at
     }, feelings);
+
+    if (entry) {
+      scheduleDiaryAiCommentJob({
+        entryId: entry.id,
+        userId: user!.id,
+        content: entry.content ?? ""
+      }).catch((schedulerError) => {
+        console.error("Failed to schedule diary AI comment", schedulerError);
+      });
+    }
 
     return NextResponse.json({ entry }, { status: 201 });
   } catch (error) {

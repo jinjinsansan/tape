@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, Filter, Pencil, Trash2 } from "lucide-react";
+import { Search, Filter, Pencil, Trash2, Sparkles, Bot, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowserClient } from "@tape/supabase";
-import type { DiaryVisibility } from "@tape/supabase";
+import type { DiaryVisibility, DiaryAiCommentStatus } from "@tape/supabase";
 
 type DiaryEntry = {
   id: string;
@@ -29,6 +29,10 @@ type DiaryEntry = {
   counselor_memo_read: boolean;
   assigned_counselor: string | null;
   urgency_level: string | null;
+  ai_comment_status: DiaryAiCommentStatus;
+  ai_comment: string | null;
+  ai_comment_generated_at: string | null;
+  ai_comment_metadata: Record<string, unknown> | null;
 };
 
 type EditFormState = {
@@ -62,6 +66,61 @@ const emotionOptions: EmotionOption[] = [
   { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200" },
   { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200" }
 ];
+
+const aiSkipReasons: Record<string, string> = {
+  too_short: "短めの日記だったため、自動コメントは見送りました。",
+  low_word_count: "文章量が少なかったため、自動コメントは見送りました。",
+  low_variance: "内容が確認できなかったため、自動コメントは見送りました。",
+  empty: "内容が空だったため、自動コメントは見送りました。"
+};
+
+const formatDateTime = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ja-JP", { hour12: false });
+};
+
+const AiCommentBlock = ({ entry }: { entry: DiaryEntry }) => {
+  if (entry.ai_comment_status === "completed" && entry.ai_comment) {
+    return (
+      <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm">
+        <p className="text-xs font-bold text-sky-900 flex items-center gap-2">
+          <Sparkles className="h-4 w-4" /> ミシェルAIからのコメント
+        </p>
+        <p className="mt-2 whitespace-pre-wrap text-sky-900 leading-relaxed">{entry.ai_comment}</p>
+        <p className="mt-2 text-[11px] text-sky-700">生成日時: {formatDateTime(entry.ai_comment_generated_at)}</p>
+      </div>
+    );
+  }
+
+  if (entry.ai_comment_status === "pending" || entry.ai_comment_status === "processing") {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-sky-200 bg-white/70 p-4 text-xs text-sky-800 flex items-center gap-2">
+        <Bot className="h-4 w-4 text-sky-600" /> ミシェルAIがコメントを準備中です。しばらくお待ちください。
+      </div>
+    );
+  }
+
+  if (entry.ai_comment_status === "failed") {
+    return (
+      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4" /> ミシェルAIからのコメント生成に失敗しました。時間をおいてもう一度日記を書いてみてください。
+      </div>
+    );
+  }
+
+  if (entry.ai_comment_status === "skipped") {
+    const reasonKey = (entry.ai_comment_metadata?.reason as string) ?? "";
+    return (
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
+        {aiSkipReasons[reasonKey] ?? "今回は自動コメントを見送りました。"}
+      </div>
+    );
+  }
+
+  return null;
+};
 
 export default function DiaryHistoryPage() {
   return (
@@ -647,6 +706,7 @@ function DiaryHistoryContent() {
                         <p className="mt-2 text-xs text-yellow-700">— {entry.counselor_name}</p>
                       </div>
                     )}
+                    <AiCommentBlock entry={entry} />
                   </>
                 )}
               </CardContent>
