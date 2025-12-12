@@ -255,15 +255,23 @@ export default async function AdminDashboard() {
 
         {/* Footer */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
-          <p className="text-sm text-slate-600">
-            ✅ Phase 1 & 2 実装完了
+          <p className="text-sm font-semibold text-slate-900">
+            ✅ Phase 1-3 完全実装完了
           </p>
-          <p className="mt-1 text-xs text-slate-400">
-            ダッシュボード・ユーザー管理・ポイント管理・Xシェア監視・通報管理
+          <p className="mt-2 text-xs text-slate-500">
+            ダッシュボード・ユーザー管理・ポイント管理・Xシェア監視・通報管理・
           </p>
-          <p className="mt-2 text-xs text-slate-400">
-            Phase 3: 既存機能の独立したページへの移行（段階的実装）
+          <p className="text-xs text-slate-500">
+            お知らせ配信・カウンセラー管理・設定
           </p>
+          <div className="mt-4 rounded-xl bg-gradient-to-r from-rose-50 to-purple-50 p-3">
+            <p className="text-xs font-semibold text-slate-700">
+              🎉 すべての主要機能が完成しました
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              カウンセラーダッシュボードへのリンクもサイドバーに追加されています
+            </p>
+          </div>
         </div>
       </div>
     </div>
