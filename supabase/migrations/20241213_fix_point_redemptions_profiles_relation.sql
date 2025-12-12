@@ -7,6 +7,11 @@ begin;
 --
 -- 解決策: 管理者用のビューを作成して、JOINを事前に実行
 
+-- point_redemptions テーブルのインデックスを確認・作成
+-- パフォーマンス向上のため、created_at と user_id のインデックスを確保
+create index if not exists point_redemptions_created_at_idx 
+  on public.point_redemptions(created_at desc);
+
 drop view if exists public.admin_point_redemptions_view;
 
 create view public.admin_point_redemptions_view as

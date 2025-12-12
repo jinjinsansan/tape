@@ -217,10 +217,14 @@ export const listAllRedemptions = async (limit = 50) => {
     
     // ユーザー情報を別途取得
     const userIds = [...new Set(data?.map(d => d.user_id) ?? [])];
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, display_name")
       .in("id", userIds);
+    
+    if (profilesError) {
+      console.error("[listAllRedemptions] Failed to fetch profiles:", profilesError);
+    }
     
     const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? []);
     
