@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 
 import type { DiaryVisibility } from "@tape/supabase";
@@ -153,14 +152,12 @@ export function DiaryDashboard() {
   const [eventSummary, setEventSummary] = useState("");
   const [realization, setRealization] = useState("");
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
-  const [emotionPreview, setEmotionPreview] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const isWorthlessnessSelected = emotionLabel === "無価値感";
 
   const handleEmotionSelect = (label: string) => {
     setEmotionLabel(label);
-    setEmotionPreview(label);
   };
   const [selfEsteemScore, setSelfEsteemScore] = useState(50);
   const [worthlessnessScore, setWorthlessnessScore] = useState(50);
@@ -314,7 +311,6 @@ export function DiaryDashboard() {
     setEventSummary("");
     setRealization("");
     setEmotionLabel(null);
-    setEmotionPreview(null);
   };
 
   useEffect(() => {
@@ -472,7 +468,7 @@ export function DiaryDashboard() {
       return;
     }
     if (!eventSummary.trim()) {
-      setSaveError("出来事を入力してください");
+      setSaveError("出来事・状況の要約メモを入力してください");
       return;
     }
     if (!emotionLabel) {
@@ -616,27 +612,33 @@ export function DiaryDashboard() {
           <CardContent className="p-6">
             <p className="mb-4 text-xs font-semibold text-tape-pink">今日の記録</p>
             <div className="space-y-4">
-              <input
-                value={form.title}
-                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                placeholder="タイトル (任意)"
-                className="w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
-              />
               <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
-                出来事・状況
+                タイトル
+                <input
+                  value={form.title}
+                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="タイトル (任意)"
+                  className="w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
+                出来事・状況の要約メモ
                 <textarea
                   value={eventSummary}
                   onChange={(event) => setEventSummary(event.target.value)}
-                  placeholder="印象に残った出来事を具体的に"
+                  placeholder="出来事や状況を短くまとめてください"
                   className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
                 />
               </label>
-              <textarea
-                value={form.content}
-                onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-                placeholder="出来事・感情・身体感覚を自由にメモ"
-                className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-base md:text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
-              />
+              <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
+                本文
+                <textarea
+                  value={form.content}
+                  onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+                  placeholder="感じたことや考えたことを自由に書いてください"
+                  className="h-32 w-full rounded-2xl border border-tape-beige bg-tape-cream/50 px-4 py-3 text-base md:text-sm focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                />
+              </label>
               <div>
                 <p className="text-xs font-semibold text-tape-light-brown">今日感じた感情を選ぶ</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -645,10 +647,6 @@ export function DiaryDashboard() {
                       key={option.label}
                       type="button"
                       onClick={() => handleEmotionSelect(option.label)}
-                      onMouseEnter={() => setEmotionPreview(option.label)}
-                      onFocus={() => setEmotionPreview(option.label)}
-                      onMouseLeave={() => setEmotionPreview(emotionLabel)}
-                      onBlur={() => setEmotionPreview(emotionLabel)}
                       aria-pressed={emotionLabel === option.label}
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-200",
@@ -664,27 +662,6 @@ export function DiaryDashboard() {
                       </span>
                     </button>
                   ))}
-                </div>
-                <div className="mt-3 rounded-2xl border border-dashed border-tape-beige bg-white/70 p-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-tape-light-brown">
-                    <Sparkles className="h-4 w-4 text-tape-pink" />
-                    感情プレビュー
-                  </div>
-                  {emotionPreview ? (
-                    <div className="mt-2">
-                      <p className="text-lg font-bold text-tape-brown">{emotionPreview}</p>
-                      <p className="text-sm text-tape-light-brown">
-                        {
-                          emotionOptions.find((option) => option.label === emotionPreview)?.description ??
-                          "感情を選ぶとここに説明が表示されます。"
-                        }
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-tape-light-brown">
-                      感情にカーソルを合わせると、ニュアンスがここに表示されます。
-                    </p>
-                  )}
                 </div>
               </div>
               <label className="flex flex-col gap-2 text-xs font-semibold text-tape-light-brown">
