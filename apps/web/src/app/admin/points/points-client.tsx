@@ -87,6 +87,15 @@ export function PointsManagementClient() {
     loadPointOverview();
   }, [loadPointOverview]);
 
+  // 画像プレビューのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (rewardImagePreview) {
+        URL.revokeObjectURL(rewardImagePreview);
+      }
+    };
+  }, [rewardImagePreview]);
+
   const handleRuleValueChange = (action: string, field: "points" | "is_active", value: number | boolean) => {
     setPointRules((prev) =>
       prev.map((rule) => (rule.action === action ? { ...rule, [field]: value } : rule))
@@ -116,6 +125,10 @@ export function PointsManagementClient() {
     if (file.size > 5 * 1024 * 1024) {
       alert("画像サイズは5MB以下にしてください");
       return;
+    }
+    // 新しいURLを作成する前に古いURLを解放
+    if (rewardImagePreview) {
+      URL.revokeObjectURL(rewardImagePreview);
     }
     setRewardImageFile(file);
     const preview = URL.createObjectURL(file);

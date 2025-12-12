@@ -48,7 +48,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: "/admin/settings", label: "設定", icon: Settings }
   ];
   
-  const counselorNavItems: NavItem[] = userRole === "counselor" ? [
+  const counselorNavItems: NavItem[] = (userRole === "counselor" || userRole === "admin") ? [
     { href: "/dashboard/counselor", label: "カウンセラーダッシュボード", icon: UserCheck }
   ] : [];
   const [isOpen, setIsOpen] = useState(false);
