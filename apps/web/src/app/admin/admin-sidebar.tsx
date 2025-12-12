@@ -3,7 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ChevronLeft, type LucideIcon } from "lucide-react";
+import { 
+  Menu, 
+  X, 
+  ChevronLeft, 
+  LayoutDashboard, 
+  Users, 
+  Coins, 
+  Share2, 
+  AlertTriangle, 
+  FileText, 
+  Globe, 
+  Megaphone,
+  BookOpen,
+  UserCheck,
+  Settings,
+  type LucideIcon 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -14,11 +30,23 @@ type NavItem = {
 };
 
 type AdminSidebarProps = {
-  navItems: NavItem[];
   userRole: string;
 };
 
-export function AdminSidebar({ navItems, userRole }: AdminSidebarProps) {
+export function AdminSidebar({ userRole }: AdminSidebarProps) {
+  const navItems: NavItem[] = [
+    { href: "/admin", label: "ダッシュボード", icon: LayoutDashboard },
+    { href: "/admin/users", label: "ユーザー管理", icon: Users },
+    { href: "/admin/points", label: "ポイント管理", icon: Coins },
+    { href: "/admin/share-monitoring", label: "Xシェア監視", icon: Share2 },
+    { href: "/admin/reports", label: "通報管理", icon: AlertTriangle, badge: "未実装" },
+    { href: "/admin/diary", label: "日記管理", icon: FileText, badge: "未実装" },
+    { href: "/admin/feed", label: "みんなの日記", icon: Globe, badge: "未実装" },
+    { href: "/admin/broadcasts", label: "お知らせ配信", icon: Megaphone, badge: "未実装" },
+    { href: "/admin/courses", label: "コース管理", icon: BookOpen, badge: "未実装" },
+    { href: "/admin/counselors", label: "カウンセラー", icon: UserCheck, badge: "未実装" },
+    { href: "/admin/settings", label: "設定", icon: Settings, badge: "未実装" }
+  ];
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
