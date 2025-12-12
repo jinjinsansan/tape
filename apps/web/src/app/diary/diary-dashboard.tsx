@@ -444,12 +444,6 @@ export function DiaryDashboard() {
     loadInitialScore();
   }, [sessionChecked, getAuthHeaders]);
 
-  useEffect(() => {
-    if (emotionLabel) {
-      setEmotionPreview(emotionLabel);
-    }
-  }, [emotionLabel]);
-
   const handleSelfScoreChange = (value: number) => {
     const clamped = Math.min(Math.max(value, 0), 100);
     setSelfEsteemScore(clamped);
