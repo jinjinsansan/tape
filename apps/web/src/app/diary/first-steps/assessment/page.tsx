@@ -146,8 +146,7 @@ export default function SelfAssessmentPage() {
     if (!question.options) return;
     const option = question.options[optionIndex];
 
-    const newScore = clamp(score - option.points, 0, 100);
-    setScore(newScore);
+    setScore((prev) => clamp(prev - option.points, 0, 100));
     setAnswerLog((prev) => [
       ...prev,
       {
@@ -170,8 +169,7 @@ export default function SelfAssessmentPage() {
     }
 
     const penalty = getInputPenalty(numericValue);
-    const newScore = clamp(score - penalty, 0, 100);
-    setScore(newScore);
+    setScore((prev) => clamp(prev - penalty, 0, 100));
     setAnswerLog((prev) => [
       ...prev,
       {
