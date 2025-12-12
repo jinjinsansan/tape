@@ -1,9 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronLeft, BookOpenCheck, LineChart, Sparkles, Layers } from "lucide-react";
+
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
-import Link from "next/link";
-import { ChevronLeft, BookOpenCheck, LineChart, Sparkles, Layers } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const resourceLinks = [
   {
@@ -45,6 +50,39 @@ const resourceLinks = [
 ];
 
 export default function DiaryPage() {
+  const [needsAssessment, setNeedsAssessment] = useState(false);
+  const [checkedAssessment, setCheckedAssessment] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/diary/initial-score", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error("failed to load score");
+        }
+        const data = await res.json();
+        if (!active) return;
+        setNeedsAssessment(!data.initialScore);
+      } catch (error) {
+        if (!active) return;
+        setNeedsAssessment(false);
+      } finally {
+        if (active) {
+          setCheckedAssessment(true);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const highlightFirstSteps = checkedAssessment && needsAssessment;
+
   return (
     <AuthGate>
       <div className="min-h-screen bg-tape-cream p-4 pb-20 md:p-8">
@@ -64,9 +102,16 @@ export default function DiaryPage() {
 
       <main className="mx-auto max-w-5xl space-y-10">
         <section className="grid gap-4 md:grid-cols-2">
-          {resourceLinks.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Card className="border-none bg-white/70 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+          {resourceLinks.map((item) => {
+            const isFirstSteps = item.href === "/diary/first-steps";
+            const cardClasses = cn(
+              "border-none bg-white/70 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-md",
+              isFirstSteps && highlightFirstSteps && "ring-2 ring-tape-pink shadow-lg animate-pulse"
+            );
+
+            return (
+              <Link key={item.href} href={item.href}>
+                <Card className={cardClasses}>
                 <CardContent className="flex items-start gap-4 p-6">
                   <div className="rounded-2xl bg-tape-beige p-3 text-tape-brown">
                     <item.icon className="h-5 w-5" />
@@ -77,8 +122,9 @@ export default function DiaryPage() {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </section>
 
         <DiaryDashboard />
