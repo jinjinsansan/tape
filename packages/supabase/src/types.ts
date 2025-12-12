@@ -20,6 +20,7 @@ export type DiaryVisibility = "private" | "followers" | "public";
 export type DiaryCommentSource = "user" | "ai" | "counselor" | "moderator";
 export type DiaryReactionType = "cheer" | "hug" | "empathy" | "insight";
 export type DiaryAiCommentStatus = "idle" | "pending" | "processing" | "completed" | "failed" | "skipped";
+export type DiaryAssessmentAgePath = "teen" | "adult" | "senior";
 export type LearningLessonStatus = "locked" | "in_progress" | "completed";
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 export type SlotStatus = "available" | "held" | "booked" | "unavailable";
@@ -684,6 +685,37 @@ export interface Database {
           measured_on?: string;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      diary_self_assessments: {
+        Row: {
+          id: string;
+          user_id: string;
+          age_path: Database["public"]["Enums"]["diary_assessment_age_path"];
+          self_esteem_score: number;
+          worthlessness_score: number;
+          measured_at: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          age_path: Database["public"]["Enums"]["diary_assessment_age_path"];
+          self_esteem_score: number;
+          worthlessness_score: number;
+          measured_at?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          age_path?: Database["public"]["Enums"]["diary_assessment_age_path"];
+          self_esteem_score?: number;
+          worthlessness_score?: number;
+          measured_at?: string;
+          metadata?: Json;
+          created_at?: string;
         };
       };
       emotion_diary_entry_feelings: {
@@ -1415,6 +1447,7 @@ export interface Database {
       diary_comment_source: DiaryCommentSource;
       diary_reaction_type: DiaryReactionType;
       diary_ai_comment_status: DiaryAiCommentStatus;
+      diary_assessment_age_path: DiaryAssessmentAgePath;
       learning_lesson_status: LearningLessonStatus;
       booking_status: BookingStatus;
       slot_status: SlotStatus;

@@ -10,6 +10,7 @@ export type {
   DiaryCommentSource,
   DiaryReactionType,
   DiaryAiCommentStatus,
+  DiaryAssessmentAgePath,
   LearningLessonStatus,
   BookingStatus,
   SlotStatus,

@@ -789,6 +789,11 @@ export function DiaryDashboard() {
                       初期計測: {initialScore.self_esteem_score}/{initialScore.worthlessness_score} ( {initialScore.measured_on} )
                     </p>
                   )}
+                  {!initialScore && !previousScoreInfo && (
+                    <p className="text-xs text-tape-light-brown">
+                      まだ診断を行っていません。<Link href="/diary/first-steps" className="underline decoration-dotted">最初にやること</Link>から自己肯定感診断を実施すると、無価値感の推移グラフに反映されます。
+                    </p>
+                  )}
                 </>
               )}
               {initialError && <p className="text-xs text-tape-pink">{initialError}</p>}

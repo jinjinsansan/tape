@@ -3,7 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Database,
   DiaryVisibility,
-  DiaryAiCommentStatus
+  DiaryAiCommentStatus,
+  DiaryAssessmentAgePath,
+  Json
 } from "@tape/supabase";
 
 type Supabase = SupabaseClient<Database>;
@@ -49,12 +51,22 @@ export type DiaryEntryWithExtras = DiaryEntryWithRelations & {
 
 export type DiaryInitialScore = Database["public"]["Tables"]["diary_initial_scores"]["Row"];
 
+export type DiarySelfAssessment = Database["public"]["Tables"]["diary_self_assessments"]["Row"];
+
 export type PreviousWorthlessnessScore = {
   source: "initial" | "entry";
   date: string;
   worthlessness_score: number;
   self_esteem_score: number | null;
   entry_id?: string;
+};
+
+export type DiarySelfAssessmentInput = {
+  age_path: DiaryAssessmentAgePath;
+  self_esteem_score: number;
+  worthlessness_score: number;
+  measured_at?: string;
+  metadata?: Json;
 };
 
 const diarySelect = `
@@ -482,4 +494,49 @@ export const listEntriesForTrend = async (supabase: Supabase, userId: string) =>
   }
 
   return data ?? [];
+};
+
+export const listSelfAssessments = async (supabase: Supabase, userId: string, limit = 5) => {
+  const { data, error } = await supabase
+    .from("diary_self_assessments")
+    .select("*")
+    .eq("user_id", userId)
+    .order("measured_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as DiarySelfAssessment[];
+};
+
+export const getLatestSelfAssessment = async (supabase: Supabase, userId: string) => {
+  const results = await listSelfAssessments(supabase, userId, 1);
+  return results.length ? results[0] : null;
+};
+
+export const createDiarySelfAssessment = async (
+  supabase: Supabase,
+  userId: string,
+  payload: DiarySelfAssessmentInput
+) => {
+  const { data, error } = await supabase
+    .from("diary_self_assessments")
+    .insert({
+      user_id: userId,
+      age_path: payload.age_path,
+      self_esteem_score: payload.self_esteem_score,
+      worthlessness_score: payload.worthlessness_score,
+      measured_at: payload.measured_at ?? undefined,
+      metadata: payload.metadata ?? {}
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error("Failed to create diary self assessment");
+  }
+
+  return data as DiarySelfAssessment;
 };
