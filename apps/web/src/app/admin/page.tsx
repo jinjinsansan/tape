@@ -98,37 +98,31 @@ export default async function AdminDashboard() {
       stats: `${stats.xShares}件 / ${stats.usersWithTwitter}人`
     },
     {
-      href: "#",
+      href: "/admin/reports",
       title: "通報管理",
       description: "みんなの日記の通報キュー確認・対応",
       icon: AlertTriangle,
       color: "from-rose-500/10 to-rose-600/10 hover:from-rose-500/20 hover:to-rose-600/20",
       iconColor: "text-rose-600",
-      stats: `${stats.pendingReports}件`,
-      badge: "未実装",
-      disabled: true
+      stats: `${stats.pendingReports}件`
     },
     {
-      href: "#",
+      href: "/admin/diary",
       title: "日記管理",
       description: "全ユーザーの日記・カウンセラーコメント",
       icon: FileText,
       color: "from-purple-500/10 to-purple-600/10 hover:from-purple-500/20 hover:to-purple-600/20",
       iconColor: "text-purple-600",
-      stats: "日記・コメント",
-      badge: "未実装",
-      disabled: true
+      stats: "日記・コメント"
     },
     {
-      href: "#",
+      href: "/admin/feed",
       title: "みんなの日記",
       description: "公開日記・コメント削除・モデレーション",
       icon: Globe,
       color: "from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20",
       iconColor: "text-amber-600",
-      stats: `${stats.publicDiaries}件`,
-      badge: "未実装",
-      disabled: true
+      stats: `${stats.publicDiaries}件`
     }
   ];
 
@@ -262,10 +256,13 @@ export default async function AdminDashboard() {
         {/* Footer */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
           <p className="text-sm text-slate-600">
-            Phase 1 実装完了：ダッシュボード・ユーザー管理・ポイント管理・Xシェア監視
+            ✅ Phase 1 & 2 実装完了
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Phase 2: 通報管理・日記管理・お知らせ配信・コース管理（順次実装予定）
+            ダッシュボード・ユーザー管理・ポイント管理・Xシェア監視・通報管理
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            Phase 3: 既存機能の独立したページへの移行（段階的実装）
           </p>
         </div>
       </div>
