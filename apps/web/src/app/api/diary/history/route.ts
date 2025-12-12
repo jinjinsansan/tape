@@ -75,7 +75,13 @@ export async function GET(request: Request) {
       page: parsed.data.page
     });
 
-    return NextResponse.json({ entries, count });
+    return NextResponse.json({ entries, count }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
     console.error("Failed to load diary history", error);
     return NextResponse.json({ error: "Failed to load diary history" }, { status: 500 });

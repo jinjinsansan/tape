@@ -232,6 +232,47 @@ function DiaryHistoryContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Subscribe to AI comment updates via Realtime
+  useEffect(() => {
+    const { data: authData } = supabase.auth.getSession();
+    authData.then((session) => {
+      if (!session.session?.user?.id) return;
+
+      const channel = supabase
+        .channel("diary_ai_comments")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "emotion_diary_entries",
+            filter: `user_id=eq.${session.session.user.id}`
+          },
+          (payload) => {
+            const updated = payload.new as DiaryEntry;
+            setEntries((prev) =>
+              prev.map((entry) =>
+                entry.id === updated.id
+                  ? {
+                      ...entry,
+                      ai_comment_status: updated.ai_comment_status,
+                      ai_comment: updated.ai_comment,
+                      ai_comment_generated_at: updated.ai_comment_generated_at,
+                      ai_comment_metadata: updated.ai_comment_metadata
+                    }
+                  : entry
+              )
+            );
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
+  }, [supabase]);
+
   useEffect(() => {
     setFocusFetched(false);
     setFocusScrolling(false);
