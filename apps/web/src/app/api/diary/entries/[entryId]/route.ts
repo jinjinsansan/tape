@@ -132,7 +132,8 @@ export async function PATCH(request: Request, context: { params: { entryId: stri
     ...(payload.isAiCommentPublic !== undefined && { is_ai_comment_public: payload.isAiCommentPublic }),
     ...(payload.isCounselorCommentPublic !== undefined && {
       is_counselor_comment_public: payload.isCounselorCommentPublic
-    })
+    }),
+    ...(payload.isShareable !== undefined && { is_shareable: payload.isShareable })
   };
 
   try {

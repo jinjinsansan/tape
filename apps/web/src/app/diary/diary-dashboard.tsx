@@ -34,6 +34,8 @@ type DiaryEntry = {
   is_visible_to_user: boolean;
   is_ai_comment_public: boolean;
   is_counselor_comment_public: boolean;
+  is_shareable: boolean;
+  share_count: number;
   published_at: string | null;
   journal_date: string;
   created_at: string;
@@ -47,7 +49,8 @@ const defaultForm = {
   visibility: "private" as DiaryVisibility,
   journalDate: today(),
   shareAiComment: false,
-  shareCounselorComment: false
+  shareCounselorComment: false,
+  shareToFeed: true
 };
 
 type InitialScore = {
@@ -494,8 +497,9 @@ export function DiaryDashboard() {
         worthlessnessScore,
         visibility: form.visibility,
         journalDate: form.journalDate,
-        isAiCommentPublic: form.shareAiComment,
-        isCounselorCommentPublic: form.shareCounselorComment
+      isAiCommentPublic: form.shareAiComment,
+      isCounselorCommentPublic: form.shareCounselorComment,
+      isShareable: form.visibility === "public" ? form.shareToFeed : false
       };
 
       const res = await fetch("/api/diary/entries", {
@@ -531,6 +535,8 @@ export function DiaryDashboard() {
           is_visible_to_user: true,
           is_ai_comment_public: form.shareAiComment,
           is_counselor_comment_public: form.shareCounselorComment,
+          is_shareable: form.visibility === "public" ? form.shareToFeed : false,
+          share_count: 0,
           published_at: form.visibility === "public" ? new Date().toISOString() : null,
           journal_date: form.journalDate,
           created_at: new Date().toISOString()
@@ -620,9 +626,9 @@ export function DiaryDashboard() {
     }
   };
 
-  const handleCommentVisibilityPreferenceChange = async (
+  const handlePublishingPreferenceChange = async (
     entryId: string,
-    updates: { is_ai_comment_public?: boolean; is_counselor_comment_public?: boolean }
+    updates: { is_ai_comment_public?: boolean; is_counselor_comment_public?: boolean; is_shareable?: boolean }
   ) => {
     if (guestMode) {
       const updated = ensureGuestEntries().map((entry) =>
@@ -643,6 +649,9 @@ export function DiaryDashboard() {
     }
     if (updates.is_counselor_comment_public !== undefined) {
       body.isCounselorCommentPublic = updates.is_counselor_comment_public;
+    }
+    if (updates.is_shareable !== undefined) {
+      body.isShareable = updates.is_shareable;
     }
     if (Object.keys(body).length === 0) {
       return;
@@ -813,7 +822,17 @@ export function DiaryDashboard() {
                   <select
                     value={form.visibility}
                     onChange={(event) =>
-                      setForm((prev) => ({ ...prev, visibility: event.target.value as DiaryVisibility }))
+                      setForm((prev) => {
+                        const nextVisibility = event.target.value as DiaryVisibility;
+                        const isPublic = nextVisibility === "public";
+                        return {
+                          ...prev,
+                          visibility: nextVisibility,
+                          shareAiComment: isPublic ? prev.shareAiComment : false,
+                          shareCounselorComment: isPublic ? prev.shareCounselorComment : false,
+                          shareToFeed: isPublic ? prev.shareToFeed : false
+                        };
+                      })
                     }
                     className="mt-2 w-full rounded-2xl border border-tape-beige bg-white px-4 py-2 text-sm focus:border-tape-pink focus:outline-none"
                   >
@@ -857,6 +876,25 @@ export function DiaryDashboard() {
                     「みんなの日記」に公開したときのみ有効になります。
                   </p>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-tape-beige bg-white/70 p-4 text-xs text-tape-brown">
+                <p className="font-semibold text-tape-light-brown">SNSシェア設定</p>
+                <div className="mt-3 flex items-center justify-between text-sm">
+                  <span>日記カードにシェアボタンを表示</span>
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-tape-beige"
+                    checked={form.shareToFeed}
+                    disabled={form.visibility !== "public"}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, shareToFeed: event.target.checked }))
+                    }
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-tape-light-brown">
+                  こちらをオンにすると、公開された日記をSNSでシェアできるようになります。
+                </p>
               </div>
 
               {saveError && <p className="text-xs text-tape-pink">{saveError}</p>}
@@ -1002,7 +1040,7 @@ export function DiaryDashboard() {
                           checked={entry.is_ai_comment_public}
                           disabled={entry.visibility !== "public" || commentVisibilitySavingId === entry.id}
                           onChange={(event) =>
-                            handleCommentVisibilityPreferenceChange(entry.id, {
+                            handlePublishingPreferenceChange(entry.id, {
                               is_ai_comment_public: event.target.checked
                             })
                           }
@@ -1016,8 +1054,22 @@ export function DiaryDashboard() {
                           checked={entry.is_counselor_comment_public}
                           disabled={entry.visibility !== "public" || commentVisibilitySavingId === entry.id}
                           onChange={(event) =>
-                            handleCommentVisibilityPreferenceChange(entry.id, {
+                            handlePublishingPreferenceChange(entry.id, {
                               is_counselor_comment_public: event.target.checked
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-3">
+                        <span>SNSシェアを許可</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-tape-beige"
+                          checked={entry.is_shareable}
+                          disabled={entry.visibility !== "public" || commentVisibilitySavingId === entry.id}
+                          onChange={(event) =>
+                            handlePublishingPreferenceChange(entry.id, {
+                              is_shareable: event.target.checked
                             })
                           }
                         />

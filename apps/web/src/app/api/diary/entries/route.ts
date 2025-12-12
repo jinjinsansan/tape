@@ -122,7 +122,8 @@ export async function POST(request: Request) {
       journal_date: data.journalDate,
       published_at,
       is_ai_comment_public: data.isAiCommentPublic ?? false,
-      is_counselor_comment_public: data.isCounselorCommentPublic ?? false
+      is_counselor_comment_public: data.isCounselorCommentPublic ?? false,
+      is_shareable: visibility === "public" ? data.isShareable ?? true : false
     }, feelings);
 
     if (entry) {

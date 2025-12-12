@@ -558,6 +558,8 @@ export interface Database {
           ai_highlights: Json;
           is_ai_comment_public: boolean;
           is_counselor_comment_public: boolean;
+          is_shareable: boolean;
+          share_count: number;
           counselor_memo: string | null;
           counselor_name: string | null;
           counselor_memo_read: boolean;
@@ -593,6 +595,8 @@ export interface Database {
           ai_highlights?: Json;
           is_ai_comment_public?: boolean;
           is_counselor_comment_public?: boolean;
+          is_shareable?: boolean;
+          share_count?: number;
           counselor_memo?: string | null;
           counselor_name?: string | null;
           counselor_memo_read?: boolean;
@@ -627,6 +631,8 @@ export interface Database {
           ai_highlights?: Json;
           is_ai_comment_public?: boolean;
           is_counselor_comment_public?: boolean;
+          is_shareable?: boolean;
+          share_count?: number;
           counselor_memo?: string | null;
           counselor_name?: string | null;
           counselor_memo_read?: boolean;
@@ -1438,6 +1444,12 @@ export interface Database {
           metadata: Json | null;
           similarity: number;
         }[];
+      };
+      increment_diary_share_count: {
+        Args: {
+          target_entry_id: string;
+        };
+        Returns: number | null;
       };
     };
     Enums: {

@@ -7,6 +7,7 @@ type Supabase = SupabaseClient<Database>;
 
 export type FeedEntry = {
   id: string;
+  title: string | null;
   content: string;
   publishedAt: string;
   journalDate: string;
@@ -22,6 +23,8 @@ export type FeedEntry = {
   moodScore: number | null;
   moodLabel: string | null;
   moodColor: string | null;
+  eventSummary: string | null;
+  realization: string | null;
   reactions: {
     counts: Record<string, number>;
     viewerReaction: string | null;
@@ -29,6 +32,8 @@ export type FeedEntry = {
   };
   aiComment: { content: string; generatedAt: string | null } | null;
   counselorComment: { content: string; author: string } | null;
+  isShareable: boolean;
+  shareCount: number;
 };
 
 type FeedQueryParams = {
@@ -64,16 +69,21 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       `
         id,
         user_id,
+        title,
         content,
         mood_score,
         mood_label,
         mood_color,
         emotion_label,
+        event_summary,
+        realization,
         ai_comment,
         ai_comment_status,
         ai_comment_generated_at,
         is_ai_comment_public,
         is_counselor_comment_public,
+        is_shareable,
+        share_count,
         counselor_memo,
         counselor_name,
         is_visible_to_user,
@@ -122,7 +132,8 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
     return {
       id: item.id,
       content: item.content,
-      publishedAt: item.published_at,
+      title: item.title,
+      publishedAt: item.published_at ?? item.created_at,
       journalDate: item.journal_date,
       author: {
         id: item.user_id,
@@ -136,9 +147,13 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       moodScore: item.mood_score,
       moodLabel: item.mood_label || item.emotion_label,
       moodColor: item.mood_color,
+      eventSummary: item.event_summary,
+      realization: item.realization,
       reactions: buildReactionSummary(item.reactions ?? [], params.viewerId),
       aiComment,
-      counselorComment
+      counselorComment,
+      isShareable: item.is_shareable ?? false,
+      shareCount: item.share_count ?? 0
     };
   }) as FeedEntry[];
 
@@ -181,4 +196,104 @@ export const reportFeedEntry = async (entryId: string, userId: string, reason: s
   if (error) {
     throw error;
   }
+};
+
+export const getPublicFeedEntryById = async (entryId: string, viewerId?: string | null) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("emotion_diary_entries")
+    .select(
+      `
+        id,
+        user_id,
+        title,
+        content,
+        mood_score,
+        mood_label,
+        mood_color,
+        emotion_label,
+        event_summary,
+        realization,
+        ai_comment,
+        ai_comment_status,
+        ai_comment_generated_at,
+        is_ai_comment_public,
+        is_counselor_comment_public,
+        is_shareable,
+        share_count,
+        counselor_memo,
+        counselor_name,
+        is_visible_to_user,
+        published_at,
+        journal_date,
+        created_at,
+        feelings:emotion_diary_entry_feelings(label, intensity),
+        reactions:emotion_diary_feed_reactions(reaction_type, user_id)
+      `
+    )
+    .eq("id", entryId)
+    .eq("visibility", "public")
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .eq("id", data.user_id)
+    .maybeSingle();
+
+  const aiComment =
+    data.is_ai_comment_public && data.ai_comment_status === "completed" && data.ai_comment
+      ? { content: data.ai_comment, generatedAt: data.ai_comment_generated_at }
+      : null;
+  const counselorComment =
+    data.is_counselor_comment_public && data.counselor_memo && data.counselor_name && data.is_visible_to_user
+      ? { content: data.counselor_memo, author: data.counselor_name }
+      : null;
+
+  return {
+    id: data.id,
+    title: data.title,
+    content: data.content,
+    publishedAt: data.published_at ?? data.created_at,
+    journalDate: data.journal_date,
+    author: {
+      id: data.user_id,
+      displayName: profileData?.display_name ?? "匿名ユーザー",
+      avatarUrl: profileData?.avatar_url ?? null
+    },
+    feelings: (data.feelings ?? []).map((feeling) => ({
+      label: feeling.label,
+      intensity: feeling.intensity
+    })),
+    moodScore: data.mood_score,
+    moodLabel: data.mood_label || data.emotion_label,
+    moodColor: data.mood_color,
+    eventSummary: data.event_summary,
+    realization: data.realization,
+    reactions: buildReactionSummary(data.reactions ?? [], viewerId),
+    aiComment,
+    counselorComment,
+    isShareable: data.is_shareable ?? false,
+    shareCount: data.share_count ?? 0
+  } satisfies FeedEntry;
+};
+
+export const incrementFeedShareCount = async (entryId: string) => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase.rpc("increment_diary_share_count", {
+    target_entry_id: entryId
+  });
+  if (error) {
+    throw error;
+  }
+  return data;
 };

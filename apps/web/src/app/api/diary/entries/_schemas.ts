@@ -22,7 +22,8 @@ export const entrySchema = z.object({
   journalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   feelings: z.array(feelingSchema).max(8).optional(),
   isAiCommentPublic: z.boolean().optional(),
-  isCounselorCommentPublic: z.boolean().optional()
+  isCounselorCommentPublic: z.boolean().optional(),
+  isShareable: z.boolean().optional()
 });
 
 export const updateEntrySchema = entrySchema.partial().extend({

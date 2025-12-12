@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Flag, MessageCircle, Sparkles } from "lucide-react";
+
+import { FeedShareButton } from "./feed-share-button";
 
 type FeedComment = {
   id: string;
@@ -19,6 +23,7 @@ type FeedComment = {
 
 type FeedEntry = {
   id: string;
+  title: string | null;
   content: string;
   publishedAt: string;
   journalDate: string;
@@ -30,6 +35,8 @@ type FeedEntry = {
   moodScore: number | null;
   moodLabel: string | null;
   moodColor: string | null;
+  eventSummary: string | null;
+  realization: string | null;
   feelings: { label: string; intensity: number }[];
   reactions: {
     counts: Record<string, number>;
@@ -38,6 +45,8 @@ type FeedEntry = {
   };
   aiComment: { content: string; generatedAt: string | null } | null;
   counselorComment: { content: string; author: string } | null;
+  isShareable: boolean;
+  shareCount: number;
   comments?: FeedComment[];
   showComments?: boolean;
   commentInput?: string;
@@ -340,7 +349,20 @@ export function FeedPageClient() {
                     </span>
                   )}
                 </div>
+                {entry.title && <h3 className="mt-4 text-lg font-semibold text-tape-brown">{entry.title}</h3>}
+                {entry.eventSummary && (
+                  <div className="mt-3 rounded-2xl border border-tape-beige bg-white/60 p-3 text-sm text-tape-brown">
+                    <p className="text-xs font-semibold text-tape-light-brown">出来事のメモ</p>
+                    <p className="mt-1 whitespace-pre-wrap leading-relaxed">{entry.eventSummary}</p>
+                  </div>
+                )}
                 <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
+                {entry.realization && (
+                  <div className="mt-3 rounded-2xl border border-dashed border-tape-beige p-3 text-sm text-tape-brown">
+                    <p className="text-xs font-semibold text-tape-light-brown">気づき・意味づけ</p>
+                    <p className="mt-1 whitespace-pre-wrap leading-relaxed">{entry.realization}</p>
+                  </div>
+                )}
                 {entry.feelings.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">
                     {entry.feelings.map((feeling) => (
@@ -396,14 +418,33 @@ export function FeedPageClient() {
                     <MessageCircle className="h-3 w-3" />
                     コメント {entry.comments && entry.comments.length > 0 ? `(${entry.comments.length})` : ""}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleReport(entry.id)}
-                    className="ml-auto text-tape-light-brown hover:text-tape-pink"
-                    title="通報"
+                  <div className="ml-auto flex items-center gap-2">
+                    {entry.isShareable && (
+                      <FeedShareButton
+                        entryId={entry.id}
+                        contentPreview={entry.content}
+                        shareCount={entry.shareCount}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleReport(entry.id)}
+                      className="text-tape-light-brown hover:text-tape-pink"
+                      title="通報"
+                    >
+                      <Flag className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between text-xs text-tape-light-brown">
+                  <p>公開日: {new Date(entry.publishedAt ?? entry.journalDate).toLocaleDateString("ja-JP")}</p>
+                  <Link
+                    href={`/feed/${entry.id}`}
+                    className="text-tape-pink underline decoration-dotted underline-offset-4"
                   >
-                    <Flag className="h-4 w-4" />
-                  </button>
+                    詳しく読む →
+                  </Link>
                 </div>
 
                 {entry.showComments && (
