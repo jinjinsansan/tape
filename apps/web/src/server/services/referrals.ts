@@ -20,11 +20,13 @@ export const getReferralSummary = async (userId: string) => {
   const [invitesRes, asInviteeRes, referredByProfile] = await Promise.all([
     supabase
       .from("referrals")
-      .select("id, referral_code, referrer_user_id, invitee_user_id, invitee_joined_at, invitee_day_count, reward_5day_awarded, reward_10day_awarded, created_at, invitee:invitee_user_id(id, display_name)")
+      .select(
+        "id, referral_code, referrer_user_id, invitee_user_id, invitee_joined_at, invitee_day_count, reward_5day_awarded, reward_10day_awarded, created_at"
+      )
       .eq("referrer_user_id", userId),
     supabase
       .from("referrals")
-      .select("*, referrer:referrer_user_id(id, display_name, referral_code)")
+      .select("id, referrer_user_id, invitee_day_count, reward_5day_awarded, reward_10day_awarded, invitee_joined_at")
       .eq("invitee_user_id", userId)
       .maybeSingle(),
     profile?.referred_by
@@ -48,6 +50,25 @@ export const getReferralSummary = async (userId: string) => {
     throw referredByProfile.error;
   }
 
+  const invites = invitesRes.data ?? [];
+  const inviteeProfilesMap = new Map<string, string | null>();
+  const inviteeIds = invites
+    .map((invite) => invite.invitee_user_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (inviteeIds.length > 0) {
+    const { data: inviteeProfiles, error: inviteeProfilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", inviteeIds);
+    if (inviteeProfilesError) {
+      throw inviteeProfilesError;
+    }
+    (inviteeProfiles ?? []).forEach((profileRow) => {
+      inviteeProfilesMap.set(profileRow.id, profileRow.display_name);
+    });
+  }
+
   return {
     referralCode: profile?.referral_code ?? null,
     referredBy: referredByProfile.data
@@ -57,10 +78,10 @@ export const getReferralSummary = async (userId: string) => {
           referralCode: referredByProfile.data.referral_code
         }
       : null,
-    invites: (invitesRes.data ?? []).map((invite) => ({
+    invites: invites.map((invite) => ({
       id: invite.id,
       inviteeUserId: invite.invitee_user_id,
-      inviteeName: invite.invitee?.display_name ?? "参加者",
+      inviteeName: invite.invitee_user_id ? inviteeProfilesMap.get(invite.invitee_user_id) ?? "参加者" : "参加者",
       dayCount: invite.invitee_day_count,
       joinedAt: invite.invitee_joined_at,
       reward5Granted: invite.reward_5day_awarded,
@@ -68,11 +89,11 @@ export const getReferralSummary = async (userId: string) => {
     })),
     inviteeProgress: asInviteeRes.data
       ? {
-          referrer: asInviteeRes.data.referrer
+          referrer: referredByProfile.data
             ? {
-                id: asInviteeRes.data.referrer.id,
-                displayName: asInviteeRes.data.referrer.display_name,
-                referralCode: asInviteeRes.data.referrer.referral_code
+                id: referredByProfile.data.id,
+                displayName: referredByProfile.data.display_name,
+                referralCode: referredByProfile.data.referral_code
               }
             : null,
           dayCount: asInviteeRes.data.invitee_day_count,

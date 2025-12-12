@@ -85,10 +85,20 @@ export function WalletClient() {
   const loadDashboard = useCallback(async () => {
     try {
       const res = await fetch("/api/mypage/points/summary");
-      if (!res.ok) {
-        throw new Error("ポイント情報の取得に失敗しました");
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch (parseError) {
+        console.error("Failed to parse wallet summary response", parseError);
       }
-      const data = await res.json();
+
+      if (!res.ok) {
+        const message =
+          payload?.details ?? payload?.error ?? "ポイント情報の取得に失敗しました";
+        throw new Error(message);
+      }
+
+      const data = payload ?? {};
       setWallet(data.wallet ?? null);
       setTransactions(data.transactions ?? []);
       setPointEvents(data.pointEvents ?? []);
@@ -96,7 +106,7 @@ export function WalletClient() {
       setRedemptions(data.redemptions ?? []);
       setReferral(data.referral ?? null);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load wallet dashboard", err);
     } finally {
       setLoading(false);
     }

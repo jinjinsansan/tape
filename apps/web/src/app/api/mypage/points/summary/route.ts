@@ -58,6 +58,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Failed to load point dashboard", error);
-    return NextResponse.json({ error: "Failed to load point dashboard" }, { status: 500 });
+    const details = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "ポイント情報の取得に失敗しました", details },
+      { status: 500 }
+    );
   }
 }
