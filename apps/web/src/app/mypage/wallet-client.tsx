@@ -82,6 +82,7 @@ export function WalletClient() {
   const [claimCode, setClaimCode] = useState("");
   const [claimingReferral, setClaimingReferral] = useState(false);
   const [referralMessage, setReferralMessage] = useState<string | null>(null);
+  const [pointInfo, setPointInfo] = useState<{ rules: PointRule[]; rewards: PointRewardRow[] } | null>(null);
 
   const loadLegacyWallet = useCallback(async () => {
     try {
@@ -131,9 +132,23 @@ export function WalletClient() {
     }
   }, [loadLegacyWallet]);
 
+  const loadPointInfo = useCallback(async () => {
+    try {
+      const res = await fetch("/api/points/info");
+      if (!res.ok) {
+        throw new Error("ポイント情報の取得に失敗しました");
+      }
+      const data = await res.json();
+      setPointInfo(data);
+    } catch (err) {
+      console.error("Failed to load point info", err);
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]);
+    loadPointInfo();
+  }, [loadDashboard, loadPointInfo]);
 
   const handleChargeClick = () => {
     setShowPayPal(true);
@@ -257,21 +272,42 @@ export function WalletClient() {
                 {pointError}
               </p>
             )}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6">
           <button
             onClick={handleChargeClick}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-tape-orange px-6 py-3 text-sm font-bold text-white shadow hover:bg-tape-orange/90"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-tape-orange px-6 py-3 text-sm font-bold text-white shadow hover:bg-tape-orange/90"
           >
             <TrendingUp className="h-4 w-4" /> ポイントをチャージ
           </button>
-          <button
-            onClick={handleCopyReferral}
-            disabled={!referralUrl}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full border border-tape-orange/50 px-6 py-3 text-sm font-bold text-tape-brown hover:bg-white disabled:opacity-50"
-          >
-            <Share2 className="h-4 w-4" /> 紹介URLをコピー
-          </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-tape-beige bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Gift className="h-5 w-5 text-tape-green" />
+          <h3 className="text-lg font-bold text-tape-brown">ポイントの貯め方</h3>
+        </div>
+        {!pointInfo ? (
+          <p className="text-sm text-tape-light-brown">読み込み中...</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {pointInfo.rules.map((rule) => {
+              const info = actionLabels[rule.action] ?? { label: rule.action, description: "" };
+              return (
+                <div
+                  key={rule.action}
+                  className="flex items-center justify-between rounded-2xl border border-tape-beige bg-tape-cream/40 p-4"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-tape-brown">{info.label}</p>
+                    <p className="text-xs text-tape-light-brown">{info.description}</p>
+                  </div>
+                  <p className="text-lg font-black text-tape-green">+{rule.points}pt</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {showPayPal && (
@@ -353,36 +389,47 @@ export function WalletClient() {
       <div className="rounded-2xl border border-tape-beige bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <Gift className="h-5 w-5 text-tape-pink" />
-          <h3 className="text-lg font-bold text-tape-brown">ポイント交換</h3>
+          <h3 className="text-lg font-bold text-tape-brown">ポイント交換カタログ</h3>
         </div>
         {sortedRewards.length === 0 ? (
           <p className="text-sm text-tape-light-brown">現在交換できる景品はありません。</p>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {sortedRewards.map((reward) => (
               <div
                 key={reward.id}
-                className="rounded-2xl border border-tape-beige bg-tape-cream/40 p-4 flex flex-col gap-2"
+                className="rounded-2xl border border-tape-beige bg-tape-cream/40 overflow-hidden flex flex-col"
               >
-                <div className="flex items-center justify-between">
-                  <h4 className="text-base font-bold text-tape-brown">{reward.title}</h4>
-                  <p className="text-sm font-semibold text-tape-pink">{reward.cost_points.toLocaleString()}pt</p>
-                </div>
-                {reward.description && <p className="text-xs text-tape-brown/80">{reward.description}</p>}
-                {reward.stock !== null && (
-                  <p className="text-[11px] text-tape-light-brown">在庫: {reward.stock}</p>
+                {reward.image_url && (
+                  <div className="w-full h-40 bg-tape-beige/30">
+                    <img 
+                      src={reward.image_url} 
+                      alt={reward.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 )}
-                <button
-                  onClick={() => {
-                    setRedeemTarget(reward);
-                    setRedeemQuantity(1);
-                    setRedeemNotes("");
-                    setRedeemShipping("");
-                  }}
-                  className="mt-2 rounded-full bg-tape-brown px-4 py-2 text-xs font-semibold text-white hover:bg-tape-brown/90"
-                >
-                  交換する
-                </button>
+                <div className="p-4 flex flex-col gap-2 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-base font-bold text-tape-brown flex-1">{reward.title}</h4>
+                    <p className="text-sm font-semibold text-tape-pink whitespace-nowrap">{reward.cost_points.toLocaleString()}pt</p>
+                  </div>
+                  {reward.description && <p className="text-xs text-tape-brown/80 line-clamp-2">{reward.description}</p>}
+                  {reward.stock !== null && (
+                    <p className="text-[11px] text-tape-light-brown">在庫: {reward.stock}</p>
+                  )}
+                  <button
+                    onClick={() => {
+                      setRedeemTarget(reward);
+                      setRedeemQuantity(1);
+                      setRedeemNotes("");
+                      setRedeemShipping("");
+                    }}
+                    className="mt-auto rounded-full bg-tape-brown px-4 py-2 text-xs font-semibold text-white hover:bg-tape-brown/90"
+                  >
+                    交換する
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -422,9 +469,18 @@ export function WalletClient() {
           <h3 className="text-lg font-bold text-tape-brown">友達紹介プログラム</h3>
         </div>
         {referralMessage && <p className="mb-3 text-xs text-tape-pink">{referralMessage}</p>}
-        <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown">
-          <p>紹介用URL</p>
-          <p className="mt-1 break-all font-mono text-xs text-tape-pink">{referralUrl ?? "取得中..."}</p>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown">
+            <p>紹介用URL</p>
+            <p className="mt-1 break-all font-mono text-xs text-tape-pink">{referralUrl ?? "取得中..."}</p>
+          </div>
+          <button
+            onClick={handleCopyReferral}
+            disabled={!referralUrl}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-tape-orange/50 px-6 py-3 text-sm font-bold text-tape-brown hover:bg-tape-cream disabled:opacity-50"
+          >
+            <Share2 className="h-4 w-4" /> 紹介URLをコピー
+          </button>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>

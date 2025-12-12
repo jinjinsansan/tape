@@ -227,6 +227,8 @@ export function AdminClient({ userRole }: { userRole: string }) {
     stock: "",
     isActive: true
   });
+  const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
+  const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
   const [creatingReward, setCreatingReward] = useState(false);
 
   const fetchJson = async <T,>(url: string, options?: RequestInit) => {
@@ -755,6 +757,18 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   };
 
+  const handleRewardImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("画像は5MB以下にしてください");
+      return;
+    }
+    setRewardImageFile(file);
+    const preview = URL.createObjectURL(file);
+    setRewardImagePreview(preview);
+  };
+
   const handleCreateReward = async () => {
     if (!rewardForm.title.trim()) {
       alert("景品名を入力してください");
@@ -762,19 +776,37 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
     setCreatingReward(true);
     try {
+      let imageUrl = rewardForm.imageUrl;
+      
+      if (rewardImageFile) {
+        const formData = new FormData();
+        formData.append("image", rewardImageFile);
+        const uploadRes = await fetch("/api/admin/points/rewards/upload-image", {
+          method: "POST",
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          throw new Error("画像のアップロードに失敗しました");
+        }
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.imageUrl;
+      }
+
       await fetchJson("/api/admin/points/rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: rewardForm.title,
           description: rewardForm.description || undefined,
-          imageUrl: rewardForm.imageUrl || undefined,
+          imageUrl: imageUrl || undefined,
           costPoints: rewardForm.costPoints,
           stock: rewardForm.stock ? Number(rewardForm.stock) : null,
           isActive: rewardForm.isActive
         })
       });
       setRewardForm({ title: "", description: "", imageUrl: "", costPoints: 1000, stock: "", isActive: true });
+      setRewardImageFile(null);
+      setRewardImagePreview(null);
       loadPointOverview();
     } catch (err) {
       console.error(err);
@@ -1009,13 +1041,28 @@ export function AdminClient({ userRole }: { userRole: string }) {
                   onChange={(event) => setRewardForm((prev) => ({ ...prev, description: event.target.value }))}
                   className="h-20 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
                 />
-                <input
-                  type="url"
-                  placeholder="画像URL (任意)"
-                  value={rewardForm.imageUrl}
-                  onChange={(event) => setRewardForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
-                />
+                <div className="space-y-2">
+                  <label className="block text-xs text-slate-600 font-semibold">
+                    景品画像 (推奨: 800×600px, 最大5MB)
+                  </label>
+                  {rewardImagePreview && (
+                    <img src={rewardImagePreview} alt="プレビュー" className="w-32 h-24 object-cover rounded-lg border border-slate-200" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleRewardImageChange}
+                    className="w-full text-xs text-slate-600"
+                  />
+                  <p className="text-[11px] text-slate-400">または</p>
+                  <input
+                    type="url"
+                    placeholder="画像URL (直接入力)"
+                    value={rewardForm.imageUrl}
+                    onChange={(event) => setRewardForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <label className="flex flex-col gap-1">
                     必要ポイント
