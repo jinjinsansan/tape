@@ -18,7 +18,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { AdminSidebar } from "./admin-sidebar";
 
-export default async function AdminLayout({ children }: { children: React.node }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore);
   
