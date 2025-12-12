@@ -151,12 +151,12 @@ export function PointsManagementClient() {
       if (rewardImageFile) {
         try {
           const formData = new FormData();
-          formData.append("file", rewardImageFile);
-          const uploadRes = await fetchJson<{ url: string }>("/api/upload/image", {
+          formData.append("image", rewardImageFile);
+          const uploadRes = await fetchJson<{ imageUrl: string }>("/api/admin/points/rewards/upload-image", {
             method: "POST",
             body: formData
           });
-          finalImageUrl = uploadRes.url;
+          finalImageUrl = uploadRes.imageUrl;
         } catch (uploadErr) {
           console.error("Image upload failed:", uploadErr);
           const uploadError = uploadErr instanceof Error ? uploadErr.message : "画像アップロードに失敗しました";

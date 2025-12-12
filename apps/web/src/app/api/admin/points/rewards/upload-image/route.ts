@@ -50,8 +50,10 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error("Failed to upload reward image", uploadError);
-      return NextResponse.json({ error: "画像のアップロードに失敗しました" }, { status: 500 });
+      console.error("[Upload Reward Image] Storage upload failed:", uploadError);
+      return NextResponse.json({ 
+        error: `画像のアップロードに失敗しました: ${uploadError.message}` 
+      }, { status: 500 });
     }
 
     const { data: publicUrlData } = adminClient.storage
@@ -60,7 +62,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ imageUrl: publicUrlData.publicUrl }, { status: 200 });
   } catch (error) {
-    console.error("Failed to upload reward image", error);
-    return NextResponse.json({ error: "画像のアップロードに失敗しました" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Upload Reward Image] Failed:", errorMessage, error);
+    return NextResponse.json({ 
+      error: `画像のアップロードに失敗しました: ${errorMessage}` 
+    }, { status: 500 });
   }
 }
