@@ -146,16 +146,26 @@ export function PointsManagementClient() {
     setCreatingReward(true);
     try {
       let finalImageUrl = rewardForm.imageUrl;
+      
+      // 画像ファイルがある場合はアップロード
       if (rewardImageFile) {
-        const formData = new FormData();
-        formData.append("file", rewardImageFile);
-        const uploadRes = await fetchJson<{ url: string }>("/api/upload/image", {
-          method: "POST",
-          body: formData
-        });
-        finalImageUrl = uploadRes.url;
+        try {
+          const formData = new FormData();
+          formData.append("file", rewardImageFile);
+          const uploadRes = await fetchJson<{ url: string }>("/api/upload/image", {
+            method: "POST",
+            body: formData
+          });
+          finalImageUrl = uploadRes.url;
+        } catch (uploadErr) {
+          console.error("Image upload failed:", uploadErr);
+          const uploadError = uploadErr instanceof Error ? uploadErr.message : "画像アップロードに失敗しました";
+          alert(`画像のアップロードに失敗しました: ${uploadError}`);
+          return;
+        }
       }
 
+      // 景品を登録
       await fetchJson("/api/admin/points/rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
