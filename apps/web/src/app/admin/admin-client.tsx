@@ -727,6 +727,29 @@ export function AdminClient({ userRole }: { userRole: string }) {
     }
   };
 
+  const handlePointAward = async (userId: string) => {
+    const pointsStr = prompt("付与するポイント数を入力してください", "100");
+    if (!pointsStr) return;
+    const points = Number(pointsStr);
+    if (!Number.isFinite(points) || points <= 0 || points > 100000) {
+      alert("ポイント数が不正です（1〜100000の範囲で入力してください）");
+      return;
+    }
+    const reason = prompt("付与理由を入力してください (任意)") ?? undefined;
+    try {
+      await fetchJson(`/api/admin/users/${userId}/award-points`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points, reason })
+      });
+      alert(`${points}ポイントを付与しました`);
+      loadUsers(userSearch);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "ポイント付与に失敗しました");
+    }
+  };
+
   const handleRuleValueChange = (action: string, field: "points" | "is_active", value: number | boolean) => {
     setPointRules((prev) =>
       prev.map((rule) =>
@@ -1564,8 +1587,11 @@ export function AdminClient({ userRole }: { userRole: string }) {
                     </button>
                   </>
                 )}
+                <button onClick={() => handlePointAward(user.id)} className="rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-100">
+                  ポイント付与
+                </button>
                 <button onClick={() => handleWalletAdjust(user.id, "credit")} className="rounded-full bg-green-50 border border-green-200 px-3 py-1.5 text-xs text-green-600 hover:bg-green-100">
-                  付与
+                  残高付与
                 </button>
                 <button onClick={() => handleWalletStatus(user.id, user.wallet?.status === "active" ? "locked" : "active")} className="rounded-full bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100">
                   凍結/解除
