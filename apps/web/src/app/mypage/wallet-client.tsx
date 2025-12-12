@@ -219,7 +219,8 @@ export function WalletClient() {
     return <p className="text-sm text-tape-pink text-center py-4">ウォレット情報の取得に失敗しました。</p>;
   }
 
-  const balance = wallet.balance_cents / 100;
+  const balance = (wallet?.balance_cents ?? 0) / 100;
+  const walletStatus = wallet?.status ?? "unknown";
   const chargeOptions = [1000, 3000, 5000, 10000];
 
   const sortedRewards = useMemo(() => rewards.filter((reward) => reward.is_active), [rewards]);
@@ -241,10 +242,10 @@ export function WalletClient() {
           </div>
           <span
             className={`text-xs px-2 py-1 rounded-full ${
-              wallet.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
+              walletStatus === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
             }`}
           >
-            {wallet.status}
+            {walletStatus}
           </span>
         </div>
         <div className="mt-4 flex flex-col gap-1">
