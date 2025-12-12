@@ -13,6 +13,7 @@ const DEFAULT_DELAY: DiaryAiDelayMinutes = 10;
 const SETTING_KEY = "diary_ai_comment_delay";
 const MIN_CONTENT_LENGTH = 80;
 const MIN_WORD_COUNT = 15;
+const MIN_COMPACT_CHAR_LENGTH = 40;
 const MAX_ATTEMPTS = 3;
 
 type AdminSettingRow = {
@@ -51,22 +52,34 @@ export const updateDiaryAiDelayMinutes = async (minutes: DiaryAiDelayMinutes) =>
 
 type SkipResult = { skipped: true; reason: string } | { skipped: false };
 
+const CJK_CHAR_REGEX = /[\u3000-\u303F\u3040-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF]/;
+
+const hasCjk = (value: string) => CJK_CHAR_REGEX.test(value);
+
 const evaluateSkip = (content: string): SkipResult => {
   const normalized = content.replace(/\s+/g, " ").trim();
-  if (!normalized) {
+  const compact = normalized.replace(/\s/g, "");
+
+  if (!compact.length) {
     return { skipped: true, reason: "empty" };
   }
 
-  if (normalized.length < MIN_CONTENT_LENGTH) {
+  if (compact.length < MIN_COMPACT_CHAR_LENGTH) {
     return { skipped: true, reason: "too_short" };
   }
 
-  const wordCount = normalized.split(/\s+/).length;
-  if (wordCount < MIN_WORD_COUNT) {
-    return { skipped: true, reason: "low_word_count" };
+  const containsCjk = hasCjk(compact);
+  if (!containsCjk) {
+    if (normalized.length < MIN_CONTENT_LENGTH) {
+      return { skipped: true, reason: "too_short" };
+    }
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    if (wordCount < MIN_WORD_COUNT && compact.length < MIN_CONTENT_LENGTH) {
+      return { skipped: true, reason: "low_word_count" };
+    }
   }
 
-  const uniqueChars = new Set(normalized.replace(/\s/g, "").split(""));
+  const uniqueChars = new Set(compact.split(""));
   if (uniqueChars.size < 5) {
     return { skipped: true, reason: "low_variance" };
   }
