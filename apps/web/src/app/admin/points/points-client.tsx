@@ -76,8 +76,10 @@ export function PointsManagementClient() {
       setPointRewards(data.rewards ?? []);
       setPointRedemptions(data.redemptions ?? []);
     } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "データの取得に失敗しました");
+      console.error("Failed to load point overview:", err);
+      // エラーの詳細をユーザーに表示
+      const errorMessage = err instanceof Error ? err.message : "データの取得に失敗しました";
+      alert(`ポイント管理データの取得に失敗しました: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

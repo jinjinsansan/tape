@@ -12,15 +12,36 @@ export async function GET() {
   if (response) return response;
 
   try {
+    console.log("[Point Overview] Loading rules, rewards, and redemptions...");
+    
     const [rules, rewards, redemptions] = await Promise.all([
-      fetchPointRules(),
-      listAllRewards(),
-      listAllRedemptions(100)
+      fetchPointRules().catch(err => {
+        console.error("[Point Overview] Failed to fetch rules:", err);
+        throw new Error(`Rules fetch failed: ${err.message}`);
+      }),
+      listAllRewards().catch(err => {
+        console.error("[Point Overview] Failed to list rewards:", err);
+        throw new Error(`Rewards fetch failed: ${err.message}`);
+      }),
+      listAllRedemptions(100).catch(err => {
+        console.error("[Point Overview] Failed to list redemptions:", err);
+        throw new Error(`Redemptions fetch failed: ${err.message}`);
+      })
     ]);
+
+    console.log("[Point Overview] Successfully loaded:", {
+      rulesCount: rules?.length ?? 0,
+      rewardsCount: rewards?.length ?? 0,
+      redemptionsCount: redemptions?.length ?? 0
+    });
 
     return NextResponse.json({ rules, rewards, redemptions });
   } catch (error) {
-    console.error("Failed to load point overview", error);
-    return NextResponse.json({ error: "Failed to load point overview" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Point Overview] Failed to load point overview:", errorMessage, error);
+    return NextResponse.json(
+      { error: `Failed to load point overview: ${errorMessage}` }, 
+      { status: 500 }
+    );
   }
 }
