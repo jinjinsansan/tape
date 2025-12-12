@@ -173,11 +173,7 @@ export function WalletClient() {
       if (!res.ok) {
         throw new Error(payload?.error ?? "交換に失敗しました");
       }
-      alert("ポイント交換を受け付けました。ステータスは履歴で確認できます。");
-      setRedeemTarget(null);
-      setRedeemQuantity(1);
-      setRedeemNotes("");
-      setRedeemShipping("");
+      setRedeemSuccess(true);
       loadDashboard();
     } catch (err) {
       alert(err instanceof Error ? err.message : "交換に失敗しました");
@@ -595,43 +591,38 @@ export function WalletClient() {
         </div>
       )}
 
-      {redeemTarget && !redeemSuccess && (() => {
-        const currentPoints = (wallet?.balance_cents ?? 0) / 100;
-        const requiredPoints = redeemTarget.cost_points * redeemQuantity;
-        const hasEnoughPoints = currentPoints >= requiredPoints;
+      {redeemTarget && !redeemSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-w-md w-full rounded-3xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-tape-brown">{redeemTarget.title}</h3>
+            <p className="mt-1 text-sm text-tape-light-brown">
+              必要ポイント: {(redeemTarget.cost_points * redeemQuantity).toLocaleString()}pt
+            </p>
+            <p className="mt-1 text-sm font-semibold text-tape-brown">
+              現在のポイント: {((wallet?.balance_cents ?? 0) / 100).toLocaleString()}pt
+            </p>
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="max-w-md w-full rounded-3xl bg-white p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-tape-brown">{redeemTarget.title}</h3>
-              <p className="mt-1 text-sm text-tape-light-brown">
-                必要ポイント: {requiredPoints.toLocaleString()}pt
-              </p>
-              <p className="mt-1 text-sm font-semibold text-tape-brown">
-                現在のポイント: {currentPoints.toLocaleString()}pt
-              </p>
-
-              {!hasEnoughPoints ? (
-                <div className="mt-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-center">
-                  <p className="text-sm font-bold text-red-600">ポイントが不足しています</p>
-                  <p className="mt-1 text-xs text-red-500">
-                    あと {(requiredPoints - currentPoints).toLocaleString()}pt 必要です
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="mt-4 space-y-3 text-sm">
-                    <label className="block">
-                      数量
-                      <input
-                        type="number"
-                        min={1}
-                        max={Math.max(1, redeemTarget.stock ?? 10)}
-                        value={redeemQuantity}
-                        onChange={(e) => setRedeemQuantity(Number(e.target.value))}
-                        className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
-                      />
-                    </label>
+            {(wallet?.balance_cents ?? 0) / 100 < redeemTarget.cost_points * redeemQuantity ? (
+              <div className="mt-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-center">
+                <p className="text-sm font-bold text-red-600">ポイントが不足しています</p>
+                <p className="mt-1 text-xs text-red-500">
+                  あと {(redeemTarget.cost_points * redeemQuantity - (wallet?.balance_cents ?? 0) / 100).toLocaleString()}pt 必要です
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 space-y-3 text-sm">
+                  <label className="block">
+                    数量
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.max(1, redeemTarget.stock ?? 10)}
+                      value={redeemQuantity}
+                      onChange={(e) => setRedeemQuantity(Number(e.target.value))}
+                      className="mt-1 w-full rounded-2xl border border-tape-beige px-3 py-2 focus:border-tape-pink focus:outline-none"
+                    />
+                  </label>
                     <label className="block">
                       連絡メモ（任意）
                       <textarea
@@ -651,38 +642,37 @@ export function WalletClient() {
                       />
                     </label>
                   </div>
-                  <div className="mt-4 rounded-2xl bg-tape-cream/50 border border-tape-beige p-3 text-center">
-                    <p className="text-sm font-semibold text-tape-brown">この景品と交換しますか？</p>
-                  </div>
-                </>
-              )}
+                <div className="mt-4 rounded-2xl bg-tape-cream/50 border border-tape-beige p-3 text-center">
+                  <p className="text-sm font-semibold text-tape-brown">この景品と交換しますか？</p>
+                </div>
+              </>
+            )}
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                {hasEnoughPoints && (
-                  <button
-                    onClick={handleRedeemSubmit}
-                    disabled={redeeming}
-                    className="flex-1 rounded-full bg-tape-brown px-4 py-2 text-sm font-bold text-white hover:bg-tape-brown/90 disabled:opacity-50"
-                  >
-                    {redeeming ? "交換中..." : "交換する"}
-                  </button>
-                )}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {(wallet?.balance_cents ?? 0) / 100 >= redeemTarget.cost_points * redeemQuantity && (
                 <button
-                  onClick={() => {
-                    setRedeemTarget(null);
-                    setRedeemQuantity(1);
-                    setRedeemNotes("");
-                    setRedeemShipping("");
-                  }}
-                  className={`${hasEnoughPoints ? 'flex-1' : 'w-full'} rounded-full border border-tape-beige px-4 py-2 text-sm font-semibold text-tape-brown hover:bg-tape-cream`}
+                  onClick={handleRedeemSubmit}
+                  disabled={redeeming}
+                  className="flex-1 rounded-full bg-tape-brown px-4 py-2 text-sm font-bold text-white hover:bg-tape-brown/90 disabled:opacity-50"
                 >
-                  {hasEnoughPoints ? 'キャンセル' : '閉じる'}
+                  {redeeming ? "交換中..." : "交換する"}
                 </button>
-              </div>
+              )}
+              <button
+                onClick={() => {
+                  setRedeemTarget(null);
+                  setRedeemQuantity(1);
+                  setRedeemNotes("");
+                  setRedeemShipping("");
+                }}
+                className={`${(wallet?.balance_cents ?? 0) / 100 >= redeemTarget.cost_points * redeemQuantity ? 'flex-1' : 'w-full'} rounded-full border border-tape-beige px-4 py-2 text-sm font-semibold text-tape-brown hover:bg-tape-cream`}
+              >
+                {(wallet?.balance_cents ?? 0) / 100 >= redeemTarget.cost_points * redeemQuantity ? 'キャンセル' : '閉じる'}
+              </button>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {redeemSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
