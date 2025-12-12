@@ -109,7 +109,7 @@ export const scheduleDiaryAiCommentJob = async (params: {
   const delay = await getDiaryAiDelayMinutes();
   const scheduledAt = new Date(Date.now() + delay * 60 * 1000).toISOString();
 
-  await client.from("diary_ai_comment_jobs").insert({
+  const { error: insertError } = await client.from("diary_ai_comment_jobs").insert({
     entry_id: params.entryId,
     user_id: params.userId,
     status: "pending",
@@ -117,10 +117,18 @@ export const scheduleDiaryAiCommentJob = async (params: {
     metadata: { delay_minutes: delay }
   });
 
-  await client
+  if (insertError) {
+    throw new Error(`Failed to enqueue AI comment job: ${insertError.message}`);
+  }
+
+  const { error: updateError } = await client
     .from("emotion_diary_entries")
     .update({ ai_comment_status: "pending" })
     .eq("id", params.entryId);
+
+  if (updateError) {
+    throw new Error(`Failed to mark diary entry pending: ${updateError.message}`);
+  }
 
   return { scheduled: true, delayMinutes: delay } as const;
 };

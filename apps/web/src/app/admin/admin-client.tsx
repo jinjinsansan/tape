@@ -144,6 +144,8 @@ type DiaryEntry = {
   worthlessness_score: number | null;
   journal_date: string;
   created_at: string;
+  is_ai_comment_public: boolean;
+  is_counselor_comment_public: boolean;
   counselor_memo: string | null;
   counselor_name: string | null;
   is_visible_to_user: boolean;

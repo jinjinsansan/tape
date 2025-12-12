@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runDiaryAiCommentJobs } from "@/server/services/diary-ai-comments";
 
-const CRON_SECRET = process.env.DIARY_AI_CRON_SECRET;
+const CRON_SECRET = process.env.CRON_SECRET ?? process.env.DIARY_AI_CRON_SECRET;
 
 const authorizeCron = (request: Request) => {
   if (!CRON_SECRET) {

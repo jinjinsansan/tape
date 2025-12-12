@@ -126,13 +126,15 @@ export async function POST(request: Request) {
     }, feelings);
 
     if (entry) {
-      scheduleDiaryAiCommentJob({
-        entryId: entry.id,
-        userId: user!.id,
-        content: entry.content ?? ""
-      }).catch((schedulerError) => {
+      try {
+        await scheduleDiaryAiCommentJob({
+          entryId: entry.id,
+          userId: user!.id,
+          content: entry.content ?? ""
+        });
+      } catch (schedulerError) {
         console.error("Failed to schedule diary AI comment", schedulerError);
-      });
+      }
     }
 
     return NextResponse.json({ entry }, { status: 201 });
