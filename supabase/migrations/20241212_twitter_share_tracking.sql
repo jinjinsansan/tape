@@ -9,6 +9,10 @@ alter table public.profiles
 add column if not exists twitter_username text,
 add column if not exists twitter_username_updated_at timestamptz;
 
+-- 既存の制約を削除してから追加（冪等性のため）
+alter table public.profiles
+drop constraint if exists twitter_username_format;
+
 -- Twitter ユーザー名のバリデーション制約
 alter table public.profiles
 add constraint twitter_username_format
@@ -43,12 +47,14 @@ create index if not exists feed_share_log_platform_idx on public.feed_share_log(
 alter table public.feed_share_log enable row level security;
 
 -- ユーザーは自分のシェアログのみ閲覧可能
+drop policy if exists "Users can view their own share log" on public.feed_share_log;
 create policy "Users can view their own share log"
 on public.feed_share_log
 for select
 using (auth.uid() = user_id);
 
 -- 管理者は全てのシェアログを閲覧可能
+drop policy if exists "Admins can view all share logs" on public.feed_share_log;
 create policy "Admins can view all share logs"
 on public.feed_share_log
 for select
@@ -60,13 +66,15 @@ using (
 );
 
 -- シェアログ挿入は認証済みユーザーのみ
+drop policy if exists "Authenticated users can insert share log" on public.feed_share_log;
 create policy "Authenticated users can insert share log"
 on public.feed_share_log
 for insert
 with check (auth.uid() = user_id);
 
--- 管理者用ビュー：ユーザーごとのシェア統計
-create or replace view public.admin_user_share_stats as
+-- 管理者用ビュー：ユーザーごとのシェア統計（ビューにはポリシー不要）
+drop view if exists public.admin_user_share_stats;
+create view public.admin_user_share_stats as
 select
   p.id as user_id,
   p.display_name,
@@ -84,16 +92,6 @@ group by p.id, p.display_name, p.twitter_username, p.twitter_username_updated_at
 
 -- 管理者のみビューにアクセス可能
 grant select on public.admin_user_share_stats to authenticated;
-
-create policy "Admins can view share stats"
-on public.admin_user_share_stats
-for select
-using (
-  exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
-  )
-);
 
 -- コメント
 comment on column public.profiles.twitter_username is 'Xアカウントのユーザー名（@なし、英数字とアンダースコアのみ、最大15文字）';
