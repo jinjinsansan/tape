@@ -284,7 +284,7 @@ export const postDailyMichelleDiaryEntry = async (options: PostOptions = {}): Pr
       visibility: "public",
       published_at: jst.isoNow,
       journal_date: jst.dateString,
-      is_shareable: false,
+      is_shareable: true,
       ai_comment_status: "skipped",
       ai_comment_metadata: {
         source: "michelle_daily_diary",
