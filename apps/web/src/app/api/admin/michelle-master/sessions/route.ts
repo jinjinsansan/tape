@@ -14,7 +14,7 @@ export async function GET() {
     const cookieStore = cookies();
     const supabase = createSupabaseRouteClient<Database>(cookieStore);
 
-    // Get all sessions with user info, ordered by urgency and recent activity
+    // Get all psychology sessions (category='life') with user info, ordered by urgency and recent activity
     const { data: sessions, error } = await supabase
       .from("michelle_sessions")
       .select(`
@@ -28,12 +28,13 @@ export async function GET() {
         urgency_updated_by,
         created_at,
         updated_at,
-        profiles!michelle_sessions_auth_user_id_fkey (
+        profiles:auth_user_id (
           id,
           display_name,
           email
         )
       `)
+      .eq("category", "life")
       .order("urgency_level", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(100);

@@ -235,7 +235,7 @@ export const listMichelleKnowledge = async () => {
     throw error;
   }
 
-  return data?.map((item) => ({
+  return (data ?? []).map((item) => ({
     ...item,
     child_count: item.children?.length ?? 0
   }));
@@ -309,7 +309,7 @@ export const listCounselorsForAdmin = async () => {
     throw error;
   }
 
-  return data?.map((item) => ({
+  return (data ?? []).map((item) => ({
     ...item,
     booking_count: item.bookings?.length ?? 0
   }));
