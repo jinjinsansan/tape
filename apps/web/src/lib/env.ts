@@ -12,7 +12,9 @@ const serverEnvSchema = z
     OPENAI_API_KEY: z.string().optional(),
     MICHELLE_ASSISTANT_ID: z.string().optional(),
     MICHELLE_ATTRACTION_ASSISTANT_ID: z.string().optional(),
-    USE_SINR_RAG: z.string().optional()
+    USE_SINR_RAG: z.string().optional(),
+    MICHELLE_DAILY_DIARY_USER_ID: z.string().uuid().optional(),
+    MICHELLE_DAILY_DIARY_MODEL: z.string().optional()
   })
   .superRefine((env, ctx) => {
     if (!env.NEXT_PUBLIC_SUPABASE_URL && !env.SUPABASE_URL) {
@@ -52,7 +54,9 @@ export const getServerEnv = (): ServerEnv => {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     MICHELLE_ASSISTANT_ID: process.env.MICHELLE_ASSISTANT_ID ?? process.env.ASSISTANT_ID,
     MICHELLE_ATTRACTION_ASSISTANT_ID: process.env.MICHELLE_ATTRACTION_ASSISTANT_ID,
-    USE_SINR_RAG: process.env.USE_SINR_RAG ?? process.env.NEXT_PUBLIC_USE_SINR_RAG
+    USE_SINR_RAG: process.env.USE_SINR_RAG ?? process.env.NEXT_PUBLIC_USE_SINR_RAG,
+    MICHELLE_DAILY_DIARY_USER_ID: process.env.MICHELLE_DAILY_DIARY_USER_ID,
+    MICHELLE_DAILY_DIARY_MODEL: process.env.MICHELLE_DAILY_DIARY_MODEL
   });
 
   if (!parsed.success) {
@@ -98,6 +102,15 @@ export const getMichelleAttractionAssistantId = () => {
     throw new Error("MICHELLE_ATTRACTION_ASSISTANT_ID is not configured");
   }
   return env.MICHELLE_ATTRACTION_ASSISTANT_ID;
+};
+
+export const getMichelleDailyDiaryUserId = () => {
+  const env = getServerEnv();
+  const userId = env.MICHELLE_DAILY_DIARY_USER_ID;
+  if (!userId) {
+    throw new Error("MICHELLE_DAILY_DIARY_USER_ID is not configured");
+  }
+  return userId;
 };
 
 const toBoolean = (value: string | undefined, defaultValue: boolean) => {

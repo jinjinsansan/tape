@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+
+import { postDailyMichelleDiaryEntry } from "@/server/services/daily-michelle-diary";
+
+const CRON_SECRET = process.env.CRON_SECRET ?? process.env.DIARY_AI_CRON_SECRET;
+
+const authorizeCron = (request: Request) => {
+  if (!CRON_SECRET) {
+    return true;
+  }
+
+  const header = request.headers.get("x-cron-secret");
+  if (header && header === CRON_SECRET) {
+    return true;
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader && authHeader === `Bearer ${CRON_SECRET}`) {
+    return true;
+  }
+
+  return false;
+};
+
+export async function POST(request: Request) {
+  if (!authorizeCron(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const forceParam = url.searchParams.get("force");
+  const force = forceParam === "1" || forceParam === "true";
+
+  try {
+    const result = await postDailyMichelleDiaryEntry({ force });
+    return NextResponse.json({ success: result.posted, result });
+  } catch (error) {
+    console.error("Failed to post Michelle daily diary", error);
+    return NextResponse.json({ error: "Failed to post daily diary" }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  return POST(request);
+}

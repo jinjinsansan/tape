@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/cron/diary-ai-comments",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/cron/michelle-daily-diary",
+      "schedule": "0 23 * * *"
     }
   ]
 }
