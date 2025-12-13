@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, BookOpenCheck, LineChart, Sparkles, Layers } from "lucide-react";
+import { ChevronLeft, BookOpenCheck, LineChart, Sparkles } from "lucide-react";
 
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,9 @@ import { cn } from "@/lib/utils";
 const resourceLinks = [
   {
     title: "かんじょうにっきの使い方",
-    description: "動画と図解で3ステップの書き方を確認",
+    description: "書き方・初期診断・毎日のコツを1ページで確認",
     href: "/diary/how-to",
     icon: Sparkles
-  },
-  {
-    title: "最初にやること",
-    description: "自己肯定感・無価値感の初期スコアを計測",
-    href: "/diary/first-steps",
-    icon: BookOpenCheck
-  },
-  {
-    title: "次にやること",
-    description: "毎日の感情の分類とスコア調整のコツ",
-    href: "/diary/next-steps",
-    icon: Layers
   },
   {
     title: "感情の種類",
@@ -81,7 +69,7 @@ export default function DiaryPage() {
     };
   }, []);
 
-  const highlightFirstSteps = checkedAssessment && needsAssessment;
+  const highlightHowTo = checkedAssessment && needsAssessment;
 
   return (
     <AuthGate>
@@ -103,10 +91,10 @@ export default function DiaryPage() {
       <main className="mx-auto max-w-5xl space-y-10">
         <section className="grid gap-4 md:grid-cols-2">
           {resourceLinks.map((item) => {
-            const isFirstSteps = item.href === "/diary/first-steps";
+            const isHowTo = item.href === "/diary/how-to";
             const cardClasses = cn(
               "border-none bg-white/70 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-md",
-              isFirstSteps && highlightFirstSteps && "ring-2 ring-tape-pink shadow-lg animate-pulse"
+              isHowTo && highlightHowTo && "ring-2 ring-tape-pink shadow-lg animate-pulse"
             );
 
             return (

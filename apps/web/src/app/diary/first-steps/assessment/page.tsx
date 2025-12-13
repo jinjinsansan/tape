@@ -221,7 +221,7 @@ export default function SelfAssessmentPage() {
   const renderIntro = () => (
     <div className="min-h-screen bg-tape-cream px-4 py-10">
       <div className="mx-auto max-w-3xl space-y-8">
-        <Link href="/diary/first-steps" className="text-sm text-tape-light-brown hover:text-tape-brown">
+        <Link href="/diary/how-to" className="text-sm text-tape-light-brown hover:text-tape-brown">
           ← 最初にやることへ戻る
         </Link>
         <div className="rounded-3xl bg-white p-8 shadow-lg ring-1 ring-tape-beige/60 space-y-6">
@@ -295,7 +295,7 @@ export default function SelfAssessmentPage() {
   const renderResult = () => (
     <div className="min-h-screen bg-tape-cream px-4 py-10">
       <div className="mx-auto max-w-3xl space-y-8">
-        <Link href="/diary/first-steps" className="text-sm text-tape-light-brown hover:text-tape-brown">
+        <Link href="/diary/how-to" className="text-sm text-tape-light-brown hover:text-tape-brown">
           ← 最初にやることへ戻る
         </Link>
         <div className="rounded-3xl bg-white p-8 shadow-lg ring-1 ring-tape-beige/60 space-y-6">
@@ -335,7 +335,7 @@ export default function SelfAssessmentPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/diary/first-steps"
+              href="/diary/how-to"
               className="inline-flex items-center justify-center rounded-full bg-tape-brown px-6 py-3 text-sm font-semibold text-white hover:bg-tape-brown/90"
             >
               記録に戻る

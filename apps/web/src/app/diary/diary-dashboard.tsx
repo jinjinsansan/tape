@@ -828,7 +828,7 @@ export function DiaryDashboard() {
                   )}
                   {!initialScore && !previousScoreInfo && (
                     <p className="text-xs text-tape-light-brown">
-                      まだ診断を行っていません。<Link href="/diary/first-steps" className="underline decoration-dotted">最初にやること</Link>から自己肯定感診断を実施すると、無価値感の推移グラフに反映されます。
+                      まだ診断を行っていません。<Link href="/diary/how-to" className="underline decoration-dotted">使い方ページ</Link>から自己肯定感診断を実施すると、無価値感の推移グラフに反映されます。
                     </p>
                   )}
                 </>
