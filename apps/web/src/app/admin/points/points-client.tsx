@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, Plus, Image as ImageIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { POINT_ACTION_LABELS } from "@/constants/points";
 
 type PointRule = {
   action: string;
@@ -29,14 +31,22 @@ type PointRedemptionRow = {
   user: { display_name: string; id: string } | null;
 };
 
-const pointActionLabels: Record<string, { label: string; hint: string }> = {
-  diary_post: { label: "日記投稿", hint: "日記を1件投稿するごと" },
-  feed_comment: { label: "コメント", hint: "みんなの日記にコメントするごと" },
-  feed_share_x: { label: "Xシェア", hint: "みんなの日記をXでシェアするごと" },
-  referral_5days: { label: "紹介特典(5日)", hint: "紹介したユーザーが5日継続" },
-  referral_10days: { label: "紹介特典(10日)", hint: "紹介したユーザーが10日継続" },
-  admin_adjustment: { label: "管理者調整", hint: "管理者が手動でポイントを付与" }
+type PointAnalytics = {
+  totals: {
+    total_topup_cents: number;
+    total_consume_cents: number;
+    total_bonus_cents: number;
+    total_refund_cents: number;
+    total_points_awarded: number;
+    total_points_redeemed: number;
+  };
+  actionBreakdown: Array<{ action: string; total_points: number; event_count: number }>;
+  redemptionBreakdown: Array<{ reward_title: string; total_points_spent: number; redemption_count: number }>;
+  revenueSeries: Array<{ date: string; topupCents: number; consumeCents: number; redemptionPoints: number }>;
+  recentTopups: Array<{ id: string; amount_cents: number; created_at: string }>;
+  recentRedemptions: Array<{ id: string; points_spent: number; created_at: string }>;
 };
+
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -47,10 +57,19 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+const formatYen = (cents?: number | null) =>
+  `¥${Math.round((cents ?? 0) / 100).toLocaleString("ja-JP")}`;
+
+const formatPoints = (points?: number | null) => `${(points ?? 0).toLocaleString()} pt`;
+
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+
 export function PointsManagementClient() {
   const [pointRules, setPointRules] = useState<PointRule[]>([]);
   const [pointRewards, setPointRewards] = useState<PointRewardRow[]>([]);
   const [pointRedemptions, setPointRedemptions] = useState<PointRedemptionRow[]>([]);
+  const [analytics, setAnalytics] = useState<PointAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingRule, setSavingRule] = useState<string | null>(null);
   const [rewardForm, setRewardForm] = useState({
@@ -65,6 +84,10 @@ export function PointsManagementClient() {
   const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
   const [creatingReward, setCreatingReward] = useState(false);
 
+  const revenueRecent = analytics ? [...analytics.revenueSeries].slice(-7).reverse() : [];
+  const actionBreakdown = analytics?.actionBreakdown ?? [];
+  const redemptionBreakdown = analytics?.redemptionBreakdown ?? [];
+
   const loadPointOverview = useCallback(async () => {
     setLoading(true);
     try {
@@ -72,10 +95,12 @@ export function PointsManagementClient() {
         rules: PointRule[];
         rewards: PointRewardRow[];
         redemptions: PointRedemptionRow[];
+        analytics: PointAnalytics | null;
       }>("/api/admin/points/overview");
       setPointRules(data.rules ?? []);
       setPointRewards(data.rewards ?? []);
       setPointRedemptions(data.redemptions ?? []);
+      setAnalytics(data.analytics ?? null);
     } catch (err) {
       console.error("Failed to load point overview:", err);
       // エラーの詳細をユーザーに表示
@@ -246,12 +271,137 @@ export function PointsManagementClient() {
           </div>
         ) : (
           <div className="space-y-6">
+            {analytics && (
+              <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.3em] text-emerald-500">SITE REVENUE</p>
+                    <h2 className="text-2xl font-bold text-slate-900">サイト全体のポイント売上</h2>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-emerald-50 bg-emerald-50/60 p-4">
+                    <p className="text-xs font-semibold text-emerald-700">累計売上 (チャージ)</p>
+                    <p className="mt-2 text-2xl font-bold text-emerald-700">
+                      {formatYen(analytics.totals.total_topup_cents)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                    <p className="text-xs font-semibold text-slate-600">累計使用 (消費)</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {formatYen(analytics.totals.total_consume_cents)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                    <p className="text-xs font-semibold text-slate-600">累計付与ポイント</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {formatPoints(analytics.totals.total_points_awarded)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+                    <p className="text-xs font-semibold text-rose-600">累計使用ポイント</p>
+                    <p className="mt-2 text-2xl font-bold text-rose-600">
+                      {formatPoints(analytics.totals.total_points_redeemed)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700">直近チャージ・消費トレンド</h3>
+                    {revenueRecent.length === 0 ? (
+                      <p className="mt-3 text-sm text-slate-500">直近のデータがありません</p>
+                    ) : (
+                      <div className="mt-3 space-y-2 text-sm">
+                        {revenueRecent.map((row) => (
+                          <div key={row.date} className="flex items-center justify-between rounded-xl border border-white/60 bg-white/80 px-3 py-2">
+                            <div>
+                              <p className="font-semibold text-slate-900">{formatDate(row.date)}</p>
+                              <p className="text-xs text-slate-500">チャージ {formatYen(row.topupCents)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-slate-500">消費 {formatYen(row.consumeCents)}</p>
+                              <p className="text-xs text-rose-500">使用 {formatPoints(row.redemptionPoints)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                    <h3 className="text-sm font-semibold text-slate-700">ポイント獲得アクション別内訳</h3>
+                    {actionBreakdown.length === 0 ? (
+                      <p className="mt-3 text-sm text-slate-500">データがありません</p>
+                    ) : (
+                      <ul className="mt-3 space-y-2 text-sm">
+                        {actionBreakdown.map((item) => {
+                          const info = POINT_ACTION_LABELS[item.action as keyof typeof POINT_ACTION_LABELS] ?? {
+                            label: item.action,
+                            hint: ""
+                          };
+                          return (
+                            <li key={item.action} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                              <div>
+                                <p className="font-semibold text-slate-900">{info.label}</p>
+                                <p className="text-xs text-slate-500">{item.event_count} 件</p>
+                              </div>
+                              <p className="text-sm font-bold text-emerald-600">{formatPoints(item.total_points)}</p>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                    <h3 className="text-sm font-semibold text-slate-700">最新のポイント売上</h3>
+                    {analytics.recentTopups.length === 0 ? (
+                      <p className="mt-3 text-sm text-slate-500">まだ売上がありません</p>
+                    ) : (
+                      <div className="mt-3 space-y-2 text-sm">
+                        {analytics.recentTopups.map((tx) => (
+                          <div key={tx.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                            <p className="font-semibold text-slate-900">{formatYen(tx.amount_cents)}</p>
+                            <p className="text-xs text-slate-500">{formatDate(tx.created_at)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4">
+                    <h3 className="text-sm font-semibold text-rose-700">ポイント使用トップ</h3>
+                    {redemptionBreakdown.length === 0 ? (
+                      <p className="mt-3 text-sm text-rose-600">まだ使用履歴がありません</p>
+                    ) : (
+                      <ul className="mt-3 space-y-2 text-sm">
+                        {redemptionBreakdown.slice(0, 5).map((item) => (
+                          <li key={item.reward_title} className="flex items-center justify-between rounded-xl border border-white/40 bg-white/60 px-3 py-2">
+                            <div>
+                              <p className="font-semibold text-slate-900">{item.reward_title}</p>
+                              <p className="text-xs text-slate-500">{item.redemption_count} 件</p>
+                            </div>
+                            <p className="text-sm font-bold text-rose-600">{formatPoints(item.total_points_spent)}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
             {/* Point Rules */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900">ポイント獲得ルール</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {pointRules.map((rule) => {
-                  const info = pointActionLabels[rule.action] ?? { label: rule.action, hint: "" };
+                  const info = POINT_ACTION_LABELS[rule.action as keyof typeof POINT_ACTION_LABELS] ?? {
+                    label: rule.action,
+                    hint: ""
+                  };
                   return (
                     <div key={rule.action} className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">

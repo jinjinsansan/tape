@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
-import { fetchPointRules, listAllRedemptions, listAllRewards } from "@/server/services/points";
+import { fetchPointRules, listAllRedemptions, listAllRewards, fetchPointAnalytics } from "@/server/services/points";
 
 export async function GET() {
   const cookieStore = cookies();
@@ -14,7 +14,7 @@ export async function GET() {
   try {
     console.log("[Point Overview] Loading rules, rewards, and redemptions...");
     
-    const [rules, rewards, redemptions] = await Promise.all([
+    const [rules, rewards, redemptions, analytics] = await Promise.all([
       fetchPointRules().catch(err => {
         console.error("[Point Overview] Failed to fetch rules:", err);
         throw new Error(`Rules fetch failed: ${err.message}`);
@@ -26,6 +26,10 @@ export async function GET() {
       listAllRedemptions(100).catch(err => {
         console.error("[Point Overview] Failed to list redemptions:", err);
         throw new Error(`Redemptions fetch failed: ${err.message}`);
+      }),
+      fetchPointAnalytics().catch(err => {
+        console.error("[Point Overview] Failed to build analytics:", err);
+        throw new Error(`Analytics fetch failed: ${err.message}`);
       })
     ]);
 
@@ -35,7 +39,7 @@ export async function GET() {
       redemptionsCount: redemptions?.length ?? 0
     });
 
-    return NextResponse.json({ rules, rewards, redemptions });
+    return NextResponse.json({ rules, rewards, redemptions, analytics });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("[Point Overview] Failed to load point overview:", errorMessage, error);

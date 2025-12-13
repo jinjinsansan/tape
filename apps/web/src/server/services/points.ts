@@ -243,3 +243,73 @@ export const listAllRedemptions = async (limit = 50) => {
     user: { id: string; display_name: string | null } | null;
   })[];
 };
+
+export const fetchPointAnalytics = async (days = 30) => {
+  const supabase = admin();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [totalsResult, actionBreakdownResult, redemptionBreakdownResult, transactionsResult, recentRedemptionsResult] =
+    await Promise.all([
+      supabase.rpc("admin_point_totals").single(),
+      supabase.rpc("admin_point_action_breakdown"),
+      supabase.rpc("admin_point_redemption_breakdown"),
+      supabase
+        .from("transactions")
+        .select("id, type, amount_cents, created_at")
+        .in("type", ["topup", "consume"])
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(300),
+      supabase
+        .from("point_redemptions")
+        .select("id, points_spent, created_at")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(300)
+    ]);
+
+  if (totalsResult.error) throw totalsResult.error;
+  if (actionBreakdownResult.error) throw actionBreakdownResult.error;
+  if (redemptionBreakdownResult.error) throw redemptionBreakdownResult.error;
+  if (transactionsResult.error) throw transactionsResult.error;
+  if (recentRedemptionsResult.error) throw recentRedemptionsResult.error;
+
+  const seriesMap = new Map<string, { topup: number; consume: number; redemption: number }>();
+
+  (transactionsResult.data ?? []).forEach((tx) => {
+    const key = tx.created_at.slice(0, 10);
+    const bucket = seriesMap.get(key) ?? { topup: 0, consume: 0, redemption: 0 };
+    if (tx.type === "topup") bucket.topup += tx.amount_cents;
+    if (tx.type === "consume") bucket.consume += tx.amount_cents;
+    seriesMap.set(key, bucket);
+  });
+
+  (recentRedemptionsResult.data ?? []).forEach((redeem) => {
+    const key = redeem.created_at.slice(0, 10);
+    const bucket = seriesMap.get(key) ?? { topup: 0, consume: 0, redemption: 0 };
+    bucket.redemption += redeem.points_spent;
+    seriesMap.set(key, bucket);
+  });
+
+  const revenueSeries = Array.from(seriesMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, bucket]) => ({
+      date,
+      topupCents: bucket.topup,
+      consumeCents: bucket.consume,
+      redemptionPoints: bucket.redemption
+    }));
+
+  const recentTopups = (transactionsResult.data ?? [])
+    .filter((tx) => tx.type === "topup")
+    .slice(0, 10);
+
+  return {
+    totals: totalsResult.data,
+    actionBreakdown: actionBreakdownResult.data ?? [],
+    redemptionBreakdown: redemptionBreakdownResult.data ?? [],
+    revenueSeries,
+    recentTopups,
+    recentRedemptions: (recentRedemptionsResult.data ?? []).slice(0, 10)
+  };
+};

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   try {
     const users = await listUsersForAdmin(search);
-    return NextResponse.json({ users });
+    return NextResponse.json({ users, userRole: "admin" });
   } catch (error) {
     console.error("Failed to load admin users", error);
     return NextResponse.json({ error: "Failed to load users" }, { status: 500 });

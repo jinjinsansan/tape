@@ -11,12 +11,61 @@ export type AdminUser = {
   displayName: string | null;
   role: string;
   createdAt: string;
+  email: string | null;
   wallet: {
     balanceCents: number;
     status: string;
   } | null;
   twitterUsername?: string | null;
   xShareCount?: number;
+};
+
+type PointEventRow = Database["public"]["Tables"]["point_events"]["Row"];
+type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
+type BookingRow = Database["public"]["Tables"]["counselor_bookings"]["Row"];
+type DiaryEntryRow = Database["public"]["Tables"]["emotion_diary_entries"]["Row"];
+
+export type AdminUserInsights = {
+  profile: {
+    id: string;
+    displayName: string | null;
+    role: string;
+    email: string | null;
+    createdAt: string;
+  };
+  wallet: {
+    balanceCents: number;
+    status: string;
+  } | null;
+  points: {
+    totalEarned: number;
+    totalRedeemed: number;
+    events: Array<Pick<PointEventRow, "id" | "action" | "points" | "reference_id" | "metadata" | "created_at">>;
+    redemptions: Array<{
+      id: string;
+      rewardTitle: string | null;
+      pointsSpent: number;
+      status: string;
+      quantity: number;
+      createdAt: string;
+    }>;
+  };
+  walletTransactions: Array<Pick<TransactionRow, "id" | "type" | "amount_cents" | "balance_after_cents" | "metadata" | "created_at" >>;
+  bookings: Array<{
+    id: string;
+    status: BookingRow["status"];
+    planType: BookingRow["plan_type"];
+    priceCents: number;
+    currency: string;
+    paymentStatus: string;
+    createdAt: string;
+    counselor: { display_name: string | null; slug: string | null } | null;
+    slot: { start_time: string; end_time: string } | null;
+  }>;
+  diaries: {
+    totalCount: number;
+    entries: Array<Pick<DiaryEntryRow, "id" | "journal_date" | "title" | "visibility" | "urgency_level" | "mood_label" | "ai_comment_status" | "created_at" | "published_at" >>;
+  };
 };
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -186,6 +235,155 @@ export const updateWalletStatus = async (userId: string, status: Database["publi
   if (error) {
     throw error;
   }
+};
+
+export const getUserInsightsForAdmin = async (userId: string): Promise<AdminUserInsights> => {
+  const supabase = adminClient();
+  const authAdmin = supabase.auth.admin;
+
+  const [{ data: profile, error: profileError }, { data: walletData, error: walletError }, authUserResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, display_name, role, created_at")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("wallets")
+      .select("id, balance_cents, status")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    authAdmin
+      .getUserById(userId)
+      .then(({ data }) => data.user)
+      .catch((error) => {
+        console.error("Failed to load auth user", error);
+        return null;
+      })
+  ]);
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (walletError) {
+    throw walletError;
+  }
+
+  if (!profile) {
+    throw new Error("User not found");
+  }
+
+  const [pointEventsResult, redemptionsResult, transactionsResult, bookingsResult, diaryResult] = await Promise.all([
+    supabase
+      .from("point_events")
+      .select("id, action, points, reference_id, metadata, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("admin_point_redemptions_view")
+      .select("id, reward, points_spent, status, quantity, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("transactions")
+      .select("id, type, amount_cents, balance_after_cents, metadata, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("counselor_bookings")
+      .select(
+        `
+          id,
+          status,
+          plan_type,
+          price_cents,
+          currency,
+          payment_status,
+          created_at,
+          counselor:counselors!counselor_bookings_counselor_id_fkey(display_name, slug),
+          slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
+        `
+      )
+      .eq("client_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("emotion_diary_entries")
+      .select(
+        "id, journal_date, title, visibility, urgency_level, mood_label, ai_comment_status, created_at, published_at",
+        { count: "exact" }
+      )
+      .eq("user_id", userId)
+      .order("journal_date", { ascending: false })
+      .limit(20)
+  ]);
+
+  if (pointEventsResult.error) throw pointEventsResult.error;
+  if (redemptionsResult.error) throw redemptionsResult.error;
+  if (transactionsResult.error) throw transactionsResult.error;
+  if (bookingsResult.error) throw bookingsResult.error;
+  if (diaryResult.error) throw diaryResult.error;
+
+  const pointEvents = pointEventsResult.data ?? [];
+  const redemptions = redemptionsResult.data ?? [];
+  const transactions = transactionsResult.data ?? [];
+  const bookings = bookingsResult.data ?? [];
+  const diaryEntries = diaryResult.data ?? [];
+
+  const totalPointsEarned = pointEvents.reduce((sum, evt) => sum + (evt.points ?? 0), 0);
+  const totalPointsRedeemed = redemptions.reduce((sum, redeem) => sum + (redeem.points_spent ?? 0), 0);
+
+  const mappedRedemptions = redemptions.map((item) => ({
+    id: item.id,
+    rewardTitle: (item.reward as { title?: string } | null)?.title ?? null,
+    pointsSpent: item.points_spent,
+    status: item.status,
+    quantity: item.quantity ?? 1,
+    createdAt: item.created_at
+  }));
+
+  const mappedBookings = bookings.map((item) => ({
+    id: item.id,
+    status: item.status,
+    planType: item.plan_type,
+    priceCents: item.price_cents,
+    currency: item.currency,
+    paymentStatus: item.payment_status,
+    createdAt: item.created_at,
+    counselor: item.counselor ?? null,
+    slot: item.slot ?? null
+  }));
+
+  return {
+    profile: {
+      id: profile.id,
+      displayName: profile.display_name,
+      role: profile.role,
+      email: authUserResult?.email ?? null,
+      createdAt: profile.created_at
+    },
+    wallet: walletData
+      ? {
+          balanceCents: walletData.balance_cents,
+          status: walletData.status
+        }
+      : null,
+    points: {
+      totalEarned: totalPointsEarned,
+      totalRedeemed: totalPointsRedeemed,
+      events: pointEvents,
+      redemptions: mappedRedemptions
+    },
+    walletTransactions: transactions,
+    bookings: mappedBookings,
+    diaries: {
+      totalCount: diaryResult.count ?? diaryEntries.length,
+      entries: diaryEntries
+    }
+  };
 };
 
 export const listRecentNotifications = async (limit = 20) => {
