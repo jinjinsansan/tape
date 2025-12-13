@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { verifyMasterAuth } from "@/lib/michelle-master-auth";
-import { cookies } from "next/headers";
-import type { Database } from "@tape/supabase";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 export async function GET() {
   // Verify master authentication
@@ -11,8 +9,7 @@ export async function GET() {
   }
 
   try {
-    const cookieStore = cookies();
-    const supabase = createSupabaseRouteClient<Database>(cookieStore);
+    const supabase = getSupabaseAdminClient();
 
     // Get all psychology sessions (category='life') with user info, ordered by urgency and recent activity
     const { data: sessions, error } = await supabase

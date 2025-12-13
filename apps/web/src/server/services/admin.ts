@@ -1,5 +1,6 @@
 import type { Database, Json } from "@tape/supabase";
 
+import { getServerEnv } from "@/lib/env";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { consumeWallet, getOrCreateWallet, topUpWallet } from "./wallet";
 
@@ -299,6 +300,7 @@ export const listCounselorsForAdmin = async () => {
         slug,
         is_active,
         specialties,
+        hourly_rate_cents,
         created_at,
         bookings:counselor_bookings(id)
       `
@@ -311,6 +313,7 @@ export const listCounselorsForAdmin = async () => {
 
   return (data ?? []).map((item) => ({
     ...item,
+    specialties: Array.isArray(item.specialties) ? item.specialties : [],
     booking_count: item.bookings?.length ?? 0
   }));
 };
@@ -407,17 +410,48 @@ export const listAuditLogs = async (limit = 50) => {
 
 export const getSystemHealth = async () => {
   const supabase = adminClient();
-  const supabaseStatus = await supabase
-    .from("profiles")
-    .select("id", { head: true, count: "exact" })
-    .limit(1)
-    .then(() => true)
-    .catch(() => false);
+  const env = getServerEnv();
+
+  const databaseHealthy = await (async () => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .select("id", { head: true, count: "exact" })
+        .limit(1);
+      if (error) {
+        console.error("Database health check failed", error);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Database health check threw", error);
+      return false;
+    }
+  })();
+
+  const supabaseHealthy = await (async () => {
+    try {
+      const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+      if (error) {
+        console.error("Supabase auth health check failed", error);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Supabase auth health check threw", error);
+      return false;
+    }
+  })();
+
+  const openaiHealthy = Boolean(env.OPENAI_API_KEY);
+  const resendHealthy = Boolean(env.RESEND_API_KEY);
 
   return {
-    supabase: supabaseStatus,
-    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
-    resendConfigured: Boolean(process.env.RESEND_API_KEY),
+    supabase: supabaseHealthy,
+    database: databaseHealthy,
+    openai: openaiHealthy,
+    openaiConfigured: openaiHealthy,
+    resendConfigured: resendHealthy,
     featureFlags: {
       MICHELLE_AI_ENABLED: process.env.NEXT_PUBLIC_MICHELLE_AI_ENABLED ?? "false"
     }

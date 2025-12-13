@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { verifyMasterAuth } from "@/lib/michelle-master-auth";
-import { cookies } from "next/headers";
+import { getSupabaseAdminClient } from "@/server/supabase";
 import { z } from "zod";
-import type { Database } from "@tape/supabase";
 
 const urgencySchema = z.object({
   level: z.enum(["normal", "attention", "urgent", "critical"]),
@@ -27,8 +25,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const cookieStore = cookies();
-    const supabase = createSupabaseRouteClient<Database>(cookieStore);
+    const supabase = getSupabaseAdminClient();
     const { sessionId } = params;
     const { level, notes } = parsed.data;
 

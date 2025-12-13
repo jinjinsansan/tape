@@ -609,3 +609,7 @@ export function CourseManagement() {
     </div>
   );
 }
+
+export default function CourseManagementPage() {
+  return <CourseManagement />;
+}

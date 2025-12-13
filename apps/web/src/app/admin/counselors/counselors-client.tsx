@@ -7,9 +7,8 @@ type Counselor = {
   id: string;
   display_name: string | null;
   bio: string | null;
-  expertise: string[];
-  hourly_rate: number | null;
-  available_slots: string[];
+  specialties: string[];
+  hourly_rate_cents: number | null;
   created_at: string;
 };
 
@@ -28,8 +27,14 @@ export function CounselorsManagementClient() {
   const loadCounselors = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchJson<{ counselors: Counselor[] }>("/api/admin/counselors");
-      setCounselors(Array.isArray(data.counselors) ? data.counselors : []);
+      const data = await fetchJson<{ counselors: Array<Omit<Counselor, "specialties"> & { specialties: string[] | null }> }>("/api/admin/counselors");
+      const normalized = Array.isArray(data.counselors)
+        ? data.counselors.map((counselor) => ({
+            ...counselor,
+            specialties: Array.isArray(counselor.specialties) ? counselor.specialties : []
+          }))
+        : [];
+      setCounselors(normalized);
     } catch (err) {
       console.error(err);
       setCounselors([]);
@@ -123,11 +128,11 @@ export function CounselorsManagementClient() {
                   </div>
                 )}
 
-                {counselor.expertise.length > 0 && (
+                {counselor.specialties.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs font-semibold text-slate-600">専門分野</p>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {counselor.expertise.map((exp, idx) => (
+                      {counselor.specialties.map((exp, idx) => (
                         <span
                           key={idx}
                           className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700"
@@ -139,11 +144,11 @@ export function CounselorsManagementClient() {
                   </div>
                 )}
 
-                {counselor.hourly_rate && (
+                {typeof counselor.hourly_rate_cents === "number" && (
                   <div className="mt-3 flex items-center gap-2 text-sm">
                     <span className="text-slate-600">料金:</span>
                     <span className="font-bold text-slate-900">
-                      ¥{counselor.hourly_rate.toLocaleString()} / 時間
+                      ¥{counselor.hourly_rate_cents.toLocaleString()} / 時間
                     </span>
                   </div>
                 )}
