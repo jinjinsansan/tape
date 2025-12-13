@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -99,17 +99,18 @@ export function FeedPageClient() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const initialFetchedRef = useRef(false);
 
   const fetchFeed = useCallback(
-    async (mode: "initial" | "append") => {
+    async (mode: "initial" | "append", cursorValue: string | null) => {
       if (mode === "append" && (!hasMore || loadingMore)) {
         return;
       }
       mode === "initial" ? setLoading(true) : setLoadingMore(true);
       try {
         const params = new URLSearchParams();
-        if (mode === "append" && cursor) {
-          params.set("cursor", cursor);
+        if (mode === "append" && cursorValue) {
+          params.set("cursor", cursorValue);
         }
         const res = await fetch(`/api/feed?${params.toString()}`);
         if (!res.ok) {
@@ -126,11 +127,13 @@ export function FeedPageClient() {
         mode === "initial" ? setLoading(false) : setLoadingMore(false);
       }
     },
-    [cursor, hasMore, loadingMore]
+    [hasMore, loadingMore]
   );
 
   useEffect(() => {
-    fetchFeed("initial");
+    if (initialFetchedRef.current) return;
+    initialFetchedRef.current = true;
+    fetchFeed("initial", null);
   }, [fetchFeed]);
 
   const handleReactionToggle = async (entryId: string, reactionId: string) => {
@@ -175,7 +178,7 @@ export function FeedPageClient() {
       }
     } catch (err) {
       console.error(err);
-      fetchFeed("initial");
+      fetchFeed("initial", null);
     }
   };
 
@@ -526,7 +529,7 @@ export function FeedPageClient() {
           ))}
           {hasMore && (
             <Button
-              onClick={() => fetchFeed("append")}
+              onClick={() => fetchFeed("append", cursor)}
               disabled={loadingMore}
               variant="outline"
               className="w-full text-tape-light-brown"

@@ -311,13 +311,13 @@ export function DiaryManagementClient() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-2">
                   {/* ヘッダー */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 break-all">
                     <User className="h-4 w-4 text-slate-400" />
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-slate-900 break-all">
                       {entry.user_name}
                     </span>
                     {entry.user_email && (
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 break-all">
                         ({entry.user_email})
                       </span>
                     )}
