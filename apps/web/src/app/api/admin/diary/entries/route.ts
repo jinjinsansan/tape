@@ -83,13 +83,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch user profiles for display names + emails
+    // Fetch user profiles for display names
     const userIds = [...new Set((data || []).map((entry) => entry.user_id))];
-    let profilesMap = new Map<string, { display_name: string | null; email: string | null }>();
+    let profilesMap = new Map<string, { display_name: string | null }>();
     if (userIds.length > 0) {
       const { data: profiles, error: profileError } = await adminSupabase
         .from("profiles")
-        .select("id, display_name, email")
+        .select("id, display_name")
         .in("id", userIds);
 
       if (!profileError && profiles) {
@@ -97,12 +97,27 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetch auth emails for missing names
+    const authAdmin = adminSupabase.auth.admin;
+    const emailMap = new Map<string, string | null>();
+    await Promise.all(
+      userIds.map(async (id) => {
+        try {
+          const { data: userData } = await authAdmin.getUserById(id);
+          emailMap.set(id, userData.user?.email ?? null);
+        } catch (error) {
+          console.error("Failed to load auth user", { id, error });
+          emailMap.set(id, null);
+        }
+      })
+    );
+
     const entries = (data || []).map((entry) => {
       const profile = profilesMap.get(entry.user_id);
-      const fallbackEmail = profile?.email || null;
+      const fallbackEmail = emailMap.get(entry.user_id) ?? null;
       return {
         ...entry,
-        user_name: profile?.display_name || fallbackEmail || "匿名ユーザー",
+        user_name: profile?.display_name || fallbackEmail || `ユーザー(${entry.user_id.slice(0, 6)})`,
         user_email: fallbackEmail,
         comments_count: commentCounts[entry.id] || 0
       };
