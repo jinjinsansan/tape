@@ -42,7 +42,8 @@ export async function GET(request: Request) {
           assigned_counselor,
           counselor_memo_read,
           is_counselor_comment_public,
-          is_ai_comment_public
+          is_ai_comment_public,
+          profile:profiles!emotion_diary_entries_user_id_fkey(id, display_name, email)
         `,
         { count: "exact" }
       )
@@ -65,17 +66,6 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    // ユーザーIDを収集してプロファイルを一括取得
-    const userIds = [...new Set((data || []).map((entry) => entry.user_id))];
-    const { data: profilesData } = await adminSupabase
-      .from("profiles")
-      .select("id, display_name, email")
-      .in("id", userIds);
-
-    const profilesMap = new Map(
-      (profilesData || []).map((profile) => [profile.id, profile])
-    );
-
     // コメント数を取得
     const entryIds = (data || []).map((entry) => entry.id);
     let commentCounts: Record<string, number> = {};
@@ -94,15 +84,12 @@ export async function GET(request: Request) {
       }
     }
 
-    const entries = (data || []).map((entry) => {
-      const profile = profilesMap.get(entry.user_id);
-      return {
-        ...entry,
-        user_name: profile?.display_name || "匿名ユーザー",
-        user_email: profile?.email || null,
-        comments_count: commentCounts[entry.id] || 0
-      };
-    });
+    const entries = (data || []).map((entry) => ({
+      ...entry,
+      user_name: entry.profile?.display_name || "匿名ユーザー",
+      user_email: entry.profile?.email || null,
+      comments_count: commentCounts[entry.id] || 0
+    }));
 
     return NextResponse.json({ entries, total: count ?? entries.length });
   } catch (error) {
