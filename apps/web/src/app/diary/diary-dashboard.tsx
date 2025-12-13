@@ -85,18 +85,18 @@ type EmotionOption = {
 };
 
 const emotionOptions: EmotionOption[] = [
-  { label: "恐怖", tone: "bg-purple-100 text-purple-800 border-purple-200", description: "危険を感じて身構えているときの緊張感" },
-  { label: "悲しみ", tone: "bg-blue-100 text-blue-800 border-blue-200", description: "喪失や別れで心が静かに沈んでいる状態" },
-  { label: "怒り", tone: "bg-red-100 text-red-800 border-red-200", description: "正しさを守りたいときに湧き上がる熱さ" },
-  { label: "悔しい", tone: "bg-green-100 text-green-800 border-green-200", description: "もっとできたかもしれないという再挑戦のエネルギー" },
-  { label: "無価値感", tone: "bg-gray-100 text-gray-800 border-gray-300", description: "自分の存在意義が見えなくなる深い不安" },
-  { label: "罪悪感", tone: "bg-orange-100 text-orange-800 border-orange-200", description: "誰かを傷つけたと感じるときの重たい気持ち" },
-  { label: "寂しさ", tone: "bg-indigo-100 text-indigo-800 border-indigo-200", description: "つながりがほしくなる、心に空気が入る感覚" },
-  { label: "恥ずかしさ", tone: "bg-pink-100 text-pink-800 border-pink-200", description: "注目を浴びて隠れたくなるときのそわそわ感" },
-  { label: "嬉しい", tone: "bg-yellow-100 text-yellow-800 border-yellow-200", description: "小さな幸せを感じたときのキラッとした気持ち" },
-  { label: "感謝", tone: "bg-teal-100 text-teal-800 border-teal-200", description: "支えられたと実感するときの温かさ" },
-  { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200", description: "やり切った瞬間に胸が高鳴る充足" },
-  { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200", description: "ただ存在しているだけで満たされている安心感" }
+  { label: "恐怖", tone: "bg-purple-100 text-purple-800 border-purple-200", description: "息苦しさ、震え、冷や汗など身体の反応が強く現れる状態。" },
+  { label: "悲しみ", tone: "bg-blue-100 text-blue-800 border-blue-200", description: "喪失感や心に穴が空いたような感覚。" },
+  { label: "怒り", tone: "bg-red-100 text-red-800 border-red-200", description: "体温が上がり、拳を握るようなエネルギー。" },
+  { label: "悔しい", tone: "bg-green-100 text-green-800 border-green-200", description: "やり返したい、もっと出来たはずというエネルギー。" },
+  { label: "無価値感", tone: "bg-gray-100 text-gray-800 border-gray-300", description: "存在意義が無いと感じる深い自己否定。" },
+  { label: "罪悪感", tone: "bg-orange-100 text-orange-800 border-orange-200", description: "申し訳なさや取り返しがつかないと感じる思い。" },
+  { label: "寂しさ", tone: "bg-indigo-100 text-indigo-800 border-indigo-200", description: "孤独を感じ、誰かに会いたくなる気持ち。" },
+  { label: "恥ずかしさ", tone: "bg-pink-100 text-pink-800 border-pink-200", description: "隠れたくなる、顔が赤くなる感覚。" },
+  { label: "嬉しい", tone: "bg-yellow-100 text-yellow-800 border-yellow-200", description: "心が弾み、自然と笑顔になる感覚。" },
+  { label: "感謝", tone: "bg-teal-100 text-teal-800 border-teal-200", description: "支えられた温かさや恩返ししたい気持ち。" },
+  { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200", description: "やり切った誇らしさ、努力が報われた感覚。" },
+  { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200", description: "満たされて安心している穏やかな状態。" }
 ];
 
 const GUEST_STORAGE_KEY = "tape_diary_guest_entries";
@@ -746,7 +746,7 @@ export function DiaryDashboard() {
               </label>
               <div>
                 <p className="text-xs font-semibold text-tape-light-brown">今日感じた感情を選ぶ</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2 grid-cols-2 sm:grid-cols-3">
                   {emotionOptions.map((option) => (
                     <button
                       key={option.label}
@@ -754,15 +754,15 @@ export function DiaryDashboard() {
                       onClick={() => handleEmotionSelect(option.label)}
                       aria-pressed={emotionLabel === option.label}
                       className={cn(
-                        "rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-200",
+                        "rounded-2xl border px-3 py-3 text-left text-xs font-semibold transition-all duration-200",
                         option.tone,
                         emotionLabel === option.label
                           ? "ring-2 ring-tape-pink shadow-lg scale-[1.02]"
                           : "opacity-80 hover:opacity-100 hover:-translate-y-0.5 hover:shadow"
                       )}
                     >
-                      <span className="block text-base">{option.label}</span>
-                      <span className="mt-1 block text-[11px] font-normal text-tape-brown/70">
+                      <span className="block text-sm">{option.label}</span>
+                      <span className="mt-0.5 block text-[10px] font-normal text-tape-brown/70">
                         {option.description}
                       </span>
                     </button>
