@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
-import { Wallet, TrendingUp, Clock, Gift, Users, Share2 } from "lucide-react";
+import { Wallet, TrendingUp, Clock, Gift, Users, Share2, Copy } from "lucide-react";
 import type { Database } from "@tape/supabase";
 
 type WalletData = {
@@ -210,13 +210,14 @@ export function WalletClient() {
   };
 
   const sortedRewards = useMemo(() => rewards.filter((reward) => reward.is_active), [rewards]);
+  const referralCode = referral?.referralCode ?? null;
   const referralUrl = useMemo(() => {
-    if (!referral?.referralCode) return null;
+    if (!referralCode) return null;
     if (typeof window === "undefined") {
-      return `/invite/${referral.referralCode}`;
+      return `/invite/${referralCode}`;
     }
-    return `${window.location.origin}/invite/${referral.referralCode}`;
-  }, [referral?.referralCode]);
+    return `${window.location.origin}/invite/${referralCode}`;
+  }, [referralCode]);
 
   const handleCopyReferral = async () => {
     if (!referralUrl) return;
@@ -227,6 +228,20 @@ export function WalletClient() {
       }
       await navigator.clipboard.writeText(referralUrl);
       setReferralMessage("紹介URLをコピーしました");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCopyReferralCode = async () => {
+    if (!referralCode) return;
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+        alert("お使いのブラウザではコピー機能が利用できません。");
+        return;
+      }
+      await navigator.clipboard.writeText(referralCode);
+      setReferralMessage("紹介コードをコピーしました");
     } catch (err) {
       console.error(err);
     }
@@ -466,18 +481,33 @@ export function WalletClient() {
           <h3 className="text-lg font-bold text-tape-brown">友達紹介プログラム</h3>
         </div>
         {referralMessage && <p className="mb-3 text-xs text-tape-pink">{referralMessage}</p>}
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown">
-            <p>紹介用URL</p>
-            <p className="mt-1 break-all font-mono text-xs text-tape-pink">{referralUrl ?? "取得中..."}</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown flex flex-col gap-3">
+            <div>
+              <p>紹介用URL</p>
+              <p className="mt-1 break-all font-mono text-xs text-tape-pink">{referralUrl ?? "取得中..."}</p>
+            </div>
+            <button
+              onClick={handleCopyReferral}
+              disabled={!referralUrl}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-tape-orange/50 px-4 py-2 text-sm font-bold text-tape-brown hover:bg-tape-cream disabled:opacity-50"
+            >
+              <Share2 className="h-4 w-4" /> URLをコピー
+            </button>
           </div>
-          <button
-            onClick={handleCopyReferral}
-            disabled={!referralUrl}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-tape-orange/50 px-6 py-3 text-sm font-bold text-tape-brown hover:bg-tape-cream disabled:opacity-50"
-          >
-            <Share2 className="h-4 w-4" /> 紹介URLをコピー
-          </button>
+          <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown flex flex-col gap-3">
+            <div>
+              <p>紹介コード</p>
+              <p className="mt-1 break-all font-mono text-lg text-tape-brown">{referralCode ?? "取得中..."}</p>
+            </div>
+            <button
+              onClick={handleCopyReferralCode}
+              disabled={!referralCode}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-tape-orange/50 px-4 py-2 text-sm font-bold text-tape-brown hover:bg-tape-cream disabled:opacity-50"
+            >
+              <Copy className="h-4 w-4" /> コードをコピー
+            </button>
+          </div>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
