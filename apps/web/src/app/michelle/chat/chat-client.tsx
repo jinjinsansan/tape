@@ -998,7 +998,10 @@ export function MichelleChatClient() {
 
         <div
           ref={composerRef}
-          className="border-t border-[#ffd7e8] bg-white/95 px-4 pb-safe pt-3 shadow-[0_-6px_24px_rgba(241,126,162,0.2)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          className="sticky bottom-0 left-0 right-0 border-t border-[#ffd7e8] bg-white/95 px-4 pt-2 z-50"
+          style={{ 
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)"
+          }}
         >
           <div className="mx-auto max-w-3xl">
             {error && <p className="mb-2 text-xs font-medium text-[#a34264]">{error}</p>}
