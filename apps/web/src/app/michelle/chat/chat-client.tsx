@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Loader2, Menu, MessageSquare, Plus, Send, Share2, Trash2, User, X } from "lucide-react";
+import Image from "next/image";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Send, Trash2, Menu, X, User, Loader2 } from "lucide-react";
-import Image from "next/image";
+import { debugLog } from "@/lib/logger";
+
+type GuidedAction = "back" | "deeper" | "next";
+type GuidedPhase = "explore" | "deepen" | "release";
 
 type SessionSummary = {
   id: string;
@@ -18,26 +23,42 @@ type MessageItem = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+  pending?: boolean;
 };
 
-type GuidedAction = "back" | "deeper" | "next";
-type GuidedPhase = "explore" | "deepen" | "release";
+type MessagesResponse = {
+  session: Pick<SessionSummary, "id" | "title" | "category">;
+  messages: MessageItem[];
+};
 
-const PRESET_PROMPTS = [
+type SessionsResponse = {
+  sessions: SessionSummary[];
+};
+
+type StreamPayload = {
+  type: "meta" | "delta" | "done" | "error";
+  content?: string;
+  message?: string;
+  sessionId?: string;
+};
+
+const ACTIVE_SESSION_STORAGE_KEY = "michelle-psychology-active-session-id";
+
+const initialPrompts = [
   "会社の上司に怒られた...",
   "最近なんだか寂しい",
   "1年ぐらい付き合ってない",
-  "彼女がなかなか寝ない"
+  "彼女がなかなか寝ない",
 ];
 
-const THINKING_MESSAGES = [
+const thinkingMessages = [
   "心の声を聞いています...",
   "感情を整理しています...",
   "思考を整えています...",
-  "寄り添いながら考えています..."
+  "寄り添いながら考えています...",
 ];
 
-const THINKING_INTERVAL_MS = 1400;
+const THINKING_MESSAGE_INTERVAL_MS = 1400;
 
 const GUIDED_ACTION_PRESETS: Record<GuidedAction, { prompt: string; success: string }> = {
   back: {
@@ -61,126 +82,241 @@ const GUIDED_PHASE_LABELS: Record<GuidedPhase, string> = {
   release: "リリース＆ケア",
 };
 
-const GUIDED_PHASE_DESCRIPTIONS: Record<GuidedPhase, string> = {
-  explore: "今感じている感情やテーマを整理しています",
-  deepen: "感情の芯や思い込みを深掘り中",
-  release: "感情のリリースとセルフケアへ移行中",
-};
-
 export function MichelleChatClient() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState({ sessions: false, messages: false, sending: false });
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentThinkingIndex, setCurrentThinkingIndex] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [hasInitializedSessions, setHasInitializedSessions] = useState(false);
+  const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<GuidedPhase>("explore");
   const [phaseInsight, setPhaseInsight] = useState<{ phase: GuidedPhase; summary: string } | null>(null);
   const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
   const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
-  const [composerHeight, setComposerHeight] = useState(0);
-  const initialMobileBlurApplied = useRef(false);
   const autoScrollRef = useRef(true);
   const scrollFrameRef = useRef<number>();
+  const [composerHeight, setComposerHeight] = useState(0);
+  const hasRestoredSessionRef = useRef(false);
+  const lastRequestTimeRef = useRef<number>(0);
 
-  const loadSessions = async () => {
-    const res = await fetch("/api/michelle/sessions", { cache: "no-store" });
-    if (res.status === 401) {
-      setError("ログインすると利用できます。");
-      return;
-    }
-    if (!res.ok) {
-      setError("セッション一覧の取得に失敗しました");
-      return;
-    }
-    const data = (await res.json()) as { sessions: SessionSummary[] };
-    setSessions(data.sessions ?? []);
-  };
+  const activeSession = useMemo(() => sessions.find((session) => session.id === activeSessionId) ?? null, [
+    sessions,
+    activeSessionId,
+  ]);
+  const hasPendingResponse = useMemo(() => messages.some((msg) => msg.pending), [messages]);
 
-  const loadMessages = async (sessionId: string) => {
-    const res = await fetch(`/api/michelle/sessions/${sessionId}/messages`, { cache: "no-store" });
-    if (!res.ok) {
+  const loadSessions = useCallback(async () => {
+    setIsLoading((prev) => ({ ...prev, sessions: true }));
+    try {
+      const res = await fetch("/api/michelle/sessions");
       if (res.status === 401) {
-        setError("ログインセッションが切れています。再度ログインしてください。");
+        setNeedsAuth(true);
         return;
       }
-      setError("メッセージの取得に失敗しました");
-      return;
+      if (!res.ok) throw new Error("Failed to load sessions");
+      const data = (await res.json()) as SessionsResponse;
+      setSessions(data.sessions ?? []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading((prev) => ({ ...prev, sessions: false }));
+      setHasInitializedSessions(true);
     }
-    const data = (await res.json()) as { session: SessionSummary; messages: MessageItem[] };
-    setMessages(data.messages ?? []);
-    setActiveSessionId(data.session.id);
-  };
+  }, []);
+
+  const loadMessages = useCallback(
+    async (sessionId: string) => {
+      debugLog("[loadMessages] Starting to load messages for session:", sessionId);
+      setIsLoading((prev) => ({ ...prev, messages: true }));
+      try {
+        const res = await fetch(`/api/michelle/sessions/${sessionId}/messages`);
+        debugLog("[loadMessages] Response status:", res.status);
+
+        if (res.status === 401) {
+          debugLog("[loadMessages] Unauthorized - setting needsAuth");
+          setNeedsAuth(true);
+          setHasLoadedMessages(true);
+          return;
+        }
+        if (res.status === 404) {
+          debugLog("[loadMessages] Session not found - clearing activeSessionId");
+          setActiveSessionId(null);
+          setHasLoadedMessages(true);
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load messages");
+
+        const data = (await res.json()) as MessagesResponse;
+        debugLog("[loadMessages] Received data:", {
+          sessionId: data.session?.id,
+          messagesCount: data.messages?.length ?? 0,
+          firstMessage: data.messages?.[0]?.content?.substring(0, 50),
+        });
+
+        setMessages(data.messages ?? []);
+        setHasLoadedMessages(true);
+        debugLog("[loadMessages] Messages state updated with", data.messages?.length ?? 0, "messages");
+      } catch (err) {
+        console.error("[loadMessages] Error loading messages:", err);
+      } finally {
+        setIsLoading((prev) => ({ ...prev, messages: false }));
+        debugLog("[loadMessages] Loading complete");
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    loadSessions();
+    debugLog("[Mount] Component mounted");
+    setIsMounted(true);
+    setIsMobile(window.innerWidth < 768);
 
-    const updateViewportMetrics = () => {
-      const isMobileLayout = window.innerWidth < 768;
-      setIsMobile(isMobileLayout);
-      const dynamicHeight = window.visualViewport?.height ?? window.innerHeight;
-      setViewportHeight(dynamicHeight);
-    };
-
-    updateViewportMetrics();
-
-    if (!initialMobileBlurApplied.current && window.innerWidth < 768 && textareaRef.current) {
+    // モバイルでは初回ロード時に意図しないフォーカスを防ぐ
+    if (window.innerWidth < 768 && textareaRef.current) {
       textareaRef.current.blur();
-      initialMobileBlurApplied.current = true;
+      debugLog("[Mount] Mobile: textarea blur applied to prevent unwanted keyboard");
     }
 
-    window.addEventListener("resize", updateViewportMetrics);
-    const visualViewport = window.visualViewport;
-    visualViewport?.addEventListener("resize", updateViewportMetrics);
-    visualViewport?.addEventListener("scroll", updateViewportMetrics);
-
-    return () => {
-      window.removeEventListener("resize", updateViewportMetrics);
-      visualViewport?.removeEventListener("resize", updateViewportMetrics);
-      visualViewport?.removeEventListener("scroll", updateViewportMetrics);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
     };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
-    const composerElement = composerRef.current;
-    if (!composerElement) {
+    debugLog("[Sessions] Loading sessions...");
+    loadSessions();
+  }, [loadSessions]);
+
+  useEffect(() => {
+    debugLog(
+      "[Session Restore] Effect triggered - isMounted:",
+      isMounted,
+      "hasRestored:",
+      hasRestoredSessionRef.current,
+      "sessions.length:",
+      sessions.length,
+      "initialized:",
+      hasInitializedSessions,
+    );
+
+    if (!isMounted) {
+      debugLog("[Session Restore] Skipped - not mounted yet");
+      return;
+    }
+    if (hasRestoredSessionRef.current) {
+      debugLog("[Session Restore] Skipped - already restored");
+      return;
+    }
+    if (!hasInitializedSessions) {
+      debugLog("[Session Restore] Skipped - sessions not initialized yet");
+      return;
+    }
+    if (sessions.length === 0) {
+      debugLog("[Session Restore] No sessions available - finishing restore state");
+      hasRestoredSessionRef.current = true;
+      setIsRestoringSession(false);
       return;
     }
 
-    const updateComposerHeight = () => {
+    try {
+      const storedSessionId = window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+      debugLog("[Session Restore] Stored ID:", storedSessionId, "Sessions count:", sessions.length);
+
+      if (storedSessionId) {
+        const exists = sessions.some((s) => s.id === storedSessionId);
+        debugLog("[Session Restore] Session exists:", exists);
+
+        if (exists) {
+          debugLog("[Session Restore] Restoring session:", storedSessionId);
+          setActiveSessionId(storedSessionId);
+        } else {
+          debugLog("[Session Restore] Session not found in sessions array");
+        }
+      } else {
+        debugLog("[Session Restore] No stored session ID found");
+      }
+    } catch (error) {
+      console.error("[Session Restore] Failed to restore session:", error);
+    }
+
+    hasRestoredSessionRef.current = true;
+    setIsRestoringSession(false);
+    debugLog("[Session Restore] Flag set to true, restoration complete");
+  }, [isMounted, sessions, hasInitializedSessions]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+    }
+  }, [input]);
+
+  useEffect(() => {
+    debugLog("[Save Session] Effect triggered - isMounted:", isMounted, "activeSessionId:", activeSessionId);
+
+    if (!isMounted) {
+      debugLog("[Save Session] Skipped - not mounted yet");
+      return;
+    }
+
+    if (!activeSessionId) {
+      debugLog("[Save Session] Skipped - activeSessionId is null (keeping existing localStorage)");
+      return;
+    }
+
+    try {
+      debugLog("[Save Session] Saving to localStorage:", activeSessionId);
+      window.localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, activeSessionId);
+      debugLog("[Save Session] Saved successfully");
+    } catch (error) {
+      console.error("[Save Session] Failed to save session:", error);
+    }
+  }, [isMounted, activeSessionId]);
+
+  useEffect(() => {
+    if (!composerRef.current) return;
+
+    const updateHeight = () => {
       if (composerRef.current) {
         setComposerHeight(composerRef.current.offsetHeight);
       }
     };
 
-    updateComposerHeight();
+    updateHeight();
 
     if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateComposerHeight);
-      return () => window.removeEventListener("resize", updateComposerHeight);
+      const interval = window.setInterval(updateHeight, 500);
+      return () => window.clearInterval(interval);
     }
 
-    const observer = new ResizeObserver(updateComposerHeight);
-    observer.observe(composerElement);
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(composerRef.current);
 
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (composerRef.current) {
-      setComposerHeight(composerRef.current.offsetHeight);
-    }
-  }, [error, input, isMobile]);
+  const scheduleScrollToBottom = useCallback(() => {
+    if (!autoScrollRef.current) return;
+    if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    });
+  }, []);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -197,143 +333,38 @@ export function MichelleChatClient() {
 
   useEffect(() => {
     return () => {
-      if (scrollFrameRef.current) {
-        cancelAnimationFrame(scrollFrameRef.current);
-      }
+      if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
     };
   }, []);
 
-  const scheduleScrollToBottom = useCallback(() => {
-    if (!autoScrollRef.current) return;
-    if (scrollFrameRef.current) {
-      cancelAnimationFrame(scrollFrameRef.current);
-    }
-    scrollFrameRef.current = requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-    });
-  }, []);
-
   useEffect(() => {
-    if (!isLoading) return;
-    const interval = setInterval(() => {
-      setThinkingMessageIndex((prev) => (prev + 1) % THINKING_MESSAGES.length);
-    }, THINKING_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [isLoading]);
+    if (isLoading.sending) return;
+
+    debugLog("[Load Messages] activeSessionId:", activeSessionId);
+
+    if (activeSessionId) {
+      setHasLoadedMessages(false);
+      debugLog("[Load Messages] Loading messages for:", activeSessionId);
+      loadMessages(activeSessionId);
+    } else {
+      debugLog("[Load Messages] Clearing messages (no active session)");
+      setMessages([]);
+      setHasLoadedMessages(true);
+    }
+  }, [activeSessionId, isLoading.sending, loadMessages]);
 
   useLayoutEffect(() => {
+    if (messages.length === 0) return;
     scheduleScrollToBottom();
-  }, [messages.length, isLoading, scheduleScrollToBottom]);
+  }, [messages.length, scheduleScrollToBottom]);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
-    }
-  }, [input]);
-
-  const handleDeleteSession = async (sessionId: string) => {
-    const confirmed = window.confirm("このセッションを削除しますか？");
-    if (!confirmed) return;
-    const res = await fetch(`/api/michelle/sessions/${sessionId}`, { method: "DELETE" });
-    if (!res.ok) {
-      alert("削除に失敗しました");
-      return;
-    }
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-    if (activeSessionId === sessionId) {
-      setActiveSessionId(null);
-      setMessages([]);
-    }
-  };
-
-  const handleSend = async (message?: string) => {
-    const textToSend = message || input.trim();
-    if (!textToSend) return;
-    
-    // モバイルでは送信後にキーボードを閉じる
-    if (isMobile && textareaRef.current) {
-      textareaRef.current.blur();
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    const payload = {
-      sessionId: activeSessionId ?? undefined,
-      message: textToSend,
-      category: !activeSessionId ? "life" : undefined
-    };
-
-    const optimisticUserMessage: MessageItem = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: textToSend,
-      created_at: new Date().toISOString()
-    };
-
-    setMessages((prev) => [...prev, optimisticUserMessage]);
-    setInput("");
-
-    try {
-      const res = await fetch("/api/michelle/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-buffered-response": "1"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMessage.id));
-        setError("AI 応答の取得に失敗しました");
-        return;
-      }
-
-      const data = (await res.json()) as { sessionId: string; message: string };
-      setActiveSessionId(data.sessionId);
-      await loadSessions();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: data.message,
-          created_at: new Date().toISOString()
-        }
-      ]);
-    } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMessage.id));
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleComposerSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    handleSend();
-  };
-
-  const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      if (event.nativeEvent.isComposing) {
-        return;
-      }
-      event.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleNewChat = () => {
-    setActiveSessionId(null);
-    setMessages([]);
-    setError(null);
-    setPhaseInsight(null);
-    setCurrentPhase("explore");
-  };
+    if (!hasPendingResponse) return;
+    const interval = setInterval(() => {
+      setCurrentThinkingIndex((prev) => (prev + 1) % thinkingMessages.length);
+    }, THINKING_MESSAGE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [hasPendingResponse]);
 
   const handlePhaseInsightRequest = async () => {
     if (!activeSessionId || messages.length < 4) {
@@ -387,7 +418,7 @@ export function MichelleChatClient() {
   };
 
   const handleGuidedAction = async (action: GuidedAction) => {
-    if (isLoading || guidedActionLoading) {
+    if (isLoading.sending || guidedActionLoading) {
       return;
     }
 
@@ -398,7 +429,7 @@ export function MichelleChatClient() {
       setError(preset.success);
       setTimeout(() => setError(null), 2000);
 
-      await handleSend(preset.prompt);
+      await handleSendMessage(preset.prompt);
     } catch (actionError) {
       console.error("Guided action error", actionError);
       setError("操作に失敗しました");
@@ -408,278 +439,580 @@ export function MichelleChatClient() {
     }
   };
 
-  const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 16, 128);
-  const mobileViewportStyle =
-    !isMobile || !viewportHeight
-      ? undefined
-      : { height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` };
-  const containerStyle = {
-    ...(isMobile ? {} : { minHeight: "calc(100vh - 80px)" }),
-    ...(mobileViewportStyle ?? {})
+  const handleNewChat = () => {
+    debugLog("[User Action] New chat clicked - clearing session");
+    setActiveSessionId(null);
+    setMessages([]);
+    setError(null);
+    setHasLoadedMessages(true);
+    setPhaseInsight(null);
+    setCurrentPhase("explore");
+    hasRestoredSessionRef.current = false;
+
+    // 新しいチャットの場合のみlocalStorageを削除
+    try {
+      window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+      debugLog("[User Action] localStorage cleared for new chat");
+    } catch (error) {
+      console.error("[User Action] Failed to clear localStorage:", error);
+    }
+
+    // モバイルでは自動フォーカスしない（キーボードがURLバーに被る問題を防ぐ）
+    if (!isMobile) {
+      textareaRef.current?.focus();
+    }
   };
+
+  const handleSendMessage = async (overrideText?: string) => {
+    const textToSend = overrideText ? overrideText.trim() : input.trim();
+
+    // スロットリング: 前のリクエストから3秒以内は送信しない
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTimeRef.current;
+    const MIN_REQUEST_INTERVAL = 3000; // 3秒
+
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL && lastRequestTimeRef.current > 0) {
+      const remainingTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000);
+      setError(`${remainingTime}秒お待ちください...`);
+      setTimeout(() => setError(null), 1000);
+      return;
+    }
+
+    if (!textToSend || isLoading.sending) {
+      return;
+    }
+
+    // pending メッセージがある場合は送信不可
+    if (hasPendingResponse) {
+      debugLog("[Send] Blocked - AI is still responding");
+      setError("前の応答を待っています...");
+      setTimeout(() => setError(null), 1000);
+      return;
+    }
+
+    // リクエスト時刻を記録
+    lastRequestTimeRef.current = now;
+
+    if (!overrideText) {
+      setInput("");
+    }
+    setError(null);
+
+    // モバイルでは送信後にキーボードを閉じる
+    if (isMobile && textareaRef.current) {
+      textareaRef.current.blur();
+    }
+
+    const tempUserId = `user-${Date.now()}`;
+    const tempAiId = `ai-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    setMessages((prev) => [
+      ...prev,
+      { id: tempUserId, role: "user", content: textToSend, created_at: timestamp },
+      { id: tempAiId, role: "assistant", content: "", created_at: timestamp, pending: true },
+    ]);
+
+    setIsLoading((prev) => ({ ...prev, sending: true }));
+
+    let hasError = false;
+    let res: Response | null = null;
+    let resolvedSessionId: string | null = activeSessionId;
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+      res = await fetch("/api/michelle/chat", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          sessionId: activeSessionId ?? undefined,
+          message: textToSend,
+          category: !activeSessionId ? "life" : undefined,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        let serverMessage = "ネットワークエラーが発生しました";
+
+        try {
+          const errorBody = (await res.json()) as { error?: string };
+          if (errorBody?.error) {
+            serverMessage = errorBody.error;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response", parseError);
+        }
+        throw new Error(serverMessage);
+      }
+
+      const sessionIdHeader = res.headers.get("x-session-id");
+      if (sessionIdHeader) {
+        resolvedSessionId = sessionIdHeader;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let aiContent = "";
+      let streamCompleted = false;
+      let buffer = ""; // Buffer for incomplete SSE events
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          // Append to buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Split by SSE delimiter, but keep the last incomplete event in buffer
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || ""; // Keep incomplete event for next iteration
+
+          for (const event of events) {
+            if (!event.trim()) continue;
+            if (!event.startsWith("data:")) continue;
+            try {
+              const payload = JSON.parse(event.slice(5)) as StreamPayload;
+              if (payload.type === "meta") {
+                if (payload.sessionId) {
+                  resolvedSessionId = payload.sessionId;
+                  if (!activeSessionId) {
+                    setActiveSessionId(payload.sessionId);
+                    loadSessions();
+                  }
+                }
+              }
+              if (payload.type === "delta" && payload.content) {
+                aiContent += payload.content;
+                setMessages((prev) => prev.map((msg) => (msg.id === tempAiId ? { ...msg, content: aiContent } : msg)));
+              }
+              if (payload.type === "done") {
+                streamCompleted = true;
+                debugLog("[Stream] Completed successfully");
+              }
+              if (payload.type === "error") {
+                throw new Error(payload.message ?? "AI応答中にエラーが発生しました");
+              }
+            } catch (err) {
+              console.error("Failed to parse stream payload", err);
+            }
+          }
+        }
+      } catch (streamError) {
+        try {
+          await reader.cancel();
+        } catch (cancelErr) {
+          console.error("Failed to cancel reader after error:", cancelErr);
+        }
+        throw streamError;
+      }
+
+      // ストリーム完了を確認
+      if (!streamCompleted) {
+        debugLog("[Stream] Ended without 'done' event");
+        throw new Error("ストリームが正常に完了しませんでした。もう一度お試しください。");
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === tempAiId ? { ...msg, content: aiContent, pending: false } : msg)),
+      );
+
+      if (!activeSessionId && resolvedSessionId) {
+        setActiveSessionId(resolvedSessionId);
+      }
+    } catch (err) {
+      hasError = true;
+      const errorMessage = err instanceof Error ? err.message : "Unknown";
+      console.error(err);
+      const friendlyError = err instanceof Error ? err.message : "送信に失敗しました";
+      setError(friendlyError);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempAiId ? { ...msg, content: "申し訳ありません。もう一度送ってみてください。", pending: false } : msg,
+        ),
+      );
+    } finally {
+      // エラー時は即座にリセット、成功時は短い遅延
+      if (hasError) {
+        setIsLoading((prev) => ({ ...prev, sending: false }));
+        debugLog("[Send] Loading state released (error)");
+      } else {
+        setTimeout(() => {
+          setIsLoading((prev) => ({ ...prev, sending: false }));
+          debugLog("[Send] Loading state released (success)");
+        }, 100);
+      }
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    if (!confirm("このチャット履歴を削除しますか？\n削除後は復元できません。")) return;
+
+    const wasActive = activeSessionId === sessionId;
+
+    try {
+      const res = await fetch(`/api/michelle/sessions/${sessionId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete session");
+
+      debugLog("[Delete] Session deleted:", sessionId);
+      setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+
+      if (wasActive) {
+        debugLog("[Delete] Deleted active session, creating new chat");
+        handleNewChat();
+        // アクティブセッションを削除した場合はモバイルサイドバーも閉じる
+        if (isMobile) {
+          setIsSidebarOpen(false);
+        }
+      }
+    } catch (err) {
+      console.error("[Delete] Failed to delete session:", err);
+      setError("削除に失敗しました。もう一度お試しください。");
+      setTimeout(() => setError(null), 1000);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!messages.length) return;
+    const text = messages
+      .map((m) => `${m.role === "user" ? "あなた" : "ミシェル心理学"}: ${m.content}`)
+      .join("\n\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setError("✓ 会話内容をコピーしました");
+      setTimeout(() => setError(null), 1000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      setError("コピーに失敗しました");
+      setTimeout(() => setError(null), 1000);
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      // AIが応答中は送信不可
+      if (!hasPendingResponse) {
+        handleSendMessage();
+      }
+    }
+  };
+
+  const cleanContent = (content: string) => {
+    let cleaned = content.replace(/【\d+:\d+†.*?】/g, "");
+    cleaned = cleaned.replace(/【参考[：:][^】]*】/g, "");
+    return cleaned;
+  };
+
+  if (needsAuth) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8]">
+        <div className="rounded-3xl bg-white px-10 py-12 text-center shadow-2xl">
+          <p className="text-lg font-semibold text-[#a34264]">ログインが必要です</p>
+          <p className="mt-4 text-sm text-[#b1637d]">ミシェル心理学AIをご利用いただくにはログインしてください。</p>
+        </div>
+      </div>
+    );
+  }
+
+  const showGlobalLoader =
+    !isMounted ||
+    isRestoringSession ||
+    (messages.length === 0 &&
+      !hasLoadedMessages &&
+      (isLoading.messages || (isLoading.sessions && sessions.length === 0)));
+
+  if (showGlobalLoader) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-[#fff7fa] via-[#ffeef5] to-[#ffe3ec]">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#f472b6]" />
+        </div>
+      </div>
+    );
+  }
+
+  const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 16, 128);
 
   return (
     <div
-      className="flex w-full flex-1 items-stretch bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8] font-sans"
-      style={containerStyle}
+      className="flex w-full flex-1 items-stretch bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8] text-[#7b364d]"
+      style={{
+        minHeight: "calc(100vh - 4rem)",
+        height: "calc(100vh - 4rem)",
+        maxHeight: "calc(100vh - 4rem)",
+      }}
     >
-      {/* オーバーレイ（モバイルのみ） */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* サイドバー */}
       <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[#ffd4e3] bg-[#fff8fb] transition-transform duration-300 md:static md:z-0 md:translate-x-0",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
+        className="hidden w-[260px] min-w-[260px] flex-col border-r border-[#ffd4e3] bg-white/90 px-4 py-6 shadow-sm md:flex md:sticky md:top-16 md:self-start md:overflow-y-auto"
+        style={{ height: "calc(100vh - 4rem)" }}
       >
-        <div className="flex items-center justify-between border-b border-tape-beige p-4">
-          <button
-            onClick={handleNewChat}
-            className="flex-1 rounded-lg bg-white px-4 py-3 text-left text-sm font-medium text-tape-pink transition-colors hover:bg-tape-beige"
-          >
-            ＋ 新しいチャット
-          </button>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-tape-brown hover:bg-tape-beige md:hidden"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex-1 space-y-1 overflow-y-auto px-2">
+        <Button
+          onClick={handleNewChat}
+          disabled={isLoading.sending}
+          className="mb-6 w-full justify-start gap-2 rounded-2xl border border-[#ffd4e3] bg-[#fff8fb] text-[#a34264] shadow-sm hover:bg-white"
+        >
+          <Plus className="h-4 w-4" /> 新しいチャット
+        </Button>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-[#f472b6]">チャット</p>
+        <div className="flex-1 overflow-y-auto">
           {sessions.map((session) => (
-            <div
+            <button
               key={session.id}
+              onClick={() => {
+                debugLog("[User Action] Desktop: Clicked on session:", session.id);
+                setActiveSessionId(session.id);
+              }}
               className={cn(
-                "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-white/50 transition-colors",
-                session.id === activeSessionId && "bg-white"
+                "group flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left text-sm transition-all mb-2",
+                session.id === activeSessionId
+                  ? "border-[#ffc0d9] bg-[#fff0f7] text-[#8b2e52]"
+                  : "border-transparent bg-transparent text-[#b1637d] hover:border-[#ffd4e3] hover:bg-[#fff8fb]",
               )}
-              onClick={() => loadMessages(session.id)}
             >
-              <input type="checkbox" className="h-4 w-4 rounded border-tape-beige" />
-              <span className="flex-1 truncate text-tape-brown">{session.title ?? "無題のセッション"}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <div className="min-w-0">
+                  <span className="block truncate">{session.title || "新しいチャット"}</span>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteSession(session.id);
-                }}
-                className="hidden text-gray-400 hover:text-red-500 group-hover:block"
+                onClick={(event) => handleDeleteSession(session.id, event)}
+                className="rounded-full p-1 text-[#e091b3] opacity-0 transition group-hover:opacity-100 hover:bg-white"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </button>
           ))}
+          {sessions.length === 0 && !isLoading.sessions && (
+            <p className="text-center text-xs text-[#d494ab]">まだチャット履歴がありません。</p>
+          )}
         </div>
       </aside>
 
-      {/* メインエリア */}
-      <main className="flex flex-1 flex-col bg-white/80 backdrop-blur-md shadow-inner shadow-[#fcd9e9]/40 overflow-hidden">
-        {/* モバイルヘッダー */}
-        <div className="flex items-center gap-3 border-b border-[#ffe0eb] bg-white/70 px-4 py-3 md:hidden">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-tape-brown hover:bg-tape-beige"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex-1 text-center">
-            <p className="text-sm font-semibold text-tape-brown">ミシェルAI</p>
-          </div>
-          <div className="h-10 w-10" /> {/* スペーサー */}
-        </div>
-
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto bg-gradient-to-b from-[#fff7fa] via-[#ffeef5] to-[#ffe3ec] px-4 py-8"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            paddingBottom: `${messagePaddingBottom}px`,
-            overscrollBehavior: "contain"
-          }}
-        >
-          {messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-8">
-              {/* ミシェルアイコンと挨拶 */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative h-32 w-32 overflow-hidden rounded-full bg-white shadow-lg">
-                  <Image
-                    src="/michelle-icon.png"
-                    alt="Michelle"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-tape-pink">
-                    こんにちは、ミシェルです
-                  </h2>
-                  <p className="mt-2 text-sm text-tape-light-brown">
-                    心のモヤモヤ、誰にも言えない悩み、なんでも話してください。
-                  </p>
-                  <p className="mt-1 text-sm text-tape-light-brown">
-                    私はあなたの親となって、一緒に答えを探します。
-                  </p>
-                </div>
-              </div>
-
-              {/* プリセットボタン */}
-              <div className="grid w-full max-w-xl grid-cols-2 gap-3 px-4 md:grid-cols-4">
-                {PRESET_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => handleSend(prompt)}
-                    disabled={isLoading}
-                    className="rounded-xl border border-tape-beige bg-white px-6 py-4 text-center text-sm text-tape-brown shadow-sm transition-all hover:bg-tape-beige hover:shadow-md disabled:opacity-50"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setIsSidebarOpen(false)} />
+          <div className="relative ml-auto flex h-full w-[80%] max-w-[300px] flex-col border-l border-[#ffd4e3] bg-white/95 px-4 py-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#a34264]">履歴</span>
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-          ) : (
-            <div className="mx-auto max-w-3xl space-y-6">
-              {messages.map((message, index) => (
-                <div key={message.id}>
-                  <div
-                    className={cn(
-                      "flex gap-3",
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    {message.role === "assistant" && (
-                      <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-white shadow">
-                        <Image
-                          src="/michelle-icon.png"
-                          alt="Michelle"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-2xl px-5 py-3 shadow-sm",
-                        message.role === "user"
-                          ? "bg-tape-orange text-white"
-                          : "bg-white border border-tape-beige text-tape-brown"
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
-                    </div>
-                    {message.role === "user" && (
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-tape-brown shadow">
-                        <User className="h-5 w-5 text-white" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* AIメッセージの下にガイドボタンを表示 */}
-                  {message.role === "assistant" && activeSessionId && messages.length >= 4 && (
-                    <div className="ml-[52px] mt-1.5 flex flex-wrap items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
-                        onClick={() => handleGuidedAction("back")}
-                        disabled={guidedActionLoading !== null || isLoading}
-                      >
-                        {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
-                        onClick={() => handleGuidedAction("deeper")}
-                        disabled={guidedActionLoading !== null || isLoading}
-                      >
-                        {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
-                        onClick={() => handleGuidedAction("next")}
-                        disabled={guidedActionLoading !== null || isLoading}
-                      >
-                        {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[9px] text-[#b23462] hover:bg-[#ffe6ef]"
-                        onClick={handlePhaseInsightRequest}
-                        disabled={isPhaseInsightLoading || !activeSessionId}
-                      >
-                        {isPhaseInsightLoading && <Loader2 className="mr-0.5 h-2.5 w-2.5 animate-spin" />}
-                        {isPhaseInsightLoading ? "判定中..." : "フェーズ判定"}
-                      </Button>
-                      {phaseInsight && (
-                        <span className="text-[9px] text-[#b1637d]">
-                          {GUIDED_PHASE_LABELS[phaseInsight.phase]}
-                        </span>
-                      )}
-                    </div>
+            <Button
+              onClick={() => {
+                handleNewChat();
+                setIsSidebarOpen(false);
+              }}
+              disabled={isLoading.sending}
+              className="mb-4 gap-2 rounded-2xl border border-[#ffd4e3] bg-[#fff8fb] text-[#a34264] hover:bg-white"
+            >
+              <Plus className="h-4 w-4" /> 新しいチャット
+            </Button>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-[#f472b6]">チャット</p>
+            <div className="flex-1 overflow-y-auto">
+              {sessions.map((session) => (
+                <button
+                  key={session.id}
+                  onClick={() => {
+                    debugLog("[User Action] Mobile: Clicked on session:", session.id);
+                    setActiveSessionId(session.id);
+                    setIsSidebarOpen(false);
+                  }}
+                  className={cn(
+                    "group flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left text-sm transition-all mb-2",
+                    session.id === activeSessionId
+                      ? "border-[#ffc0d9] bg-[#fff0f7] text-[#8b2e52]"
+                      : "border-transparent bg-transparent text-[#b1637d] hover:border-[#ffd4e3] hover:bg-[#fff8fb]",
                   )}
-                </div>
-              ))}
-
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-white shadow">
-                    <Image
-                      src="/michelle-icon.png"
-                      alt="Michelle"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-tape-beige bg-white px-5 py-3 shadow-sm">
-                    <div className="flex gap-1">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.3s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green [animation-delay:-0.15s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-tape-green" />
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <div className="min-w-0">
+                      <span className="block truncate">{session.title || "新しいチャット"}</span>
                     </div>
-                    <p className="text-sm text-tape-light-brown">{THINKING_MESSAGES[thinkingMessageIndex]}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => handleDeleteSession(session.id, event)}
+                    className="rounded-full p-1 text-[#e091b3] transition hover:bg-white"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </button>
+              ))}
+              {sessions.length === 0 && !isLoading.sessions && (
+                <p className="text-center text-xs text-[#d494ab]">まだチャット履歴がありません。</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white/75 touch-auto overscroll-none">
+        <header className="flex items-center justify-between border-b border-[#ffd7e8] px-4 py-3 text-sm text-[#b1637d]">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full border border-[#ffd4e3] bg-white text-[#f472b6] hover:bg-[#fff8fb] md:hidden"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="font-semibold text-[#a34264]">{activeSession?.title || "ミシェル心理学AI"}</span>
+            {isLoading.messages && messages.length === 0 && <Loader2 className="h-4 w-4 animate-spin text-[#e091b3]" />}
+          </div>
+          {messages.length > 0 && (
+            <Button variant="ghost" size="sm" className="text-[#b1637d]" onClick={handleShare}>
+              <Share2 className="mr-2 h-4 w-4" /> 共有
+            </Button>
+          )}
+        </header>
+
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-white via-[#fff4f7] to-[#ffeef5]" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div className="px-4 pt-4">
+            {messages.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-8">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative h-32 w-32 overflow-hidden rounded-full bg-white shadow-lg">
+                    <Image src="/michelle-icon.png" alt="Michelle" fill className="object-cover" />
+                  </div>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-[#a34264]">こんにちは、ミシェルです</h2>
+                    <p className="mt-2 text-sm text-[#b1637d]">心のモヤモヤ、誰にも言えない悩み、なんでも話してください。</p>
+                    <p className="mt-1 text-sm text-[#b1637d]">私はあなたの親となって、一緒に答えを探します。</p>
                   </div>
                 </div>
-              )}
 
-              <div ref={messagesEndRef} />
-            </div>
-          )}
+                <div className="grid w-full max-w-xl grid-cols-2 gap-3 px-4 md:grid-cols-4">
+                  {initialPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => handleSendMessage(prompt)}
+                      disabled={isLoading.sending}
+                      className="rounded-xl border border-[#ffd4e3] bg-white px-6 py-4 text-center text-sm text-[#7b364d] shadow-sm transition-all hover:bg-[#fff8fb] hover:shadow-md disabled:opacity-50"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-6" style={{ paddingBottom: `${messagePaddingBottom}px` }}>
+                {messages.map((message) => (
+                  <div key={message.id}>
+                    <div className={cn("flex gap-3", message.role === "user" ? "justify-end" : "justify-start")}>
+                      {message.role === "assistant" && (
+                        <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-white shadow">
+                          <Image src="/michelle-icon.png" alt="Michelle" fill className="object-cover" />
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-2xl px-5 py-3 shadow-sm",
+                          message.role === "user"
+                            ? "bg-[#ff9ec5] text-white"
+                            : "bg-white border border-[#ffd4e3] text-[#7b364d]",
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {message.pending ? "" : cleanContent(message.content)}
+                        </p>
+                        {message.pending && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-[#f472b6] [animation-delay:-0.3s]" />
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-[#f472b6] [animation-delay:-0.15s]" />
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-[#f472b6]" />
+                            </div>
+                            <p className="text-xs text-[#c07b8f]">{thinkingMessages[currentThinkingIndex]}</p>
+                          </div>
+                        )}
+                      </div>
+                      {message.role === "user" && (
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#a34264] shadow">
+                          <User className="h-5 w-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AIメッセージの下にガイドボタンを表示 */}
+                    {message.role === "assistant" && !message.pending && activeSessionId && messages.length >= 4 && (
+                      <div className="ml-[52px] mt-1.5 flex flex-wrap items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-1.5 text-[9px] text-[#a34264] hover:bg-[#fff0f7]"
+                          onClick={() => handleGuidedAction("back")}
+                          disabled={guidedActionLoading !== null || isLoading.sending}
+                        >
+                          {guidedActionLoading === "back" ? "整理中..." : "◀ 前のテーマ"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-1.5 text-[9px] text-[#a34264] hover:bg-[#fff0f7]"
+                          onClick={() => handleGuidedAction("deeper")}
+                          disabled={guidedActionLoading !== null || isLoading.sending}
+                        >
+                          {guidedActionLoading === "deeper" ? "準備中..." : "◎ 深掘り"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-1.5 text-[9px] text-[#a34264] hover:bg-[#fff0f7]"
+                          onClick={() => handleGuidedAction("next")}
+                          disabled={guidedActionLoading !== null || isLoading.sending}
+                        >
+                          {guidedActionLoading === "next" ? "案内中..." : "次へ ▶"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-1.5 text-[9px] text-[#a34264] hover:bg-[#fff0f7]"
+                          onClick={handlePhaseInsightRequest}
+                          disabled={isPhaseInsightLoading || !activeSessionId}
+                        >
+                          {isPhaseInsightLoading && <Loader2 className="mr-0.5 h-2.5 w-2.5 animate-spin" />}
+                          {isPhaseInsightLoading ? "判定中..." : "フェーズ判定"}
+                        </Button>
+                        {phaseInsight && (
+                          <span className="text-[9px] text-[#b1637d]">{GUIDED_PHASE_LABELS[phaseInsight.phase]}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 入力エリア */}
         <div
           ref={composerRef}
-          className="sticky bottom-0 left-0 right-0 border-t border-[#ffd7e8] bg-white/95 px-4 pt-3 pb-4 shadow-[0_-6px_24px_rgba(241,126,162,0.2)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+          className="border-t border-[#ffd7e8] bg-white/95 px-4 pb-safe pt-3 shadow-[0_-6px_24px_rgba(241,126,162,0.2)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
         >
           <div className="mx-auto max-w-3xl">
-            {error && (
-              <p className="mb-2 text-xs font-medium text-tape-pink">{error}</p>
-            )}
-            <form
-              onSubmit={handleComposerSubmit}
-              className="flex items-center gap-3 rounded-3xl border border-[#ffd7e8] bg-white/90 px-4 py-3 shadow-sm"
-            >
+            {error && <p className="mb-2 text-xs font-medium text-[#a34264]">{error}</p>}
+            <div className="flex items-end gap-3 rounded-3xl border border-[#ffd7e8] bg-white/90 px-4 py-3 shadow-sm">
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleTextareaKeyDown}
+                onKeyDown={handleKeyDown}
                 onFocus={(event) => {
                   if (isMobile) {
                     setTimeout(() => {
                       event.target.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }, 250);
+                    }, 300);
                   }
                 }}
                 placeholder="ミシェルに話しかける..."
@@ -687,26 +1020,24 @@ export function MichelleChatClient() {
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="off"
-                disabled={isLoading}
+                disabled={isLoading.sending}
                 className="max-h-40 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-base leading-relaxed text-[#7b364d] placeholder:text-[#c790a3] focus:outline-none disabled:opacity-60 md:text-sm"
                 rows={1}
               />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={isLoading || !input.trim()}
-                className="h-12 w-12 rounded-full bg-gradient-to-tr from-[#f472b6] to-[#fb7185] text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+              <button
+                type="button"
+                onClick={() => handleSendMessage()}
+                disabled={isLoading.sending || !input.trim() || hasPendingResponse}
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f472b6] to-[#fb7185] text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isLoading ? (
+                {isLoading.sending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
-              </Button>
-            </form>
-            <p className="mt-2 text-center text-xs text-[#c07b8f]">
-              ミシェルAIは誤った情報を生成する場合があります。
-            </p>
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-[#c07b8f]">ミシェルAIは誤った情報を生成する場合があります。</p>
           </div>
         </div>
       </main>
