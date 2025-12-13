@@ -478,7 +478,7 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                       <span className="h-2 w-2 rounded-full bg-tape-orange" />
                       重点ポイント
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-3">
                       {activeLessonKeyPoints.map((point, index) => (
                         <div
                           key={`${activeLesson.id}-kp-${index}`}
