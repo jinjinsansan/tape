@@ -83,6 +83,14 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            <a
+              href="https://lin.ee/hwaj6UP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-tape-beige px-4 py-1 text-sm font-semibold text-[#06C755] hover:bg-[#06C755]/10"
+            >
+              <MessageCircle className="h-4 w-4" /> お問い合わせ
+            </a>
             <Link href="/admin">
               <Button variant="ghost" size="icon" className="text-tape-light-brown hover:text-tape-brown">
                 <Settings className="h-5 w-5" />
