@@ -14,7 +14,9 @@ const serverEnvSchema = z
     MICHELLE_ATTRACTION_ASSISTANT_ID: z.string().optional(),
     USE_SINR_RAG: z.string().optional(),
     MICHELLE_DAILY_DIARY_USER_ID: z.string().uuid().optional(),
-    MICHELLE_DAILY_DIARY_MODEL: z.string().optional()
+    MICHELLE_DAILY_DIARY_MODEL: z.string().optional(),
+    ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
+    ADMIN_NOTIFICATION_USER_ID: z.string().uuid().optional()
   })
   .superRefine((env, ctx) => {
     if (!env.NEXT_PUBLIC_SUPABASE_URL && !env.SUPABASE_URL) {
@@ -56,7 +58,9 @@ export const getServerEnv = (): ServerEnv => {
     MICHELLE_ATTRACTION_ASSISTANT_ID: process.env.MICHELLE_ATTRACTION_ASSISTANT_ID,
     USE_SINR_RAG: process.env.USE_SINR_RAG ?? process.env.NEXT_PUBLIC_USE_SINR_RAG,
     MICHELLE_DAILY_DIARY_USER_ID: process.env.MICHELLE_DAILY_DIARY_USER_ID,
-    MICHELLE_DAILY_DIARY_MODEL: process.env.MICHELLE_DAILY_DIARY_MODEL
+    MICHELLE_DAILY_DIARY_MODEL: process.env.MICHELLE_DAILY_DIARY_MODEL,
+    ADMIN_NOTIFICATION_EMAIL: process.env.ADMIN_NOTIFICATION_EMAIL,
+    ADMIN_NOTIFICATION_USER_ID: process.env.ADMIN_NOTIFICATION_USER_ID
   });
 
   if (!parsed.success) {
@@ -112,6 +116,10 @@ export const getMichelleDailyDiaryUserId = () => {
   }
   return userId;
 };
+
+export const getAdminNotificationEmail = () => getServerEnv().ADMIN_NOTIFICATION_EMAIL ?? null;
+
+export const getAdminNotificationUserId = () => getServerEnv().ADMIN_NOTIFICATION_USER_ID ?? null;
 
 const toBoolean = (value: string | undefined, defaultValue: boolean) => {
   if (value === undefined) return defaultValue;

@@ -10,6 +10,7 @@ import {
   normalizePlanSelection,
   CounselorPlanType
 } from "@/constants/counselor-plans";
+import { normalizeYouTubeEmbedUrl } from "@/lib/youtube";
 
 type Counselor = {
   id: string;
@@ -56,7 +57,6 @@ export function CounselorPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<CounselorPlanType | null>(null);
-  const [notes, setNotes] = useState("初回の目的や課題をご記入ください。");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -113,6 +113,10 @@ export function CounselorPage({ slug }: { slug: string }) {
   }, [availablePlans, planSelection, selectedPlan]);
 
   const activePlan = selectedPlan ? COUNSELOR_PLAN_CONFIGS[selectedPlan] : null;
+  const embedVideoUrl = useMemo(
+    () => normalizeYouTubeEmbedUrl(counselor?.intro_video_url ?? null),
+    [counselor?.intro_video_url]
+  );
 
   const handleBook = async () => {
     if (!selectedSlotId) {
@@ -132,7 +136,7 @@ export function CounselorPage({ slug }: { slug: string }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ slotId: selectedSlotId, notes, planType: selectedPlan })
+        body: JSON.stringify({ slotId: selectedSlotId, notes: null, planType: selectedPlan })
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -272,10 +276,10 @@ export function CounselorPage({ slug }: { slug: string }) {
                 ))}
               </div>
 
-              {counselor.intro_video_url && (
+              {embedVideoUrl && (
                 <div className="aspect-video w-full overflow-hidden rounded-3xl border border-tape-beige shadow-inner bg-black/5">
                   <iframe
-                    src={counselor.intro_video_url}
+                    src={embedVideoUrl}
                     className="h-full w-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -362,14 +366,6 @@ export function CounselorPage({ slug }: { slug: string }) {
                     <p className="text-xs text-tape-light-brown text-center py-4">現在、予約可能な枠がありません。</p>
                   )}
                 </div>
-
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  className="w-full h-24 rounded-xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-orange focus:outline-none focus:ring-1 focus:ring-tape-orange resize-none"
-                  placeholder="ご相談内容や目的を入力"
-                  disabled={!isAuthenticated}
-                />
 
                 {!isAuthenticated && (
                   <p className="mt-3 text-xs text-tape-pink text-center font-medium">ログインすると予約できます。</p>

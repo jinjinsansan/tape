@@ -10,10 +10,11 @@ import {
   DEFAULT_COUNSELOR_PLAN_SELECTION,
   mergePlanSelectionIntoMetadata
 } from "@/constants/counselor-plans";
+import { normalizeYouTubeEmbedUrl } from "@/lib/youtube";
 
 const bodySchema = z.object({
   display_name: z.string().min(1).optional(),
-  avatar_url: z.string().url().nullable().optional(),
+  avatar_url: z.string().url().max(2048).nullable().optional(),
   bio: z.string().nullable().optional(),
   specialties: z.array(z.string()).nullable().optional(),
   hourly_rate_cents: z.number().int().min(0).optional(),
@@ -70,8 +71,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid payload", details: parsed.error }, { status: 400 });
     }
 
-    const { plan_settings, ...rest } = parsed.data;
+  const { plan_settings, intro_video_url, ...rest } = parsed.data;
     const updates: Parameters<typeof updateCounselorProfile>[1] = { ...rest };
+
+    if (intro_video_url !== undefined) {
+      updates.intro_video_url = normalizeYouTubeEmbedUrl(intro_video_url) ?? null;
+    }
 
     if (plan_settings) {
       const normalized = {

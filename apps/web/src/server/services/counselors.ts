@@ -360,7 +360,7 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
     .select(`
       *,
       client:profiles!counselor_bookings_client_user_id_fkey(id, display_name, avatar_url),
-      counselor:counselors!counselor_bookings_counselor_id_fkey(id, display_name),
+      counselor:counselors!counselor_bookings_counselor_id_fkey(id, display_name, auth_user_id),
       slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
     `)
     .eq("id", booking.id)

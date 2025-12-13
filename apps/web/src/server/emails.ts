@@ -56,6 +56,48 @@ export const sendBookingCreatedEmail = async (
   await sendEmail({ to, subject, html });
 };
 
+export const sendBookingCounselorNotificationEmail = async (
+  to: string,
+  counselorName: string,
+  clientName: string,
+  dateTime: string,
+  planTitle?: string
+) => {
+  const subject = `【TAPE】新しい予約が確定しました`;
+  const html = `
+    <p>${counselorName} 様</p>
+    <p>以下の内容で新しい予約が確定しました。</p>
+    <hr>
+    <p><strong>クライアント:</strong> ${clientName}</p>
+    ${planTitle ? `<p><strong>プラン:</strong> ${planTitle}</p>` : ""}
+    <p><strong>日時:</strong> ${dateTime}</p>
+    <hr>
+    <p>マイページのダッシュボードから詳細をご確認ください。</p>
+  `;
+  await sendEmail({ to, subject, html });
+};
+
+export const sendBookingAdminAlertEmail = async (
+  to: string,
+  counselorName: string,
+  clientName: string,
+  dateTime: string,
+  planTitle?: string
+) => {
+  const subject = `【TAPE】予約確定通知 (${clientName} → ${counselorName})`;
+  const html = `
+    <p>新しいカウンセリング予約が確定しました。</p>
+    <hr>
+    <p><strong>クライアント:</strong> ${clientName}</p>
+    <p><strong>カウンセラー:</strong> ${counselorName}</p>
+    ${planTitle ? `<p><strong>プラン:</strong> ${planTitle}</p>` : ""}
+    <p><strong>日時:</strong> ${dateTime}</p>
+    <hr>
+    <p>管理画面より詳細をご確認ください。</p>
+  `;
+  await sendEmail({ to, subject, html });
+};
+
 export const sendBookingCancelledEmail = async (
   to: string,
   userName: string,
