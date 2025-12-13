@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
 import { SignOutButton } from "@/components/signout-button";
+import { SiteFooter } from "@/components/site-footer";
 import { BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings } from "lucide-react";
 
 export default function Home() {
@@ -59,8 +60,8 @@ function HomePage() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
-      <main className="w-full max-w-2xl space-y-10 text-center">
+    <div className="flex min-h-screen flex-col bg-tape-cream">
+      <main className="mx-auto w-full max-w-2xl flex-1 space-y-10 p-4 text-center md:p-8">
         <div className="flex justify-end">
           <SignOutButton />
         </div>
@@ -96,12 +97,8 @@ function HomePage() {
             </Link>
           ))}
         </div>
-
-        {/* Footer/Note */}
-        <div className="text-sm text-tape-light-brown/60">
-          © 2024 Tape Psychology. All rights reserved.
-        </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
