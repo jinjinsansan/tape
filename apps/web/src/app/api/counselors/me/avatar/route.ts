@@ -36,9 +36,11 @@ export async function POST(request: Request) {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${user.id}_${timestamp}.${fileExt}`;
-    const filePath = `counselors/${fileName}`;
+    const originalExt = file.name.includes(".") ? file.name.split(".").pop() : null;
+    const mimeExt = file.type?.split("/").pop() ?? null;
+    const fileExt = (originalExt || mimeExt || "jpg").toLowerCase();
+    const fileName = `${timestamp}.${fileExt}`;
+    const filePath = `${user.id}/counselor/${fileName}`;
 
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
