@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Video, Clock } from "lucide-react";
+import { CalendarDays, Video, Clock, MessageCircle, ExternalLink } from "lucide-react";
 import {
   COUNSELOR_PLAN_CONFIGS,
   normalizePlanSelection,
   CounselorPlanType
 } from "@/constants/counselor-plans";
 import { normalizeYouTubeEmbedUrl } from "@/lib/youtube";
+import { extractCounselorSocialLinks } from "@/lib/counselor-metadata";
 
 type Counselor = {
   id: string;
@@ -24,17 +25,11 @@ type Counselor = {
   profile_metadata: Record<string, unknown> | null;
 };
 
-type Slot = {
-  id: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-};
-
 type Booking = {
   id: string;
   status: string;
   price_cents: number;
+  payment_status?: string;
 };
 
 type ChatMessage = {
@@ -49,13 +44,9 @@ type ChatMessage = {
   } | null;
 };
 
-const formatDateTime = (value: string) => new Date(value).toLocaleString("ja-JP", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
-
 export function CounselorPage({ slug }: { slug: string }) {
   const [counselor, setCounselor] = useState<Counselor | null>(null);
-  const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<CounselorPlanType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -79,7 +70,6 @@ export function CounselorPage({ slug }: { slug: string }) {
       }
       const data = await res.json();
       setCounselor(data.counselor);
-      setSlots(data.slots ?? []);
       setIsAuthenticated(Boolean(data.viewerId));
     } catch (err) {
       console.error(err);
@@ -93,9 +83,9 @@ export function CounselorPage({ slug }: { slug: string }) {
     loadProfile();
   }, [loadProfile]);
 
-  const selectedSlot = useMemo(() => slots.find((slot) => slot.id === selectedSlotId) ?? null, [slots, selectedSlotId]);
-
   const planSelection = useMemo(() => normalizePlanSelection(counselor?.profile_metadata), [counselor]);
+  const socialLinks = useMemo(() => extractCounselorSocialLinks(counselor?.profile_metadata), [counselor?.profile_metadata]);
+  const hasSocialLinks = Boolean(socialLinks.line || socialLinks.x || socialLinks.instagram);
 
   const availablePlans = useMemo(
     () => Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => planSelection[plan.id]),
@@ -118,9 +108,9 @@ export function CounselorPage({ slug }: { slug: string }) {
     [counselor?.intro_video_url]
   );
 
-  const handleBook = async () => {
-    if (!selectedSlotId) {
-      setError("予約枠を選択してください");
+  const handleBookingAction = async (payNow: boolean) => {
+    if (!isAuthenticated) {
+      setError("ログイン後にご利用ください");
       return;
     }
     if (!selectedPlan) {
@@ -136,7 +126,7 @@ export function CounselorPage({ slug }: { slug: string }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ slotId: selectedSlotId, notes: null, planType: selectedPlan })
+        body: JSON.stringify({ planType: selectedPlan, notes: null, payNow })
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -145,8 +135,11 @@ export function CounselorPage({ slug }: { slug: string }) {
       const data = await res.json();
       setBooking(data.booking);
       setChatId(data.chatId);
-      setSuccess("仮予約を受け付けました。ウォレット決済で確定してください。");
-      loadProfile();
+      setSuccess(
+        payNow
+          ? "ウォレット決済が完了しました。カウンセラーと日程をご調整ください。"
+          : "初回チャットルームを作成しました。チャットやSNSで日程をご相談ください。"
+      );
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "予約に失敗しました");
@@ -330,71 +323,111 @@ export function CounselorPage({ slug }: { slug: string }) {
                 )}
               </div>
 
-              <div className="rounded-3xl border border-tape-beige bg-tape-cream/30 p-6">
-                <h2 className="flex items-center gap-2 text-sm font-bold text-tape-brown mb-4">
-                  <CalendarDays className="h-4 w-4 text-tape-orange" />
-                  初回の予約日時を選ぶ
+              <div className="rounded-3xl border border-tape-beige bg-tape-cream/30 p-6 space-y-4">
+                <h2 className="flex items-center gap-2 text-sm font-bold text-tape-brown">
+                  <CalendarDays className="h-4 w-4 text-tape-orange" /> ご相談の流れ
                 </h2>
 
                 {activePlan && (
-                  <p className="mb-3 text-xs text-tape-brown">
-                    選択中のプラン: <span className="font-semibold">{activePlan.title}</span> / ¥
-                    {activePlan.priceYen.toLocaleString()}
+                  <p className="text-xs text-tape-brown">
+                    選択中のプラン: <span className="font-semibold">{activePlan.title}</span> / ¥{activePlan.priceYen.toLocaleString()}
                   </p>
                 )}
 
-                <div className="space-y-2 mb-4">
-                  {slots.slice(0, 6).map((slot) => (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      onClick={() => setSelectedSlotId(slot.id)}
-                      disabled={!activePlan}
-                      className={cn(
-                        "w-full rounded-xl border px-4 py-3 text-left transition-all",
-                        selectedSlotId === slot.id
-                          ? "border-tape-orange bg-tape-orange/10 text-tape-brown shadow-sm"
-                          : "border-tape-beige bg-white hover:bg-white/80 text-tape-brown",
-                        !activePlan && "opacity-50 cursor-not-allowed"
+                <ol className="space-y-2 text-xs text-tape-brown">
+                  <li className="flex gap-2">
+                    <span className="font-bold text-tape-orange">①</span>
+                    Tapeチャットで初回の相談を始めてください。
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-bold text-tape-orange">②</span>
+                    必要に応じてLINE / X / InstagramなどSNSで連絡し、日程や詳細を調整します。
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-bold text-tape-orange">③</span>
+                    ウォレット決済でプランを確定すると正式な予約が完了します。
+                  </li>
+                </ol>
+
+                {hasSocialLinks && (
+                  <div className="rounded-2xl border border-tape-beige bg-white/80 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-tape-brown flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-tape-orange" /> SNSでも相談できます
+                    </p>
+                    <div className="space-y-2">
+                      {socialLinks.line && (
+                        <a
+                          href={socialLinks.line}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-2xl border border-tape-green/40 bg-tape-green/5 px-4 py-3 text-sm font-semibold text-tape-brown hover:bg-tape-green/10"
+                        >
+                          LINEで連絡
+                          <ExternalLink className="h-4 w-4 text-tape-green" />
+                        </a>
                       )}
-                    >
-                      <p className="font-bold text-sm">{formatDateTime(slot.start_time)}</p>
-                      <p className="text-xs text-tape-light-brown mt-0.5">{formatDateTime(slot.end_time)} まで</p>
-                    </button>
-                  ))}
-                  {slots.length === 0 && (
-                    <p className="text-xs text-tape-light-brown text-center py-4">現在、予約可能な枠がありません。</p>
-                  )}
-                </div>
+                      {socialLinks.x && (
+                        <a
+                          href={socialLinks.x}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-2xl border border-tape-brown/30 bg-white px-4 py-3 text-sm font-semibold text-tape-brown hover:bg-tape-cream"
+                        >
+                          X（Twitter）で連絡
+                          <ExternalLink className="h-4 w-4 text-tape-brown" />
+                        </a>
+                      )}
+                      {socialLinks.instagram && (
+                        <a
+                          href={socialLinks.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-2xl border border-tape-pink/40 bg-tape-pink/5 px-4 py-3 text-sm font-semibold text-tape-brown hover:bg-tape-pink/10"
+                        >
+                          Instagramで連絡
+                          <ExternalLink className="h-4 w-4 text-tape-pink" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {!isAuthenticated && (
-                  <p className="mt-3 text-xs text-tape-pink text-center font-medium">ログインすると予約できます。</p>
+                  <p className="text-xs text-tape-pink text-center font-medium">ログインするとチャット/決済をご利用いただけます。</p>
                 )}
 
-                <Button
-                  onClick={handleBook}
-                  disabled={!selectedSlot || !isAuthenticated || pendingAction || !activePlan}
-                  className="mt-4 w-full bg-tape-brown text-white hover:bg-tape-brown/90"
-                >
-                  {activePlan?.id === "monthly_course" ? "1ヶ月コースを申込む" : "単発セッションを予約"}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => handleBookingAction(false)}
+                    disabled={!isAuthenticated || pendingAction || !activePlan}
+                    className="w-full bg-tape-brown text-white hover:bg-tape-brown/90"
+                  >
+                    Tapeチャットで相談を始める
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleBookingAction(true)}
+                    disabled={!isAuthenticated || pendingAction || !activePlan}
+                    className="w-full border-tape-orange text-tape-orange hover:bg-tape-orange/5"
+                  >
+                    ウォレットで即時決済する
+                  </Button>
+                </div>
 
-                {activePlan?.id === "monthly_course" && (
-                  <p className="mt-2 text-[11px] text-tape-light-brown">
-                    ※ 選択した日時は1ヶ月コースの初回セッションとして確定します。
-                  </p>
-                )}
-
-                {booking && booking.status === "pending" && (
+                {booking && booking.status === "pending" && booking.payment_status !== "paid" && (
                   <Button
                     variant="outline"
                     onClick={handleConfirm}
                     disabled={pendingAction}
-                    className="mt-2 w-full border-tape-brown text-tape-brown hover:bg-tape-beige"
+                    className="w-full border-tape-brown text-tape-brown hover:bg-tape-beige"
                   >
                     ウォレットで支払う
                   </Button>
                 )}
+
+                <p className="text-[11px] text-tape-light-brown text-center">
+                  ※ まずはチャットやSNSで連絡し、カウンセラーと日程・方法をご相談ください。
+                </p>
               </div>
             </div>
           </div>
@@ -463,7 +496,8 @@ export function CounselorPage({ slug }: { slug: string }) {
       )}
 
       <div className="rounded-3xl border border-tape-beige bg-white/50 p-6 text-xs text-tape-light-brown text-center">
-        <p>※ 予約確定後の24時間以内キャンセルは50%のキャンセル料が発生します。ウォレット残高が不足している場合は事前にチャージしてください。</p>
+        <p>※ TapeチャットやSNSで日程を調整した後、ウォレット決済で確定となります。</p>
+        <p className="mt-1">※ 確定後24時間以内のキャンセルは50%のキャンセル料が発生します。</p>
         <p className="mt-1">※ カウンセラー都合でキャンセルになった場合は自動的に全額返金されます。</p>
       </div>
     </main>

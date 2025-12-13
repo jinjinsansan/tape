@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
-import { getCounselor, CounselorNotFoundError, listAvailableSlots } from "@/server/services/counselors";
+import { getCounselor, CounselorNotFoundError } from "@/server/services/counselors";
 
 const paramsSchema = z.object({ slug: z.string().min(1) });
 
@@ -29,8 +29,7 @@ export async function GET(_: Request, context: { params: { slug: string } }) {
 
   try {
     const counselor = await getCounselor(slug);
-    const slots = await listAvailableSlots(counselor.id);
-    return NextResponse.json({ counselor, slots, viewerId });
+    return NextResponse.json({ counselor, viewerId });
   } catch (error) {
     if (error instanceof CounselorNotFoundError) {
       return NextResponse.json({ error: "Counselor not found" }, { status: 404 });

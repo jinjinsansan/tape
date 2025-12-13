@@ -11,7 +11,6 @@ type Counselor = {
   specialties: string[] | null;
   avatar_url: string | null;
   hourly_rate_cents: number;
-  available_slots_count?: number;
   profile_metadata: Record<string, unknown> | null;
 };
 
@@ -47,10 +46,10 @@ export function CounselorsListClient() {
   if (counselors.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-tape-beige bg-white/50 p-12 text-center">
-        <p className="text-sm font-bold text-tape-brown">現在、予約可能なカウンセラーがいません</p>
+        <p className="text-sm font-bold text-tape-brown">現在、受付中のカウンセラーがいません</p>
         <p className="mt-2 text-xs text-tape-light-brown">
           恐れ入りますが、しばらく経ってから再度ご確認ください。<br />
-          新しいスケジュールは随時追加されます。
+          SNSを含む新しい受付方法は順次ご案内いたします。
         </p>
       </div>
     );
@@ -58,8 +57,13 @@ export function CounselorsListClient() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {counselors.map((counselor) => (
-        <Card key={counselor.slug} className="h-full border-tape-beige shadow-sm transition-all hover:shadow-md">
+      {counselors.map((counselor) => {
+        const selection = normalizePlanSelection(counselor.profile_metadata);
+        const enabledPlans = Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => selection[plan.id]);
+        const accepting = enabledPlans.length > 0;
+
+        return (
+          <Card key={counselor.slug} className="h-full border-tape-beige shadow-sm transition-all hover:shadow-md">
           <CardContent className="flex flex-col gap-4 p-5 h-full">
             <div className="flex items-start gap-4">
               <img
@@ -70,15 +74,15 @@ export function CounselorsListClient() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="text-lg font-bold text-tape-brown truncate">{counselor.display_name}</p>
-                  {(counselor.available_slots_count ?? 0) > 0 ? (
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      予約受付中
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      空き枠なし
-                    </span>
-                  )}
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                      accepting
+                        ? "text-green-600 bg-green-50"
+                        : "text-slate-500 bg-slate-100"
+                    }`}
+                  >
+                    {accepting ? "チャット受付中" : "準備中"}
+                  </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {counselor.specialties?.slice(0, 3).map(tag => (
@@ -88,19 +92,15 @@ export function CounselorsListClient() {
                   ))}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {(() => {
-                    const selection = normalizePlanSelection(counselor.profile_metadata);
-                    return Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => selection[plan.id]);
-                  })()
-                    .map((plan) => (
-                      <span
-                        key={`${counselor.slug}-${plan.id}`}
-                        className="inline-flex flex-col rounded-2xl border border-tape-beige bg-white/80 px-3 py-1 text-[11px] text-tape-brown shadow-sm"
-                      >
-                        <span className="font-semibold">{plan.title}</span>
-                        <span className="text-[10px] text-tape-light-brown">¥{plan.priceYen.toLocaleString()}</span>
-                      </span>
-                    ))}
+                  {enabledPlans.map((plan) => (
+                    <span
+                      key={`${counselor.slug}-${plan.id}`}
+                      className="inline-flex flex-col rounded-2xl border border-tape-beige bg-white/80 px-3 py-1 text-[11px] text-tape-brown shadow-sm"
+                    >
+                      <span className="font-semibold">{plan.title}</span>
+                      <span className="text-[10px] text-tape-light-brown">¥{plan.priceYen.toLocaleString()}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -108,13 +108,14 @@ export function CounselorsListClient() {
             <div className="mt-auto pt-2">
               <Link href={`/counselor/${counselor.slug}`} className="block">
                 <button className="w-full rounded-full bg-tape-brown py-3 text-sm font-bold text-white transition-colors hover:bg-tape-brown/90 shadow-sm">
-                  予約・詳細を見る
+                  相談方法を見る
                 </button>
               </Link>
             </div>
           </CardContent>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 }

@@ -49,7 +49,7 @@ export async function POST(_: Request, context: { params: { slug: string; bookin
     if (userEmail && booking) {
       const startTime = booking.slot?.start_time 
         ? new Date(booking.slot.start_time).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-        : "日時不明";
+        : "日程未定";
       
       // @ts-ignore
       const counselorName = booking.counselor?.display_name ?? "担当カウンセラー";

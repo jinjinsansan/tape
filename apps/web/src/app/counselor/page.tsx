@@ -18,7 +18,7 @@ export default function CounselorsPage() {
           <h1 className="text-3xl font-bold text-tape-brown">カウンセリング予約</h1>
           <p className="text-sm text-tape-brown/80">
             あなたの心に寄り添う専門家を選んでください。<br className="hidden sm:inline" />
-            初回はチャットでの相談も可能です。
+            TapeチャットやLINE・SNSで気軽に連絡できます。
           </p>
         </header>
 

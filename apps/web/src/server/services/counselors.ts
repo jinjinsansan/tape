@@ -34,6 +34,14 @@ export type IntroChatMessage = Database["public"]["Tables"]["counselor_intro_mes
   sender_profile?: Database["public"]["Tables"]["profiles"]["Row"] | null;
 };
 
+type CreateBookingParams = {
+  slug: string;
+  clientUserId: string;
+  planType: CounselorPlanType;
+  notes?: string | null;
+  slotId?: string | null;
+};
+
 const publicSelect = `
   id,
   slug,
@@ -49,81 +57,16 @@ const publicSelect = `
 export const listCounselors = async (supabase = getSupabaseAdminClient()) => {
   const { data, error } = await supabase
     .from("counselors")
-    .select(`${publicSelect}, slots:counselor_slots(count)`)
+    .select(publicSelect)
     .eq("is_active", true)
-    .eq("slots.status", "available")
-    .gte("slots.start_time", new Date().toISOString())
     .order("display_name", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  // The .eq filter on joined table "slots" might filter out counselors entirely if they have no slots
-  // depending on how Supabase/PostgREST handles inner vs left join. 
-  // By default, !inner join is used if a filter is applied on the foreign table.
-  // We want to list ALL counselors, but just count their available slots.
-  // To do this properly in one query without filtering out counselors, we might need a different approach
-  // or accept that Supabase syntax `slots(count)` with filters might be tricky.
-  // Actually, filtering inside the select: `slots:counselor_slots(count)` with modifiers works if supported.
-  
-  // Let's try a simpler approach: get all counselors, then maybe parallel fetch counts or trust the simple join.
-  // The correct syntax for filtered count without filtering the parent row is tricky in standard PostgREST client.
-  // However, we can just fetch all counselors and their available slots (id only) or use a view.
-  // Given the likely small number of counselors, let's just fetch their future available slots.
-  
-  const { data: counselors, error: fetchError } = await supabase
-    .from("counselors")
-    .select(`
-      ${publicSelect},
-      slots:counselor_slots(id)
-    `)
-    .eq("is_active", true)
-    .eq("slots.status", "available")
-    .gte("slots.start_time", new Date().toISOString())
-    .order("display_name", { ascending: true });
-
-  if (fetchError) throw fetchError;
-
-  // Wait, if I filter on slots (eq, gte), it performs an INNER JOIN by default in Supabase JS client
-  // which means counselors with 0 slots will be excluded.
-  // To keep counselors with 0 slots, we need to NOT filter on the top level but on the relation.
-  // But standard Supabase client doesn't support complex nested filtering easily for LEFT JOIN behavior with constraints on the right side.
-  
-  // Alternative: Fetch all counselors first. Then fetching slots is a separate query or we accept the limitation.
-  // Better approach: Since we want to display "No slots" for counselors without slots, we need them in the list.
-  
-  // Let's reset to basic fetch and use a second query for availability or just "available_slots_count" if we can.
-  // For now, let's fetch counselors, then fetch all future available slots and map them.
-  
-  const { data: allCounselors, error: counselorsError } = await supabase
-    .from("counselors")
-    .select(publicSelect)
-    .eq("is_active", true)
-    .order("display_name", { ascending: true });
-    
-  if (counselorsError) throw counselorsError;
-  
-  const counselorIds = allCounselors?.map(c => c.id) ?? [];
-  
-  if (counselorIds.length === 0) return [];
-  
-  const { data: slots } = await supabase
-    .from("counselor_slots")
-    .select("counselor_id")
-    .in("counselor_id", counselorIds)
-    .eq("status", "available")
-    .gte("start_time", new Date().toISOString());
-    
-  const slotCounts = new Map<string, number>();
-  slots?.forEach(s => {
-    slotCounts.set(s.counselor_id, (slotCounts.get(s.counselor_id) ?? 0) + 1);
-  });
-  
-  return allCounselors?.map(c => ({
-    ...c,
-    available_slots_count: slotCounts.get(c.id) ?? 0
-  })) ?? [];
+  return data ?? [];
+};
 };
 
 export const getCounselor = async (slug: string, supabase = getSupabaseAdminClient()) => {
@@ -175,13 +118,13 @@ const markSlotStatus = async (
   }
 };
 
-export const createBooking = async (
-  slug: string,
-  slotId: string,
-  clientUserId: string,
-  notes: string | null,
-  planType: CounselorPlanType
-) => {
+export const createBooking = async ({
+  slug,
+  clientUserId,
+  planType,
+  notes = null,
+  slotId
+}: CreateBookingParams) => {
   const supabase = getSupabaseAdminClient();
   const counselor = await getCounselor(slug, supabase);
 
@@ -191,29 +134,32 @@ export const createBooking = async (
   }
 
   const planConfig = COUNSELOR_PLAN_CONFIGS[planType];
+  let resolvedSlotId: string | null = null;
+  if (slotId) {
+    const { data: slot, error: slotError } = await supabase
+      .from("counselor_slots")
+      .select("id, counselor_id, start_time, end_time, status, held_until")
+      .eq("id", slotId)
+      .maybeSingle();
 
-  const { data: slot, error: slotError } = await supabase
-    .from("counselor_slots")
-    .select("id, counselor_id, start_time, end_time, status, held_until")
-    .eq("id", slotId)
-    .maybeSingle();
+    if (slotError) {
+      throw slotError;
+    }
+    if (!slot || slot.counselor_id !== counselor.id) {
+      throw new SlotUnavailableError("Slot not found");
+    }
+    if (slot.status !== "available") {
+      throw new SlotUnavailableError("Slot is already booked");
+    }
 
-  if (slotError) {
-    throw slotError;
+    await markSlotStatus(supabase, slot.id, "held", { held_until: new Date(Date.now() + 10 * 60 * 1000).toISOString() });
+    resolvedSlotId = slot.id;
   }
-  if (!slot || slot.counselor_id !== counselor.id) {
-    throw new SlotUnavailableError("Slot not found");
-  }
-  if (slot.status !== "available") {
-    throw new SlotUnavailableError("Slot is already booked");
-  }
-
-  await markSlotStatus(supabase, slot.id, "held", { held_until: new Date(Date.now() + 10 * 60 * 1000).toISOString() });
 
   const { data: booking, error: bookingError } = await supabase
     .from("counselor_bookings")
     .insert({
-      slot_id: slot.id,
+      slot_id: resolvedSlotId,
       counselor_id: counselor.id,
       client_user_id: clientUserId,
       price_cents: planConfig.priceCents,
@@ -267,7 +213,9 @@ export const cancelBooking = async (bookingId: string, userId: string) => {
     throw new SlotUnavailableError("Only pending bookings can be cancelled");
   }
 
-  await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
+  if (booking.slot_id) {
+    await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
+  }
 
   const { error: cancelError } = await supabase
     .from("counselor_bookings")
@@ -344,7 +292,9 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
   await ensureClientWalletBalance(userId, booking.price_cents);
   await consumeWallet(userId, booking.price_cents, { bookingId });
 
-  await markSlotStatus(supabase, booking.slot_id, "booked", { held_until: null });
+  if (booking.slot_id) {
+    await markSlotStatus(supabase, booking.slot_id, "booked", { held_until: null });
+  }
 
   const { error: updateError } = await supabase
     .from("counselor_bookings")
@@ -430,8 +380,8 @@ export type CounselorDashboardBooking = {
   status: BookingStatus;
   payment_status: string;
   plan_type: CounselorPlanType;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   client: {
     id: string;
     display_name: string | null;
@@ -484,8 +434,8 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
     notes: booking.notes,
     intro_chat_id: booking.intro_chat_id,
     plan_type: booking.plan_type,
-    start_time: booking.slot?.start_time ?? "",
-    end_time: booking.slot?.end_time ?? "",
+    start_time: booking.slot?.start_time ?? null,
+    end_time: booking.slot?.end_time ?? null,
     client: clientsMap.get(booking.client_user_id) || { id: booking.client_user_id, display_name: null }
   }));
 };
@@ -518,8 +468,10 @@ export const adminCancelBooking = async (bookingId: string) => {
   if (error) throw error;
   if (!booking) throw new Error("Booking not found");
 
-  // Release slot
-  await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
+  // Release slot if applicable
+  if (booking.slot_id) {
+    await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
+  }
 
   const { error: cancelError } = await supabase
     .from("counselor_bookings")
@@ -572,7 +524,11 @@ export const listUserBookings = async (userId: string) => {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((booking) => ({
+    ...booking,
+    start_time: booking.slot?.start_time ?? null,
+    end_time: booking.slot?.end_time ?? null
+  }));
 };
 
 export const createSlot = async (counselorId: string, startTime: string, endTime: string) => {

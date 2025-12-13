@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   COUNSELOR_PLAN_CONFIGS,
@@ -9,13 +9,14 @@ import {
   normalizePlanSelection,
   DEFAULT_COUNSELOR_PLAN_SELECTION
 } from "@/constants/counselor-plans";
+import { extractCounselorSocialLinks } from "@/lib/counselor-metadata";
 
 type DashboardBooking = {
   id: string;
   status: string;
   payment_status: string;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   notes: string | null;
   intro_chat_id: string | null;
   plan_type: CounselorPlanType;
@@ -48,19 +49,15 @@ type CounselorProfile = {
   profile_metadata: Record<string, unknown> | null;
 };
 
-type CounselorSlot = {
-  id: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-};
-
 type EarningsData = {
   total: number;
   pending: number;
   thisMonth: number;
   monthly: Array<{ month: string; earnings: number }>;
 };
+
+const formatScheduleLabel = (start?: string | null) =>
+  start ? new Date(start).toLocaleString("ja-JP") : "日程未定 / 調整中";
 
 type EarningsStats = {
   totalBookings: number;
@@ -86,13 +83,18 @@ export function CounselorDashboardClient() {
     bio: "",
     specialties: "",
     intro_video_url: "",
+    line_url: "",
+    x_url: "",
+    instagram_url: ""
   });
   const [planSettings, setPlanSettings] = useState<CounselorPlanSelection>(DEFAULT_COUNSELOR_PLAN_SELECTION);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [mySlots, setMySlots] = useState<CounselorSlot[]>([]);
-  const [slotForm, setSlotForm] = useState({ date: "", startTime: "10:00", endTime: "11:00" });
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [earningsStats, setEarningsStats] = useState<EarningsStats | null>(null);
+  const socialLinksPreview = useMemo(
+    () => (profile ? extractCounselorSocialLinks(profile.profile_metadata) : null),
+    [profile]
+  );
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -135,72 +137,22 @@ export function CounselorDashboardClient() {
       if (!res.ok) throw new Error("プロフィールの取得に失敗しました");
       const data = await res.json();
       setProfile(data.counselor);
+      const socialLinks = extractCounselorSocialLinks(data.counselor.profile_metadata);
       setProfileForm({
         display_name: data.counselor.display_name || "",
         avatar_url: data.counselor.avatar_url || "",
         bio: data.counselor.bio || "",
         specialties: data.counselor.specialties?.join(", ") || "",
         intro_video_url: data.counselor.intro_video_url || "",
+        line_url: socialLinks.line || "",
+        x_url: socialLinks.x || "",
+        instagram_url: socialLinks.instagram || ""
       });
       setPlanSettings(normalizePlanSelection(data.counselor.profile_metadata));
-      // Load slots after getting profile
-      if (data.counselor?.slug) {
-        loadSlots(data.counselor.slug);
-      }
     } catch (err) {
       console.error(err);
     }
   }, []);
-
-  const loadSlots = async (slug: string) => {
-    try {
-      const res = await fetch(`/api/counselors/${slug}`);
-      if (!res.ok) throw new Error("予約枠の取得に失敗しました");
-      const data = await res.json();
-      setMySlots(data.slots ?? []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleAddSlot = async () => {
-    if (!profile) return;
-    try {
-      const start = new Date(`${slotForm.date}T${slotForm.startTime}:00`);
-      const end = new Date(`${slotForm.date}T${slotForm.endTime}:00`);
-      
-      const res = await fetch("/api/admin/slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          counselorId: profile.id,
-          startTime: start.toISOString(),
-          endTime: end.toISOString()
-        })
-      });
-      
-      if (!res.ok) throw new Error("予約枠の追加に失敗しました");
-      
-      alert("予約枠を追加しました");
-      loadSlots(profile.slug);
-      setSlotForm({ date: "", startTime: "10:00", endTime: "11:00" });
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "予約枠の追加に失敗しました");
-    }
-  };
-
-  const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm("この予約枠を削除しますか？")) return;
-    try {
-      const res = await fetch(`/api/admin/slots/${slotId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("削除に失敗しました");
-      if (profile) loadSlots(profile.slug);
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "削除に失敗しました");
-    }
-  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -270,6 +222,9 @@ export function CounselorDashboardClient() {
           bio: profileForm.bio || null,
           specialties: profileForm.specialties ? profileForm.specialties.split(",").map(s => s.trim()).filter(Boolean) : null,
           intro_video_url: profileForm.intro_video_url || null,
+          line_url: profileForm.line_url || null,
+          x_url: profileForm.x_url || null,
+          instagram_url: profileForm.instagram_url || null,
           plan_settings: sanitizedPlans
         })
       });
@@ -598,6 +553,38 @@ export function CounselorDashboardClient() {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">LINEリンク</label>
+                  <input
+                    type="url"
+                    value={profileForm.line_url}
+                    onChange={(e) => setProfileForm({ ...profileForm, line_url: e.target.value })}
+                    placeholder="https://lin.ee/..."
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">X（Twitter）リンク</label>
+                  <input
+                    type="url"
+                    value={profileForm.x_url}
+                    onChange={(e) => setProfileForm({ ...profileForm, x_url: e.target.value })}
+                    placeholder="https://x.com/..."
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Instagramリンク</label>
+                <input
+                  type="url"
+                  value={profileForm.instagram_url}
+                  onChange={(e) => setProfileForm({ ...profileForm, instagram_url: e.target.value })}
+                  placeholder="https://www.instagram.com/..."
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   onClick={() => setEditingProfile(false)}
@@ -673,92 +660,32 @@ export function CounselorDashboardClient() {
                   })()}
                 </div>
               </div>
+              {socialLinksPreview && (socialLinksPreview.line || socialLinksPreview.x || socialLinksPreview.instagram) && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">SNSリンク</p>
+                  <div className="flex flex-col gap-1 text-xs text-slate-600">
+                    {socialLinksPreview.line && (
+                      <a href={socialLinksPreview.line} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        LINE: {socialLinksPreview.line}
+                      </a>
+                    )}
+                    {socialLinksPreview.x && (
+                      <a href={socialLinksPreview.x} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:underline">
+                        X: {socialLinksPreview.x}
+                      </a>
+                    )}
+                    {socialLinksPreview.instagram && (
+                      <a href={socialLinksPreview.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline">
+                        Instagram: {socialLinksPreview.instagram}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
       )}
-
-      {profile && (
-        <section className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/90 p-4 sm:p-6 shadow-xl shadow-slate-200/70">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <div>
-              <p className="text-xs font-semibold text-blue-500">予約枠管理</p>
-              <h2 className="text-xl font-black text-slate-900">予約可能時間の設定</h2>
-            </div>
-          </div>
-          
-          <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <h3 className="text-sm font-bold text-slate-700 mb-3">新規枠の追加</h3>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 sm:items-end">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs text-slate-500 mb-1">日付</label>
-                <input
-                  type="date"
-                  value={slotForm.date}
-                  onChange={(e) => setSlotForm({ ...slotForm, date: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs text-slate-500 mb-1">開始時間</label>
-                <input
-                  type="time"
-                  value={slotForm.startTime}
-                  onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs text-slate-500 mb-1">終了時間</label>
-                <input
-                  type="time"
-                  value={slotForm.endTime}
-                  onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-              </div>
-              <button
-                onClick={handleAddSlot}
-                disabled={!slotForm.date || !slotForm.startTime || !slotForm.endTime}
-                className="w-full sm:w-auto rounded-full bg-blue-500 px-6 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
-              >
-                追加
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3">現在の予約枠</h3>
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {mySlots.map((slot) => (
-                <div key={slot.id} className={`p-3 rounded-xl border ${slot.status === 'available' ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-70'}`}>
-                  <p className="text-xs font-bold text-slate-700">
-                    {new Date(slot.start_time).toLocaleDateString("ja-JP")}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {new Date(slot.start_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })} - {new Date(slot.end_time).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  <p className="mt-2 text-xs">
-                    ステータス: <span className={slot.status === 'available' ? 'text-green-600' : 'text-slate-500'}>{slot.status}</span>
-                  </p>
-                  {slot.status === 'available' && (
-                    <button
-                      onClick={() => handleDeleteSlot(slot.id)}
-                      className="mt-2 w-full rounded-md border border-rose-200 bg-rose-50 py-1 text-xs text-rose-600 hover:bg-rose-100"
-                    >
-                      削除
-                    </button>
-                  )}
-                </div>
-              ))}
-              {mySlots.length === 0 && (
-                <p className="col-span-full text-sm text-slate-500 text-center py-4">登録された枠はありません。</p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
       <section className="grid gap-4 md:grid-cols-[280px_1fr]">
         <div className="space-y-3 md:sticky md:top-4 md:self-start">
           <h2 className="text-xs font-semibold text-slate-500">予約一覧</h2>
@@ -773,7 +700,7 @@ export function CounselorDashboardClient() {
                 }`}
               >
                 <p className="text-sm font-semibold text-slate-800">{booking.client?.display_name ?? "非公開"}</p>
-                <p className="text-slate-500">{new Date(booking.start_time).toLocaleString("ja-JP")}</p>
+                <p className="text-slate-500">{formatScheduleLabel(booking.start_time)}</p>
                 <p className="text-[11px] text-slate-400">
                   {COUNSELOR_PLAN_CONFIGS[booking.plan_type].title} · {booking.status} · {booking.payment_status}
                 </p>
@@ -791,7 +718,7 @@ export function CounselorDashboardClient() {
                 <h2 className="text-xl font-black text-slate-900">
                   {selectedBooking.client?.display_name ?? "非公開"}
                 </h2>
-                <p className="text-sm text-slate-500">{new Date(selectedBooking.start_time).toLocaleString("ja-JP")}</p>
+                <p className="text-sm text-slate-500">{formatScheduleLabel(selectedBooking.start_time)}</p>
                 <p className="text-xs text-slate-400">
                   {selectedBooking.status} · {selectedBooking.payment_status}
                 </p>

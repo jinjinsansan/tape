@@ -536,6 +536,7 @@ export const updateCounselorProfile = async (
     specialties?: string[] | null;
     hourly_rate_cents?: number;
     intro_video_url?: string | null;
+    profile_metadata?: Record<string, unknown>;
   }
 ) => {
   const supabase = adminClient();

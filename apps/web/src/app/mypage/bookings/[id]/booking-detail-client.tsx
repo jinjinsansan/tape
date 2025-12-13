@@ -15,8 +15,8 @@ type BookingDetail = {
   notes: string | null;
   created_at: string;
   intro_chat_id: string | null;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   counselor: {
     display_name: string;
     avatar_url: string | null;
@@ -34,6 +34,18 @@ type ChatMessage = {
     display_name: string;
     avatar_url: string | null;
   };
+};
+
+const formatBookingRange = (start?: string | null, end?: string | null) => {
+  if (!start) {
+    return "日程未定（チャットやSNSで調整中）";
+  }
+  const startDate = new Date(start).toLocaleString("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+  if (!end) {
+    return startDate;
+  }
+  const endTime = new Date(end).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  return `${startDate} - ${endTime}`;
 };
 
 export function BookingDetailClient({ bookingId }: { bookingId: string }) {
@@ -285,11 +297,7 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
         <div className="space-y-4 text-sm text-tape-brown">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-tape-orange" />
-            <span className="font-medium">
-              {new Date(booking.start_time).toLocaleString("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" })}
-              {" - "}
-              {new Date(booking.end_time).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
-            </span>
+            <span className="font-medium">{formatBookingRange(booking.start_time, booking.end_time)}</span>
           </div>
           <div className="flex items-center gap-2">
             <Video className="h-4 w-4 text-tape-orange" />

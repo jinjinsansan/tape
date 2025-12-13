@@ -11,6 +11,7 @@ import {
   mergePlanSelectionIntoMetadata
 } from "@/constants/counselor-plans";
 import { normalizeYouTubeEmbedUrl } from "@/lib/youtube";
+import { mergeCounselorSocialLinks } from "@/lib/counselor-metadata";
 
 const bodySchema = z.object({
   display_name: z.string().min(1).optional(),
@@ -19,6 +20,9 @@ const bodySchema = z.object({
   specialties: z.array(z.string()).nullable().optional(),
   hourly_rate_cents: z.number().int().min(0).optional(),
   intro_video_url: z.string().url().nullable().optional(),
+  line_url: z.string().url().nullable().optional(),
+  x_url: z.string().url().nullable().optional(),
+  instagram_url: z.string().url().nullable().optional(),
   plan_settings: z
     .object({
       single_session: z.boolean().optional(),
@@ -71,22 +75,37 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid payload", details: parsed.error }, { status: 400 });
     }
 
-  const { plan_settings, intro_video_url, ...rest } = parsed.data;
+    const { plan_settings, intro_video_url, line_url, x_url, instagram_url, ...rest } = parsed.data;
     const updates: Parameters<typeof updateCounselorProfile>[1] = { ...rest };
 
     if (intro_video_url !== undefined) {
       updates.intro_video_url = normalizeYouTubeEmbedUrl(intro_video_url) ?? null;
     }
 
+    let metadataWorking: unknown = counselor.profile_metadata;
+    let metadataUpdated = false;
+
     if (plan_settings) {
       const normalized = {
         ...DEFAULT_COUNSELOR_PLAN_SELECTION,
         ...plan_settings
       };
-      updates.profile_metadata = mergePlanSelectionIntoMetadata(
-        counselor.profile_metadata,
-        normalized
-      );
+      metadataWorking = mergePlanSelectionIntoMetadata(metadataWorking, normalized);
+      metadataUpdated = true;
+    }
+
+    const socialProvided = [line_url, x_url, instagram_url].some((value) => value !== undefined);
+    if (socialProvided) {
+      metadataWorking = mergeCounselorSocialLinks(metadataWorking, {
+        line: line_url ?? null,
+        x: x_url ?? null,
+        instagram: instagram_url ?? null
+      });
+      metadataUpdated = true;
+    }
+
+    if (metadataUpdated) {
+      updates.profile_metadata = metadataWorking as Record<string, unknown>;
     }
 
     const updated = await updateCounselorProfile(counselor.id, updates);

@@ -4,13 +4,14 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
-import { createBooking, CounselorNotFoundError, SlotUnavailableError } from "@/server/services/counselors";
+import { createBooking, CounselorNotFoundError, SlotUnavailableError, confirmBooking } from "@/server/services/counselors";
 
 const paramsSchema = z.object({ slug: z.string().min(1) });
 const bodySchema = z.object({
-  slotId: z.string().uuid(),
+  planType: z.enum(["single_session", "monthly_course"]),
   notes: z.string().max(1000).optional().nullable(),
-  planType: z.enum(["single_session", "monthly_course"])
+  slotId: z.string().uuid().optional().nullable(),
+  payNow: z.boolean().optional()
 });
 
 const handleAuthError = (error: unknown) => {
@@ -48,14 +49,21 @@ export async function POST(request: Request, context: { params: { slug: string }
   }
 
   try {
-    const result = await createBooking(
+    const result = await createBooking({
       slug,
-      parsed.data.slotId,
-      userId,
-      parsed.data.notes ?? null,
-      parsed.data.planType
-    );
-    return NextResponse.json({ booking: result.booking, chatId: result.chatId });
+      clientUserId: userId,
+      planType: parsed.data.planType,
+      notes: parsed.data.notes ?? null,
+      slotId: parsed.data.slotId ?? null
+    });
+
+    let bookingResponse = result.booking;
+
+    if (parsed.data.payNow) {
+      bookingResponse = await confirmBooking(result.booking.id, userId);
+    }
+
+    return NextResponse.json({ booking: bookingResponse, chatId: result.chatId });
   } catch (error) {
     if (error instanceof CounselorNotFoundError) {
       return NextResponse.json({ error: "Counselor not found" }, { status: 404 });

@@ -8,13 +8,23 @@ type Booking = {
   id: string;
   status: string;
   payment_status: string;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   counselor: {
     display_name: string;
     avatar_url: string | null;
     slug: string;
   };
+};
+
+const formatDateLabel = (value?: string | null) =>
+  value ? new Date(value).toLocaleString("ja-JP", { month: "short", day: "numeric", weekday: "short" }) : "日程未定";
+
+const formatTimeRange = (start?: string | null, end?: string | null) => {
+  if (!start) return "チャットで調整";
+  const startTime = new Date(start).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  const endTime = end ? new Date(end).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "";
+  return endTime ? `${startTime} - ${endTime}` : startTime;
 };
 
 export function MyBookingsClient() {
@@ -89,7 +99,7 @@ export function MyBookingsClient() {
                 {booking.status === "confirmed" ? "予約確定" : booking.status === "cancelled" ? "キャンセル済" : "仮予約"}
               </span>
               <span className="text-tape-light-brown">
-                {new Date(booking.start_time).toLocaleString("ja-JP", { month: "short", day: "numeric", weekday: "short" })}
+                {formatDateLabel(booking.start_time)}
               </span>
             </div>
             
@@ -104,8 +114,7 @@ export function MyBookingsClient() {
                 <div className="flex items-center gap-3 text-xs text-tape-light-brown mt-0.5">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {new Date(booking.start_time).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} - 
-                    {new Date(booking.end_time).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                    {formatTimeRange(booking.start_time, booking.end_time)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Video className="h-3 w-3" /> オンライン
