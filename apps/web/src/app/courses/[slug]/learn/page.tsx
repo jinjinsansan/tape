@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
 import { isPrivilegedUser } from "@/server/services/roles";
-import { INSTALLMENT_COURSE_SLUG } from "@/server/services/courses";
+import { getInstallmentCourseConfig } from "@/server/services/courses";
 import { CourseLearnClient } from "./course-learn-client";
 
 type PageProps = {
@@ -47,7 +47,7 @@ export default async function CourseLearnPage({ params }: PageProps) {
       hasAccess = Boolean(purchaseData);
     }
 
-    if (!hasAccess && courseData.slug === INSTALLMENT_COURSE_SLUG) {
+    if (!hasAccess && getInstallmentCourseConfig(courseData.slug)) {
       const { data: unlockedRows } = await supabase
         .from("learning_lesson_unlocks")
         .select("lesson_id")

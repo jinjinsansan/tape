@@ -126,8 +126,10 @@ export function CourseDetailClient({ slug }: { slug: string }) {
   };
 
   const handleInstallmentPurchase = async () => {
+    if (!course?.installmentInfo) return;
+    const formattedPrice = `¥${course.installmentInfo.priceYen.toLocaleString()}`;
     setInstallmentError(null);
-    if (!window.confirm("ウォレット残高から6,000円を使用して次のレッスンを購入します。よろしいですか？")) {
+    if (!window.confirm(`ウォレット残高から${formattedPrice}を使用して次のレッスンを購入します。よろしいですか？`)) {
       return;
     }
     setInstallmentLoading(true);

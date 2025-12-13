@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
 import { isPrivilegedUser } from "@/server/services/roles";
-import { INSTALLMENT_COURSE_SLUG, INSTALLMENT_LESSON_PRICE_YEN } from "@/server/services/courses";
+import { getInstallmentCourseConfig } from "@/server/services/courses";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +90,9 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
       totalLessons: number;
     } | null = null;
 
-    if (courseData.slug === INSTALLMENT_COURSE_SLUG) {
+    const installmentConfig = getInstallmentCourseConfig(courseData.slug);
+
+    if (installmentConfig) {
       let unlockedLessonCount = 0;
       if (user) {
         if (isPurchased) {
@@ -108,7 +110,7 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
 
       installmentInfo = {
         enabled: true,
-        priceYen: INSTALLMENT_LESSON_PRICE_YEN,
+        priceYen: installmentConfig.lessonPriceYen,
         unlockedLessonCount,
         totalLessons
       };

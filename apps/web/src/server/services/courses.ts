@@ -7,9 +7,25 @@ import type {
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { isPrivilegedUser } from "@/server/services/roles";
 
-export const INSTALLMENT_COURSE_SLUG = "counselor-training";
-export const INSTALLMENT_LESSON_PRICE_YEN = 6000;
-export const INSTALLMENT_LESSON_PRICE_CENTS = INSTALLMENT_LESSON_PRICE_YEN * 100;
+export const INSTALLMENT_COURSE_CONFIGS = {
+  "counselor-training": {
+    lessonPriceYen: 6000,
+    lessonPriceCents: 6000 * 100
+  },
+  "attraction-permit": {
+    lessonPriceYen: 1500,
+    lessonPriceCents: 1500 * 100
+  }
+} as const;
+
+export type InstallmentCourseSlug = keyof typeof INSTALLMENT_COURSE_CONFIGS;
+
+export const getInstallmentCourseConfig = (slug?: string | null) => {
+  if (!slug) return null;
+  return (INSTALLMENT_COURSE_CONFIGS as Record<string, (typeof INSTALLMENT_COURSE_CONFIGS)[InstallmentCourseSlug] | undefined>)[
+    slug
+  ] ?? null;
+};
 
 type Supabase = SupabaseClient<Database>;
 
@@ -425,8 +441,7 @@ export const getCourseForUser = async (
     unlockedLessonIds = (unlockedRows ?? []).map((row) => row.lesson_id);
   }
 
-  const strictInstallment =
-    course.slug === INSTALLMENT_COURSE_SLUG && !hasFullCourseAccess && !isPrivileged;
+  const strictInstallment = Boolean(getInstallmentCourseConfig(course.slug)) && !hasFullCourseAccess && !isPrivileged;
   const allowDefaultFirstLesson = !strictInstallment;
   const allowSequentialUnlock = !strictInstallment;
   const forceUnlockAll = isPrivileged;

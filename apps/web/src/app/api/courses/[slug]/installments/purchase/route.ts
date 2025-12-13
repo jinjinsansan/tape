@@ -3,12 +3,7 @@ import { NextResponse } from "next/server";
 import { getRouteUser } from "@/server/auth";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { isPrivilegedUser } from "@/server/services/roles";
-import {
-  getCourseForUser,
-  INSTALLMENT_COURSE_SLUG,
-  INSTALLMENT_LESSON_PRICE_CENTS,
-  INSTALLMENT_LESSON_PRICE_YEN
-} from "@/server/services/courses";
+import { getCourseForUser, getInstallmentCourseConfig } from "@/server/services/courses";
 import { consumeWallet, getOrCreateWallet, topUpWallet } from "@/server/services/wallet";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +11,8 @@ export const dynamic = "force-dynamic";
 export async function POST(_: Request, { params }: { params: { slug: string } }) {
   try {
     const { slug } = params;
-    if (slug !== INSTALLMENT_COURSE_SLUG) {
+    const installmentConfig = getInstallmentCourseConfig(slug);
+    if (!installmentConfig) {
       return NextResponse.json({ error: "このコースでは分割購入は利用できません" }, { status: 400 });
     }
 
@@ -43,11 +39,11 @@ export async function POST(_: Request, { params }: { params: { slug: string } })
     }
 
     const wallet = await getOrCreateWallet(user.id);
-    if (wallet.balance_cents < INSTALLMENT_LESSON_PRICE_CENTS) {
+    if (wallet.balance_cents < installmentConfig.lessonPriceCents) {
       return NextResponse.json({ error: "ウォレット残高が不足しています" }, { status: 400 });
     }
 
-    await consumeWallet(user.id, INSTALLMENT_LESSON_PRICE_CENTS, {
+    await consumeWallet(user.id, installmentConfig.lessonPriceCents, {
       reason: "course_installment",
       courseId: courseView.id,
       lessonId: nextLocked.id
@@ -58,7 +54,7 @@ export async function POST(_: Request, { params }: { params: { slug: string } })
         user_id: user.id,
         course_id: courseView.id,
         lesson_id: nextLocked.id,
-        amount_cents: INSTALLMENT_LESSON_PRICE_CENTS,
+        amount_cents: installmentConfig.lessonPriceCents,
         metadata: {
           lessonTitle: nextLocked.title,
           courseTitle: courseView.title
@@ -70,7 +66,7 @@ export async function POST(_: Request, { params }: { params: { slug: string } })
       }
     } catch (unlockError) {
       try {
-        await topUpWallet(user.id, INSTALLMENT_LESSON_PRICE_CENTS, {
+        await topUpWallet(user.id, installmentConfig.lessonPriceCents, {
           reason: "course_installment_refund",
           courseId: courseView.id,
           lessonId: nextLocked.id,
@@ -93,7 +89,7 @@ export async function POST(_: Request, { params }: { params: { slug: string } })
       success: true,
       lessonId: nextLocked.id,
       lessonTitle: nextLocked.title,
-      priceYen: INSTALLMENT_LESSON_PRICE_YEN
+      priceYen: installmentConfig.lessonPriceYen
     });
   } catch (error) {
     console.error("Failed to process installment purchase", error);

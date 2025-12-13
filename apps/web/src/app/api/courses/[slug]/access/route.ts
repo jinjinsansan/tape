@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
 import { isPrivilegedUser } from "@/server/services/roles";
-import { INSTALLMENT_COURSE_SLUG } from "@/server/services/courses";
+import { getInstallmentCourseConfig } from "@/server/services/courses";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
       return NextResponse.json({ hasAccess: true, reason: "purchased" });
     }
 
-    if (courseData.slug === INSTALLMENT_COURSE_SLUG) {
+    if (getInstallmentCourseConfig(courseData.slug)) {
       const { data: unlockedRows } = await supabase
         .from("learning_lesson_unlocks")
         .select("lesson_id")
