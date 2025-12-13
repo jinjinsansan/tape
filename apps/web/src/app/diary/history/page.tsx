@@ -88,20 +88,20 @@ const formatDateTime = (value: string | null) => {
 const AiCommentBlock = ({ entry }: { entry: DiaryEntry }) => {
   if (entry.ai_comment_status === "completed" && entry.ai_comment) {
     return (
-      <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm">
-        <p className="text-xs font-bold text-sky-900 flex items-center gap-2">
+      <div className="mt-4 rounded-2xl border border-tape-pink/30 bg-[#fff6f8] p-4 text-sm">
+        <p className="text-xs font-bold text-tape-pink flex items-center gap-2">
           <Sparkles className="h-4 w-4" /> ミシェルAIからのコメント
         </p>
-        <p className="mt-2 whitespace-pre-wrap text-sky-900 leading-relaxed">{entry.ai_comment}</p>
-        <p className="mt-2 text-[11px] text-sky-700">生成日時: {formatDateTime(entry.ai_comment_generated_at)}</p>
+        <p className="mt-2 whitespace-pre-wrap text-tape-brown leading-relaxed">{entry.ai_comment}</p>
+        <p className="mt-2 text-[11px] text-tape-pink">生成日時: {formatDateTime(entry.ai_comment_generated_at)}</p>
       </div>
     );
   }
 
   if (entry.ai_comment_status === "pending" || entry.ai_comment_status === "processing") {
     return (
-      <div className="mt-4 rounded-2xl border border-dashed border-sky-200 bg-white/70 p-4 text-xs text-sky-800 flex items-center gap-2">
-        <Bot className="h-4 w-4 text-sky-600" /> ミシェルAIがコメントを準備中です。しばらくお待ちください。
+      <div className="mt-4 rounded-2xl border border-dashed border-tape-pink/40 bg-white p-4 text-xs text-tape-pink flex items-center gap-2">
+        <Bot className="h-4 w-4 text-tape-pink" /> ミシェルAIがコメントを準備中です。しばらくお待ちください。
       </div>
     );
   }

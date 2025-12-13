@@ -118,8 +118,8 @@ export default async function FeedEntryDetailPage({ params }: FeedEntryPageProps
             )}
 
             {entry.aiComment && (
-              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-                <p className="text-xs font-bold text-sky-800">ミシェルAIからのコメント</p>
+              <div className="rounded-2xl border border-tape-pink/30 bg-[#fff6f8] p-4 text-sm text-tape-brown">
+                <p className="text-xs font-bold text-tape-pink">ミシェルAIからのコメント</p>
                 <p className="mt-2 whitespace-pre-wrap leading-relaxed">{entry.aiComment.content}</p>
               </div>
             )}

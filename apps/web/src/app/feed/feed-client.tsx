@@ -373,13 +373,13 @@ export function FeedPageClient() {
                   </div>
                 )}
                 {entry.aiComment && (
-                  <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-                    <p className="text-xs font-bold text-sky-800 flex items-center gap-2">
+                  <div className="mt-4 rounded-2xl border border-tape-pink/30 bg-[#fff6f8] p-4 text-sm text-tape-brown">
+                    <p className="text-xs font-bold text-tape-pink flex items-center gap-2">
                       <Sparkles className="h-4 w-4" /> ミシェルAIからのコメント
                     </p>
                     <p className="mt-2 whitespace-pre-wrap leading-relaxed">{entry.aiComment.content}</p>
                     {entry.aiComment.generatedAt && (
-                      <p className="mt-2 text-[11px] text-sky-700">生成日時: {formatDateTime(entry.aiComment.generatedAt)}</p>
+                      <p className="mt-2 text-[11px] text-tape-pink">生成日時: {formatDateTime(entry.aiComment.generatedAt)}</p>
                     )}
                   </div>
                 )}
