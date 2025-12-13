@@ -67,7 +67,6 @@ export const listCounselors = async (supabase = getSupabaseAdminClient()) => {
 
   return data ?? [];
 };
-};
 
 export const getCounselor = async (slug: string, supabase = getSupabaseAdminClient()) => {
   const { data, error } = await supabase
