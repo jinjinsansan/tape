@@ -5,6 +5,8 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { getUserInsightsForAdmin } from "@/server/services/admin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _request: Request,
   { params }: { params: { userId: string } }
