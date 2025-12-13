@@ -113,17 +113,34 @@ const buildVideoSource = (url: string | null | undefined) => {
   return { type: "file" as const, src: url };
 };
 
+const splitTextIntoPoints = (value: string): string[] =>
+  value
+    .split(/\r?\n|\u2028|\u2029/)
+    .map((line) => line.replace(/^[-*・\u2022]\s?/, "").trim())
+    .filter(Boolean);
+
 const extractKeyPoints = (resources: unknown): string[] => {
   if (!resources) return [];
+
   if (Array.isArray(resources)) {
     return resources.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
   }
-  if (typeof resources === "object") {
-    const keyPoints = (resources as { keyPoints?: unknown }).keyPoints;
-    if (Array.isArray(keyPoints)) {
-      return keyPoints.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+
+  if (typeof resources === "string") {
+    return splitTextIntoPoints(resources);
+  }
+
+  if (typeof resources === "object" && resources !== null) {
+    const container = resources as { keyPoints?: unknown; key_points?: unknown; highlights?: unknown };
+    const candidates = container.keyPoints ?? container.key_points ?? container.highlights;
+    if (Array.isArray(candidates)) {
+      return candidates.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    }
+    if (typeof candidates === "string") {
+      return splitTextIntoPoints(candidates);
     }
   }
+
   return [];
 };
 
@@ -407,7 +424,9 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                 <div className="space-y-3 mb-6">
                   <p className="text-xs font-semibold text-tape-orange">LESSON</p>
                   <h2 className="text-2xl font-bold text-tape-brown">{activeLesson.title}</h2>
-                  <p className="text-sm text-tape-brown/80">{activeLesson.summary}</p>
+                  <p className="text-sm text-tape-brown/80 whitespace-pre-line leading-relaxed">
+                    {activeLesson.summary}
+                  </p>
                 </div>
 
                 {activeLessonVideo.type !== "none" ? (
