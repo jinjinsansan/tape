@@ -532,7 +532,7 @@ export function MichelleChatClient() {
         }),
       });
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         let serverMessage = "ネットワークエラーが発生しました";
 
         try {
@@ -546,80 +546,21 @@ export function MichelleChatClient() {
         throw new Error(serverMessage);
       }
 
-      const sessionIdHeader = res.headers.get("x-session-id");
-      if (sessionIdHeader) {
-        resolvedSessionId = sessionIdHeader;
-      }
+      // バッファードレスポンス（JSON）を処理
+      const data = (await res.json()) as { sessionId: string; message: string };
+      const aiContent = data.message;
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let aiContent = "";
-      let streamCompleted = false;
-      let buffer = ""; // Buffer for incomplete SSE events
-
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-
-          // Append to buffer
-          buffer += decoder.decode(value, { stream: true });
-
-          // Split by SSE delimiter, but keep the last incomplete event in buffer
-          const events = buffer.split("\n\n");
-          buffer = events.pop() || ""; // Keep incomplete event for next iteration
-
-          for (const event of events) {
-            if (!event.trim()) continue;
-            if (!event.startsWith("data:")) continue;
-            try {
-              const payload = JSON.parse(event.slice(5)) as StreamPayload;
-              if (payload.type === "meta") {
-                if (payload.sessionId) {
-                  resolvedSessionId = payload.sessionId;
-                  if (!activeSessionId) {
-                    setActiveSessionId(payload.sessionId);
-                    loadSessions();
-                  }
-                }
-              }
-              if (payload.type === "delta" && payload.content) {
-                aiContent += payload.content;
-                setMessages((prev) => prev.map((msg) => (msg.id === tempAiId ? { ...msg, content: aiContent } : msg)));
-              }
-              if (payload.type === "done") {
-                streamCompleted = true;
-                debugLog("[Stream] Completed successfully");
-              }
-              if (payload.type === "error") {
-                throw new Error(payload.message ?? "AI応答中にエラーが発生しました");
-              }
-            } catch (err) {
-              console.error("Failed to parse stream payload", err);
-            }
-          }
-        }
-      } catch (streamError) {
-        try {
-          await reader.cancel();
-        } catch (cancelErr) {
-          console.error("Failed to cancel reader after error:", cancelErr);
-        }
-        throw streamError;
-      }
-
-      // ストリーム完了を確認
-      if (!streamCompleted) {
-        debugLog("[Stream] Ended without 'done' event");
-        throw new Error("ストリームが正常に完了しませんでした。もう一度お試しください。");
+      if (data.sessionId && !activeSessionId) {
+        setActiveSessionId(data.sessionId);
+        loadSessions();
       }
 
       setMessages((prev) =>
         prev.map((msg) => (msg.id === tempAiId ? { ...msg, content: aiContent, pending: false } : msg)),
       );
 
-      if (!activeSessionId && resolvedSessionId) {
-        setActiveSessionId(resolvedSessionId);
+      if (!activeSessionId && data.sessionId) {
+        setActiveSessionId(data.sessionId);
       }
     } catch (err) {
       hasError = true;
