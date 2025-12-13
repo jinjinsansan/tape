@@ -8,7 +8,8 @@ import {
   Globe,
   ArrowRight,
   TrendingUp,
-  Calendar
+  Calendar,
+  Shield
 } from "lucide-react";
 
 import { getSupabaseAdminClient } from "@/server/supabase";
@@ -123,6 +124,15 @@ export default async function AdminDashboard() {
       color: "from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20",
       iconColor: "text-amber-600",
       stats: `${stats.publicDiaries}件`
+    },
+    {
+      href: "/admin/michelle-monitoring",
+      title: "ミシェル心理学監視",
+      description: "マスター管理者専用・危機対応・緊急度管理",
+      icon: Shield,
+      color: "from-pink-500/10 to-pink-600/10 hover:from-pink-500/20 hover:to-pink-600/20",
+      iconColor: "text-pink-600",
+      stats: "危機監視"
     }
   ];
 
@@ -256,20 +266,20 @@ export default async function AdminDashboard() {
         {/* Footer */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
-            ✅ Phase 1-3 完全実装完了
+            🚀 管理システム
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            ダッシュボード・ユーザー管理・ポイント管理・Xシェア監視・通報管理・
+            ユーザー管理・ポイント管理・Xシェア監視・通報管理・カウンセラー管理
           </p>
           <p className="text-xs text-slate-500">
-            お知らせ配信・カウンセラー管理・設定
+            ミシェル心理学監視・お知らせ配信・システム設定
           </p>
           <div className="mt-4 rounded-xl bg-gradient-to-r from-rose-50 to-purple-50 p-3">
             <p className="text-xs font-semibold text-slate-700">
-              🎉 すべての主要機能が完成しました
+              💡 ヒント
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              カウンセラーダッシュボードへのリンクもサイドバーに追加されています
+              各セクションから対応する機能にアクセスできます
             </p>
           </div>
         </div>

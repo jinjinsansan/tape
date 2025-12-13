@@ -29,9 +29,10 @@ export function CounselorsManagementClient() {
     setLoading(true);
     try {
       const data = await fetchJson<{ counselors: Counselor[] }>("/api/admin/counselors");
-      setCounselors(data.counselors ?? []);
+      setCounselors(Array.isArray(data.counselors) ? data.counselors : []);
     } catch (err) {
       console.error(err);
+      setCounselors([]);
     } finally {
       setLoading(false);
     }

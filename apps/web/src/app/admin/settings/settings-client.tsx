@@ -19,7 +19,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function SettingsManagementClient() {
-  const [aiDelayMinutes, setAiDelayMinutes] = useState(10);
+  const [aiDelayMinutes, setAiDelayMinutes] = useState(1);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
