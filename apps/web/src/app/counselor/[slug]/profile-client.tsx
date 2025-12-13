@@ -402,7 +402,7 @@ export function CounselorPage({ slug }: { slug: string }) {
                     disabled={!isAuthenticated || pendingAction || !activePlan}
                     className="w-full bg-tape-brown text-white hover:bg-tape-brown/90"
                   >
-                    Tapeチャットで相談を始める
+                    チャットで相談を始める
                   </Button>
                   <Button
                     variant="outline"

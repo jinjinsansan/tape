@@ -26,16 +26,6 @@ type ApiResponse = {
   courses: Course[];
 };
 
-const formatDuration = (seconds: number | null) => {
-  if (!seconds) return "-";
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}時間${minutes}分`;
-  }
-  return `${minutes}分`;
-};
-
 const formatPrice = (price: number, currency: string) => {
   if (price === 0) return "無料";
   return `¥${price.toLocaleString()}`;
@@ -127,7 +117,7 @@ export function CoursesListClient() {
               className={cn(
                 "group relative overflow-hidden transition-all duration-300 hover:shadow-2xl",
                 course.price === 0
-                  ? "border-2 border-tape-green bg-gradient-to-br from-white to-tape-green/5"
+                  ? "border-2 border-tape-beige bg-white hover:border-tape-orange"
                   : "border-2 border-tape-beige bg-white hover:border-tape-orange"
               )}
             >
@@ -135,7 +125,7 @@ export function CoursesListClient() {
                 {/* Price Badge */}
                 <div className="absolute top-4 right-4">
                   {course.price === 0 ? (
-                    <span className="inline-flex items-center rounded-full bg-tape-green px-3 py-1 text-xs font-bold text-white shadow-md">
+                    <span className="inline-flex items-center rounded-full bg-tape-brown px-3 py-1 text-xs font-bold text-white shadow-md">
                       無料
                     </span>
                   ) : course.isPurchased ? (
@@ -191,22 +181,10 @@ export function CoursesListClient() {
                   </p>
                 )}
 
-                {/* Duration */}
-                {course.totalDurationSeconds && (
-                  <p className="mb-6 text-xs text-tape-light-brown">
-                    総時間: {formatDuration(course.totalDurationSeconds)}
-                  </p>
-                )}
-
                 {/* CTA Button */}
                 <Link href={`/courses/${course.slug}`}>
                   <Button
-                    className={cn(
-                      "w-full group-hover:shadow-lg transition-all",
-                      course.price === 0
-                        ? "bg-tape-green hover:bg-tape-green/90"
-                        : "bg-gradient-to-r from-tape-orange to-tape-pink hover:from-tape-orange/90 hover:to-tape-pink/90"
-                    )}
+                    className="w-full group-hover:shadow-lg transition-all bg-gradient-to-r from-tape-orange to-tape-pink hover:from-tape-orange/90 hover:to-tape-pink/90"
                   >
                     詳細を見る
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
