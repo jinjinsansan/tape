@@ -83,6 +83,11 @@ export function MichelleChatClient() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  const [composerHeight, setComposerHeight] = useState(0);
+  const initialMobileBlurApplied = useRef(false);
 
   const loadSessions = async () => {
     const res = await fetch("/api/michelle/sessions", { cache: "no-store" });
@@ -115,22 +120,63 @@ export function MichelleChatClient() {
 
   useEffect(() => {
     loadSessions();
-    
-    // モバイル判定
-    setIsMobile(window.innerWidth < 768);
-    
-    // モバイルでは初回ロード時に意図しないフォーカスを防ぐ
-    if (window.innerWidth < 768 && textareaRef.current) {
-      textareaRef.current.blur();
-    }
-    
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+
+    const updateViewportMetrics = () => {
+      const isMobileLayout = window.innerWidth < 768;
+      setIsMobile(isMobileLayout);
+      const dynamicHeight = window.visualViewport?.height ?? window.innerHeight;
+      setViewportHeight(dynamicHeight);
     };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    updateViewportMetrics();
+
+    if (!initialMobileBlurApplied.current && window.innerWidth < 768 && textareaRef.current) {
+      textareaRef.current.blur();
+      initialMobileBlurApplied.current = true;
+    }
+
+    window.addEventListener("resize", updateViewportMetrics);
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", updateViewportMetrics);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportMetrics);
+      visualViewport?.removeEventListener("resize", updateViewportMetrics);
+    };
   }, []);
+
+  useEffect(() => {
+    const composerElement = composerRef.current;
+    if (!composerElement) {
+      return;
+    }
+
+    const updateComposerHeight = () => {
+      if (composerRef.current) {
+        setComposerHeight(composerRef.current.offsetHeight);
+      }
+    };
+
+    updateComposerHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateComposerHeight);
+      return () => window.removeEventListener("resize", updateComposerHeight);
+    }
+
+    const observer = new ResizeObserver(updateComposerHeight);
+    observer.observe(composerElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [composerRef]);
+
+  useEffect(() => {
+    if (composerRef.current) {
+      setComposerHeight(composerRef.current.offsetHeight);
+    }
+  }, [error, input, isMobile]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -141,8 +187,8 @@ export function MichelleChatClient() {
   }, [isLoading]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isLoading, composerHeight]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -312,8 +358,11 @@ export function MichelleChatClient() {
     }
   };
 
+  const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 24, isMobile ? 160 : 96);
+  const mobileViewportStyle = !isMobile || !viewportHeight ? undefined : { minHeight: `${viewportHeight}px`, height: `${viewportHeight}px` };
+
   return (
-    <div className="flex h-screen font-sans md:h-[calc(100vh-80px)]">
+    <div className="flex min-h-[100dvh] font-sans md:h-[calc(100vh-80px)]" style={mobileViewportStyle}>
       {/* オーバーレイ（モバイルのみ） */}
       {isSidebarOpen && (
         <div
@@ -371,7 +420,7 @@ export function MichelleChatClient() {
       </aside>
 
       {/* メインエリア */}
-      <main className="flex flex-1 flex-col bg-tape-cream">
+      <main className="flex flex-1 flex-col bg-tape-cream overflow-hidden">
         {/* モバイルヘッダー */}
         <div className="flex items-center gap-3 border-b border-tape-beige bg-white/80 px-4 py-3 md:hidden">
           <button
@@ -386,7 +435,15 @@ export function MichelleChatClient() {
           <div className="h-10 w-10" /> {/* スペーサー */}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-8">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto px-4 py-8"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: `${messagePaddingBottom}px`,
+            overscrollBehavior: "contain"
+          }}
+        >
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-8">
               {/* ミシェルアイコンと挨拶 */}
@@ -540,7 +597,11 @@ export function MichelleChatClient() {
         </div>
 
         {/* 入力エリア */}
-        <div className="border-t border-tape-beige bg-white/80 px-4 py-4 backdrop-blur-sm">
+        <div
+          ref={composerRef}
+          className="sticky bottom-0 left-0 right-0 border-t border-tape-beige/80 bg-white/95 px-4 pt-3 pb-4 shadow-[0_-6px_24px_rgba(87,60,46,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        >
           <div className="mx-auto max-w-3xl">
             {error && (
               <p className="mb-2 text-xs font-medium text-tape-pink">{error}</p>
@@ -557,11 +618,14 @@ export function MichelleChatClient() {
                   }
                 }}
                 onFocus={(event) => {
-                  // モバイルでフォーカス時にスムーズにスクロール（URLバーを隠す）
                   if (isMobile) {
                     setTimeout(() => {
                       event.target.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }, 300);
+                      scrollContainerRef.current?.scrollTo({
+                        top: scrollContainerRef.current.scrollHeight,
+                        behavior: "smooth"
+                      });
+                    }, 250);
                   }
                 }}
                 placeholder="ミシェルに話しかける..."

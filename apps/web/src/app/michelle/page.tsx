@@ -126,8 +126,8 @@ function PsychologyLanding({ disabled }: { disabled: boolean }) {
                 disabled={disabled}
                 className="h-14 flex-1 rounded-full bg-tape-pink text-white shadow-lg shadow-tape-pink/40 hover:bg-tape-pink/90"
               >
-                <Link href="/michelle/chat">
-                  <MessageCircle className="mr-2 h-5 w-5" /> カウンセリングを始める
+                <Link href="/michelle/chat" className="flex w-full items-center justify-center gap-2">
+                  カウンセリングを始める
                 </Link>
               </Button>
               <Button
@@ -246,8 +246,8 @@ function AttractionLanding({ disabled }: { disabled: boolean }) {
                 disabled={disabled}
                 className="h-14 flex-1 rounded-full bg-sky-500 text-white shadow-lg shadow-sky-200/60 hover:bg-sky-400"
               >
-                <Link href="/michelle/attraction/chat">
-                  <MessageCircle className="mr-2 h-5 w-5" /> チャットを始める
+                <Link href="/michelle/attraction/chat" className="flex w-full items-center justify-center">
+                  チャットを始める
                 </Link>
               </Button>
               <Button
@@ -307,7 +307,7 @@ function AttractionLanding({ disabled }: { disabled: boolean }) {
       <section className="rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-inner" id="attraction-features">
         <h3 className="text-2xl font-bold text-[#1f365c]">ミシェル心理学とのハイブリッドAI</h3>
         <p className="mt-4 text-sm text-[#1f365c]/80">
-          心理的課題を解くピンクモードと、願望実現に集中するブルーモードを同じAIで切り替え可能。願望設定・波動調整・行動設計まで連続した会話でデザインできます。
+          心理的課題を解くモードと、願望実現に集中するモードを同じAIで切り替え可能。願望設定・波動調整・行動設計まで連続した会話でデザインできます。
         </p>
       </section>
 
