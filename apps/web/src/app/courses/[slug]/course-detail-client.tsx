@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   PlayCircle, 
-  Clock, 
   BookOpen, 
   CheckCircle, 
   Lock,
@@ -50,16 +49,6 @@ type CourseDetail = {
 
 type ApiResponse = {
   course: CourseDetail;
-};
-
-const formatDuration = (seconds: number | null) => {
-  if (!seconds) return "-";
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}時間${minutes}分`;
-  }
-  return `${minutes}分`;
 };
 
 const formatPrice = (price: number) => {
@@ -256,12 +245,6 @@ export function CourseDetailClient({ slug }: { slug: string }) {
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-tape-orange" />
                       <span>{course.totalLessons}レッスン</span>
-                    </div>
-                  )}
-                  {course.totalDurationSeconds && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-tape-orange" />
-                      <span>{formatDuration(course.totalDurationSeconds)}</span>
                     </div>
                   )}
                 </div>
