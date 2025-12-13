@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Send, Trash2, Menu, X, User, Loader2 } from "lucide-react";
@@ -88,6 +88,8 @@ export function MichelleChatClient() {
   const composerRef = useRef<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
   const initialMobileBlurApplied = useRef(false);
+  const autoScrollRef = useRef(true);
+  const scrollFrameRef = useRef<number>();
 
   const loadSessions = async () => {
     const res = await fetch("/api/michelle/sessions", { cache: "no-store" });
@@ -138,10 +140,12 @@ export function MichelleChatClient() {
     window.addEventListener("resize", updateViewportMetrics);
     const visualViewport = window.visualViewport;
     visualViewport?.addEventListener("resize", updateViewportMetrics);
+    visualViewport?.addEventListener("scroll", updateViewportMetrics);
 
     return () => {
       window.removeEventListener("resize", updateViewportMetrics);
       visualViewport?.removeEventListener("resize", updateViewportMetrics);
+      visualViewport?.removeEventListener("scroll", updateViewportMetrics);
     };
   }, []);
 
@@ -170,13 +174,44 @@ export function MichelleChatClient() {
     return () => {
       observer.disconnect();
     };
-  }, [composerRef]);
+  }, []);
 
   useEffect(() => {
     if (composerRef.current) {
       setComposerHeight(composerRef.current.offsetHeight);
     }
   }, [error, input, isMobile]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
+      autoScrollRef.current = distanceFromBottom < 120;
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current) {
+        cancelAnimationFrame(scrollFrameRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleScrollToBottom = useCallback(() => {
+    if (!autoScrollRef.current) return;
+    if (scrollFrameRef.current) {
+      cancelAnimationFrame(scrollFrameRef.current);
+    }
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    });
+  }, []);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -186,9 +221,9 @@ export function MichelleChatClient() {
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isLoading, composerHeight]);
+  useLayoutEffect(() => {
+    scheduleScrollToBottom();
+  }, [messages.length, isLoading, scheduleScrollToBottom]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -277,6 +312,21 @@ export function MichelleChatClient() {
     }
   };
 
+  const handleComposerSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSend();
+  };
+
+  const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
+      event.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleNewChat = () => {
     setActiveSessionId(null);
     setMessages([]);
@@ -358,11 +408,21 @@ export function MichelleChatClient() {
     }
   };
 
-  const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 24, isMobile ? 160 : 96);
-  const mobileViewportStyle = !isMobile || !viewportHeight ? undefined : { minHeight: `${viewportHeight}px`, height: `${viewportHeight}px` };
+  const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 16, 128);
+  const mobileViewportStyle =
+    !isMobile || !viewportHeight
+      ? undefined
+      : { height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` };
+  const containerStyle = {
+    ...(isMobile ? {} : { minHeight: "calc(100vh - 80px)" }),
+    ...(mobileViewportStyle ?? {})
+  };
 
   return (
-    <div className="flex min-h-[100dvh] font-sans md:h-[calc(100vh-80px)]" style={mobileViewportStyle}>
+    <div
+      className="flex w-full flex-1 items-stretch bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8] font-sans"
+      style={containerStyle}
+    >
       {/* オーバーレイ（モバイルのみ） */}
       {isSidebarOpen && (
         <div
@@ -374,7 +434,7 @@ export function MichelleChatClient() {
       {/* サイドバー */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-tape-brown/20 bg-tape-cream transition-transform duration-300 md:static md:z-0 md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[#ffd4e3] bg-[#fff8fb] transition-transform duration-300 md:static md:z-0 md:translate-x-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -420,9 +480,9 @@ export function MichelleChatClient() {
       </aside>
 
       {/* メインエリア */}
-      <main className="flex flex-1 flex-col bg-tape-cream overflow-hidden">
+      <main className="flex flex-1 flex-col bg-white/80 backdrop-blur-md shadow-inner shadow-[#fcd9e9]/40 overflow-hidden">
         {/* モバイルヘッダー */}
-        <div className="flex items-center gap-3 border-b border-tape-beige bg-white/80 px-4 py-3 md:hidden">
+        <div className="flex items-center gap-3 border-b border-[#ffe0eb] bg-white/70 px-4 py-3 md:hidden">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-tape-brown hover:bg-tape-beige"
@@ -437,7 +497,7 @@ export function MichelleChatClient() {
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-8"
+          className="flex-1 overflow-y-auto bg-gradient-to-b from-[#fff7fa] via-[#ffeef5] to-[#ffe3ec] px-4 py-8"
           style={{
             WebkitOverflowScrolling: "touch",
             paddingBottom: `${messagePaddingBottom}px`,
@@ -599,32 +659,26 @@ export function MichelleChatClient() {
         {/* 入力エリア */}
         <div
           ref={composerRef}
-          className="sticky bottom-0 left-0 right-0 border-t border-tape-beige/80 bg-white/95 px-4 pt-3 pb-4 shadow-[0_-6px_24px_rgba(87,60,46,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          className="sticky bottom-0 left-0 right-0 border-t border-[#ffd7e8] bg-white/95 px-4 pt-3 pb-4 shadow-[0_-6px_24px_rgba(241,126,162,0.2)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
         >
           <div className="mx-auto max-w-3xl">
             {error && (
               <p className="mb-2 text-xs font-medium text-tape-pink">{error}</p>
             )}
-            <div className="flex items-end gap-3">
+            <form
+              onSubmit={handleComposerSubmit}
+              className="flex items-center gap-3 rounded-3xl border border-[#ffd7e8] bg-white/90 px-4 py-3 shadow-sm"
+            >
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
+                onKeyDown={handleTextareaKeyDown}
                 onFocus={(event) => {
                   if (isMobile) {
                     setTimeout(() => {
                       event.target.scrollIntoView({ behavior: "smooth", block: "center" });
-                      scrollContainerRef.current?.scrollTo({
-                        top: scrollContainerRef.current.scrollHeight,
-                        behavior: "smooth"
-                      });
                     }, 250);
                   }
                 }}
@@ -634,23 +688,23 @@ export function MichelleChatClient() {
                 autoCorrect="off"
                 autoCapitalize="off"
                 disabled={isLoading}
-                className="max-h-40 flex-1 resize-none rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base leading-relaxed text-tape-brown shadow-sm outline-none focus:border-tape-green focus:ring-2 focus:ring-tape-green/20 disabled:opacity-50 md:text-sm"
+                className="max-h-40 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-base leading-relaxed text-[#7b364d] placeholder:text-[#c790a3] focus:outline-none disabled:opacity-60 md:text-sm"
                 rows={1}
               />
-              <button
-                type="button"
-                onClick={() => handleSend()}
+              <Button
+                type="submit"
+                size="icon"
                 disabled={isLoading || !input.trim()}
-                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-tape-pink text-white shadow-md transition-all hover:bg-tape-pink/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 w-12 rounded-full bg-gradient-to-tr from-[#f472b6] to-[#fb7185] text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isLoading ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Send className="h-5 w-5" style={{ marginLeft: '2px' }} />
+                  <Send className="h-4 w-4" />
                 )}
-              </button>
-            </div>
-            <p className="mt-2 text-center text-xs text-tape-light-brown">
+              </Button>
+            </form>
+            <p className="mt-2 text-center text-xs text-[#c07b8f]">
               ミシェルAIは誤った情報を生成する場合があります。
             </p>
           </div>
