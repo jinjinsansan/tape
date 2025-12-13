@@ -301,6 +301,7 @@ export const listCounselorsForAdmin = async () => {
         is_active,
         specialties,
         hourly_rate_cents,
+        profile_metadata,
         created_at,
         bookings:counselor_bookings(id)
       `
@@ -314,6 +315,7 @@ export const listCounselorsForAdmin = async () => {
   return (data ?? []).map((item) => ({
     ...item,
     specialties: Array.isArray(item.specialties) ? item.specialties : [],
+    profile_metadata: item.profile_metadata ?? {},
     booking_count: item.bookings?.length ?? 0
   }));
 };

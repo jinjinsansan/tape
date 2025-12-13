@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, UserCheck, Mail, Calendar } from "lucide-react";
+import { RefreshCw, UserCheck, Calendar, BadgeCheck } from "lucide-react";
+import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
 
 type Counselor = {
   id: string;
+  slug: string;
   display_name: string | null;
   bio: string | null;
   specialties: string[];
   hourly_rate_cents: number | null;
+  profile_metadata: Record<string, unknown> | null;
+  is_active: boolean;
   created_at: string;
 };
 
@@ -27,11 +31,19 @@ export function CounselorsManagementClient() {
   const loadCounselors = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchJson<{ counselors: Array<Omit<Counselor, "specialties"> & { specialties: string[] | null }> }>("/api/admin/counselors");
+      const data = await fetchJson<{
+        counselors: Array<
+          Omit<Counselor, "specialties" | "profile_metadata"> & {
+            specialties: string[] | null;
+            profile_metadata: Record<string, unknown> | null;
+          }
+        >
+      }>("/api/admin/counselors");
       const normalized = Array.isArray(data.counselors)
         ? data.counselors.map((counselor) => ({
             ...counselor,
-            specialties: Array.isArray(counselor.specialties) ? counselor.specialties : []
+            specialties: Array.isArray(counselor.specialties) ? counselor.specialties : [],
+            profile_metadata: counselor.profile_metadata ?? null
           }))
         : [];
       setCounselors(normalized);
@@ -117,8 +129,17 @@ export function CounselorsManagementClient() {
                         <Calendar className="h-3 w-3" />
                         登録: {new Date(counselor.created_at).toLocaleDateString("ja-JP")}
                       </div>
+                      <p className="text-[11px] text-slate-400">slug: {counselor.slug}</p>
                     </div>
                   </div>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      counselor.is_active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    <BadgeCheck className="h-3 w-3" />
+                    {counselor.is_active ? "アクティブ" : "停止中"}
+                  </span>
                 </div>
 
                 {counselor.bio && (
@@ -127,6 +148,28 @@ export function CounselorsManagementClient() {
                     <p className="mt-1 text-sm text-slate-700">{counselor.bio}</p>
                   </div>
                 )}
+
+                {(() => {
+                  const planSelection = normalizePlanSelection(counselor.profile_metadata);
+                  const activePlans = Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => planSelection[plan.id]);
+                  if (activePlans.length === 0) return null;
+                  return (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-slate-600">提供プラン</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {activePlans.map((plan) => (
+                          <span
+                            key={`${counselor.id}-${plan.id}`}
+                            className="inline-flex flex-col rounded-2xl border border-purple-100 bg-purple-50/60 px-3 py-2 text-xs text-purple-700"
+                          >
+                            <span className="font-semibold">{plan.title}</span>
+                            <span className="text-[11px] text-purple-600">¥{plan.priceYen.toLocaleString()}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {counselor.specialties.length > 0 && (
                   <div className="mt-3">
