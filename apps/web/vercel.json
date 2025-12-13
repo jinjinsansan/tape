@@ -8,5 +8,10 @@
       "path": "/api/internal/cron/michelle-daily-diary",
       "schedule": "0 23 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/internal/cron/michelle-daily-diary/route.ts": {
+      "includeFiles": "md/**"
+    }
+  }
 }
