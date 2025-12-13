@@ -1,21 +1,41 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 
 type Mode = "signin" | "signup";
+const LAST_EMAIL_KEY = "tape:last-auth-email";
 
 export function SimpleAuth() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberEmail, setRememberEmail] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedEmail = window.localStorage.getItem(LAST_EMAIL_KEY);
+    if (storedEmail) {
+      setEmail(storedEmail);
+      setRememberEmail(true);
+    }
+  }, []);
+
+  const persistEmailPreference = (value: string) => {
+    if (typeof window === "undefined") return;
+    if (rememberEmail && value) {
+      window.localStorage.setItem(LAST_EMAIL_KEY, value);
+    } else {
+      window.localStorage.removeItem(LAST_EMAIL_KEY);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,13 +55,14 @@ export function SimpleAuth() {
         
         setSuccess("登録完了！そのままログインしてください");
         setMode("signin");
+        persistEmailPreference(email);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        
+        persistEmailPreference(email);
         router.refresh();
       }
     } catch (err: any) {
@@ -159,6 +180,8 @@ export function SimpleAuth() {
         <div>
           <Input
             type="email"
+            inputMode="email"
+            autoComplete="email"
             placeholder="メールアドレス"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -174,9 +197,28 @@ export function SimpleAuth() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
             disabled={loading}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-tape-orange"
+            checked={rememberEmail}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              setRememberEmail(checked);
+              if (!checked && typeof window !== "undefined") {
+                window.localStorage.removeItem(LAST_EMAIL_KEY);
+              } else if (checked) {
+                persistEmailPreference(email);
+              }
+            }}
+          />
+          メールアドレスを記憶する
+        </label>
 
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
