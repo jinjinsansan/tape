@@ -24,6 +24,7 @@ import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getOpenAIApiKey } from "@/lib/env";
 import type { Database } from "@tape/supabase";
+import { trackApi } from "@/server/monitoring";
 
 type StreamEventMap = {
   textDelta: { value?: string };
@@ -160,43 +161,44 @@ const buildProgressIntentInstruction = (intent: ProgressIntent, progressRecord: 
 };
 
 export async function POST(request: Request) {
-  if (!MICHELLE_ATTRACTION_AI_ENABLED) {
-    return NextResponse.json({ error: "Michelle Attraction AI is currently disabled" }, { status: 503 });
-  }
-
-  try {
-    getOpenAIApiKey();
-  } catch {
-    return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
-  }
-
-  const body = await request.json().catch(() => null);
-  const parsed = requestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  }
-
-  const { sessionId: incomingSessionId, message, category } = parsed.data;
-  const prefersBufferedResponse = request.headers.get("x-buffered-response") === "1";
-  const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient<Database>(cookieStore) as unknown as AttractionSupabase;
-
-  let user;
-  try {
-    user = await getRouteUser(supabase, "Michelle attraction chat");
-  } catch (error) {
-    if (error instanceof SupabaseAuthUnavailableError) {
-      return NextResponse.json(
-        { error: "Authentication service is temporarily unavailable. Please try again later." },
-        { status: 503 }
-      );
+  return trackApi("michelle_attraction_chat_post", async () => {
+    if (!MICHELLE_ATTRACTION_AI_ENABLED) {
+      return NextResponse.json({ error: "Michelle Attraction AI is currently disabled" }, { status: 503 });
     }
-    throw error;
-  }
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    try {
+      getOpenAIApiKey();
+    } catch {
+      return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
+    }
+
+    const body = await request.json().catch(() => null);
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const { sessionId: incomingSessionId, message, category } = parsed.data;
+    const prefersBufferedResponse = request.headers.get("x-buffered-response") === "1";
+    const cookieStore = cookies();
+    const supabase = createSupabaseRouteClient<Database>(cookieStore) as unknown as AttractionSupabase;
+
+    let user;
+    try {
+      user = await getRouteUser(supabase, "Michelle attraction chat");
+    } catch (error) {
+      if (error instanceof SupabaseAuthUnavailableError) {
+        return NextResponse.json(
+          { error: "Authentication service is temporarily unavailable. Please try again later." },
+          { status: 503 }
+        );
+      }
+      throw error;
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
   try {
     const { sessionId, threadId, isNewSession } = await resolveSession(
@@ -491,6 +493,7 @@ ${message}`;
     const message = error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }
 
 const resolveSession = async (

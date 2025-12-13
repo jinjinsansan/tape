@@ -101,6 +101,7 @@ export function MichelleChatClient() {
   const [phaseInsight, setPhaseInsight] = useState<{ phase: GuidedPhase; summary: string } | null>(null);
   const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
   const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -195,6 +196,20 @@ export function MichelleChatClient() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const updateStatus = () => {
+      if (typeof navigator === "undefined") return;
+      setIsOffline(!navigator.onLine);
+    };
+    updateStatus();
+    window.addEventListener("online", updateStatus);
+    window.addEventListener("offline", updateStatus);
+    return () => {
+      window.removeEventListener("online", updateStatus);
+      window.removeEventListener("offline", updateStatus);
+    };
   }, []);
 
   useEffect(() => {
@@ -649,6 +664,17 @@ export function MichelleChatClient() {
     return cleaned;
   };
 
+  const handleRetryLoad = useCallback(() => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return;
+    }
+    loadSessions();
+    if (activeSessionId) {
+      setHasLoadedMessages(false);
+      loadMessages(activeSessionId);
+    }
+  }, [activeSessionId, loadMessages, loadSessions]);
+
   if (needsAuth) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8]">
@@ -678,16 +704,41 @@ export function MichelleChatClient() {
   }
 
   const messagePaddingBottom = messages.length === 0 ? 0 : Math.max(composerHeight + 16, 128);
+  const showSessionSkeleton = isLoading.sessions && sessions.length === 0;
+  const showMessagesSkeleton = isLoading.messages && activeSessionId && messages.length === 0;
+  const sessionSkeletonNodes = Array.from({ length: 4 }).map((_, idx) => (
+    <div key={`session-skeleton-${idx}`} className="mb-2 h-12 animate-pulse rounded-2xl bg-[#ffeaf3]" />
+  ));
+  const messageSkeletonNodes = (
+    <div className="mx-auto max-w-3xl space-y-4" style={{ paddingBottom: `${messagePaddingBottom}px` }}>
+      {Array.from({ length: 3 }).map((_, idx) => (
+        <div key={`message-skeleton-${idx}`} className="flex gap-3">
+          <div className="h-10 w-10 rounded-full bg-[#ffd4e3]/60" />
+          <div className="h-20 flex-1 rounded-2xl bg-white/70 shadow-inner animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div
-      className="flex w-full flex-1 items-stretch bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8] text-[#7b364d]"
+      className="relative flex w-full flex-1 items-stretch bg-gradient-to-br from-[#fff4f7] via-[#ffe9f1] to-[#ffdfe8] text-[#7b364d]"
       style={{
         minHeight: "calc(100vh - 4rem)",
         height: "calc(100vh - 4rem)",
         maxHeight: "calc(100vh - 4rem)",
       }}
     >
+      {isOffline && (
+        <div className="pointer-events-auto absolute left-1/2 top-4 z-50 w-[90%] max-w-md -translate-x-1/2 rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs font-semibold text-yellow-800 shadow-lg">
+          <div className="flex items-center justify-between gap-4">
+            <span>オフラインです。接続が戻り次第自動で再同期します。</span>
+            <Button variant="ghost" size="sm" className="text-yellow-800" onClick={handleRetryLoad}>
+              再読み込み
+            </Button>
+          </div>
+        </div>
+      )}
       <aside
         className="hidden w-[260px] min-w-[260px] flex-col border-r border-[#ffd4e3] bg-white/90 px-4 py-6 shadow-sm md:flex md:sticky md:top-16 md:self-start md:overflow-y-auto"
         style={{ height: "calc(100vh - 4rem)" }}
@@ -701,7 +752,10 @@ export function MichelleChatClient() {
         </Button>
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-[#f472b6]">チャット</p>
         <div className="flex-1 overflow-y-auto">
-          {sessions.map((session) => (
+          {showSessionSkeleton ? (
+            <div>{sessionSkeletonNodes}</div>
+          ) : (
+            sessions.map((session) => (
             <button
               key={session.id}
               onClick={() => {
@@ -729,7 +783,8 @@ export function MichelleChatClient() {
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </button>
-          ))}
+            ))
+          )}
           {sessions.length === 0 && !isLoading.sessions && (
             <p className="text-center text-xs text-[#d494ab]">まだチャット履歴がありません。</p>
           )}
@@ -758,7 +813,10 @@ export function MichelleChatClient() {
             </Button>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-[#f472b6]">チャット</p>
             <div className="flex-1 overflow-y-auto">
-              {sessions.map((session) => (
+              {showSessionSkeleton ? (
+                <div>{sessionSkeletonNodes}</div>
+              ) : (
+                sessions.map((session) => (
                 <button
                   key={session.id}
                   onClick={() => {
@@ -786,8 +844,9 @@ export function MichelleChatClient() {
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
-                </button>
-              ))}
+                  </button>
+                ))
+              )}
               {sessions.length === 0 && !isLoading.sessions && (
                 <p className="text-center text-xs text-[#d494ab]">まだチャット履歴がありません。</p>
               )}
@@ -819,7 +878,9 @@ export function MichelleChatClient() {
 
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-white via-[#fff4f7] to-[#ffeef5]" style={{ WebkitOverflowScrolling: "touch" }}>
           <div className="px-4 pt-4">
-            {messages.length === 0 ? (
+            {showMessagesSkeleton ? (
+              messageSkeletonNodes
+            ) : messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-8">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative h-32 w-32 overflow-hidden rounded-full bg-white shadow-lg">

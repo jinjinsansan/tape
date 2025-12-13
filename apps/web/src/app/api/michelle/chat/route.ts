@@ -9,6 +9,7 @@ import { getMichelleOpenAIClient } from "@/lib/michelle/openai";
 import { retrieveKnowledgeMatches } from "@/lib/michelle/rag";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { trackApi } from "@/server/monitoring";
 import type { Database } from "@tape/supabase";
 
 const requestSchema = z.object({
@@ -20,42 +21,43 @@ const requestSchema = z.object({
 type OpenAIThreads = NonNullable<NonNullable<ReturnType<typeof getMichelleOpenAIClient>["beta"]>["threads"]>;
 
 export async function POST(request: Request) {
-  if (!MICHELLE_AI_ENABLED) {
-    return NextResponse.json({ error: "Michelle AI is currently disabled" }, { status: 503 });
-  }
-
-  if (!getOpenAIApiKey()) {
-    return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
-  }
-
-  const body = await request.json().catch(() => null);
-  const parsed = requestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  }
-
-  const cookieStore = cookies();
-  const supabase = createSupabaseRouteClient<Database>(cookieStore);
-
-  let user;
-  try {
-    user = await getRouteUser(supabase, "Michelle chat");
-  } catch (error) {
-    if (error instanceof SupabaseAuthUnavailableError) {
-      return NextResponse.json(
-        { error: "Authentication service is temporarily unavailable. Please try again later." },
-        { status: 503 }
-      );
+  return trackApi("michelle_chat_post", async () => {
+    if (!MICHELLE_AI_ENABLED) {
+      return NextResponse.json({ error: "Michelle AI is currently disabled" }, { status: 503 });
     }
-    throw error;
-  }
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!getOpenAIApiKey()) {
+      return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
+    }
 
-  try {
-    const { sessionId, threadId } = await resolveSession(
+    const body = await request.json().catch(() => null);
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const cookieStore = cookies();
+    const supabase = createSupabaseRouteClient<Database>(cookieStore);
+
+    let user;
+    try {
+      user = await getRouteUser(supabase, "Michelle chat");
+    } catch (error) {
+      if (error instanceof SupabaseAuthUnavailableError) {
+        return NextResponse.json(
+          { error: "Authentication service is temporarily unavailable. Please try again later." },
+          { status: 503 }
+        );
+      }
+      throw error;
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    try {
+      const { sessionId, threadId } = await resolveSession(
       supabase,
       user.id,
       parsed.data.sessionId,
@@ -139,17 +141,18 @@ export async function POST(request: Request) {
       console.log("[Michelle Chat] Assistant message saved to database");
     }
 
-    console.log("[Michelle Chat] Chat completion successful");
-    return NextResponse.json({
-      sessionId,
-      message: assistantResponse,
-      knowledge: knowledgeMatches.slice(0, 4)
-    });
-  } catch (error) {
-    console.error("Michelle chat error", error);
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+      console.log("[Michelle Chat] Chat completion successful");
+      return NextResponse.json({
+        sessionId,
+        message: assistantResponse,
+        knowledge: knowledgeMatches.slice(0, 4)
+      });
+    } catch (error) {
+      console.error("Michelle chat error", error);
+      const message = error instanceof Error ? error.message : "Internal Server Error";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }
 
 /**
