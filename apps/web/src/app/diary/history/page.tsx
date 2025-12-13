@@ -234,11 +234,15 @@ function DiaryHistoryContent() {
 
   // Subscribe to AI comment updates via Realtime
   useEffect(() => {
-    const { data: authData } = supabase.auth.getSession();
-    authData.then((session) => {
-      if (!session.session?.user?.id) return;
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+    let isMounted = true;
 
-      const channel = supabase
+    const setupRealtime = async () => {
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      if (!userId || !isMounted) return;
+
+      activeChannel = supabase
         .channel("diary_ai_comments")
         .on(
           "postgres_changes",
@@ -246,7 +250,7 @@ function DiaryHistoryContent() {
             event: "UPDATE",
             schema: "public",
             table: "emotion_diary_entries",
-            filter: `user_id=eq.${session.session.user.id}`
+            filter: `user_id=eq.${userId}`
           },
           (payload) => {
             const updated = payload.new as DiaryEntry;
@@ -266,11 +270,16 @@ function DiaryHistoryContent() {
           }
         )
         .subscribe();
+    };
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    setupRealtime();
+
+    return () => {
+      isMounted = false;
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
+      }
+    };
   }, [supabase]);
 
   useEffect(() => {
