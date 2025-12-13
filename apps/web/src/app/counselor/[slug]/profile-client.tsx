@@ -2,9 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CalendarDays, MessageSquare, Video, Clock } from "lucide-react";
+import { CalendarDays, Video, Clock } from "lucide-react";
+import {
+  COUNSELOR_PLAN_CONFIGS,
+  normalizePlanSelection,
+  CounselorPlanType
+} from "@/constants/counselor-plans";
 
 type Counselor = {
   id: string;
@@ -45,13 +50,12 @@ type ChatMessage = {
 
 const formatDateTime = (value: string) => new Date(value).toLocaleString("ja-JP", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
 
-const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
-
 export function CounselorPage({ slug }: { slug: string }) {
   const [counselor, setCounselor] = useState<Counselor | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<CounselorPlanType | null>(null);
   const [notes, setNotes] = useState("初回の目的や課題をご記入ください。");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -91,9 +95,32 @@ export function CounselorPage({ slug }: { slug: string }) {
 
   const selectedSlot = useMemo(() => slots.find((slot) => slot.id === selectedSlotId) ?? null, [slots, selectedSlotId]);
 
+  const planSelection = useMemo(() => normalizePlanSelection(counselor?.profile_metadata), [counselor]);
+
+  const availablePlans = useMemo(
+    () => Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => planSelection[plan.id]),
+    [planSelection]
+  );
+
+  useEffect(() => {
+    if (availablePlans.length === 0) {
+      setSelectedPlan(null);
+      return;
+    }
+    if (!selectedPlan || !planSelection[selectedPlan]) {
+      setSelectedPlan(availablePlans[0].id);
+    }
+  }, [availablePlans, planSelection, selectedPlan]);
+
+  const activePlan = selectedPlan ? COUNSELOR_PLAN_CONFIGS[selectedPlan] : null;
+
   const handleBook = async () => {
     if (!selectedSlotId) {
       setError("予約枠を選択してください");
+      return;
+    }
+    if (!selectedPlan) {
+      setError("プランを選択してください");
       return;
     }
     setPendingAction(true);
@@ -105,7 +132,7 @@ export function CounselorPage({ slug }: { slug: string }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ slotId: selectedSlotId, notes })
+        body: JSON.stringify({ slotId: selectedSlotId, notes, planType: selectedPlan })
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -231,13 +258,18 @@ export function CounselorPage({ slug }: { slug: string }) {
               
               <p className="text-sm leading-relaxed text-tape-brown/90 whitespace-pre-wrap">{counselor.bio}</p>
               
-              <div className="flex flex-wrap gap-3 text-xs text-tape-light-brown font-medium">
-                <span className="flex items-center gap-1 rounded-full bg-tape-beige/50 px-3 py-1">
-                  <Clock className="h-3 w-3" /> 初回 {yen(counselor.hourly_rate_cents)} / 60分
-                </span>
+              <div className="flex flex-wrap gap-2 text-xs text-tape-light-brown font-medium">
                 <span className="flex items-center gap-1 rounded-full bg-tape-beige/50 px-3 py-1">
                   <Video className="h-3 w-3" /> オンライン / Tapeチャット
                 </span>
+                {availablePlans.map((plan) => (
+                  <span
+                    key={`${counselor.id}-${plan.id}`}
+                    className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-tape-brown border border-tape-beige"
+                  >
+                    <Clock className="h-3 w-3" /> {plan.title} ¥{plan.priceYen.toLocaleString()}
+                  </span>
+                ))}
               </div>
 
               {counselor.intro_video_url && (
@@ -254,23 +286,72 @@ export function CounselorPage({ slug }: { slug: string }) {
             </div>
 
             <div className="w-full lg:max-w-sm space-y-4">
+              <div className="rounded-3xl border border-tape-beige bg-white/80 p-6">
+                <h2 className="text-sm font-bold text-tape-brown mb-4">プランを選択</h2>
+                {availablePlans.length === 0 ? (
+                  <p className="text-xs text-tape-light-brown">現在販売中のプランがありません。カウンセラーにお問い合わせください。</p>
+                ) : (
+                  <div className="space-y-3">
+                    {availablePlans.map((plan) => {
+                      const isActive = selectedPlan === plan.id;
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => setSelectedPlan(plan.id)}
+                          className={cn(
+                            "w-full rounded-2xl border px-4 py-3 text-left transition-all",
+                            isActive
+                              ? "border-tape-pink bg-[#fff6f8] text-tape-brown shadow-sm"
+                              : "border-tape-beige bg-white text-tape-brown hover:bg-tape-cream"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-tape-brown">{plan.title}</p>
+                              <p className="text-[11px] text-tape-light-brown">{plan.subtitle}</p>
+                            </div>
+                            <p className="text-lg font-bold text-tape-brown">¥{plan.priceYen.toLocaleString()}</p>
+                          </div>
+                          <p className="mt-2 text-xs text-tape-brown/80">{plan.description}</p>
+                          <ul className="mt-2 list-disc list-inside text-[11px] text-tape-light-brown">
+                            {plan.highlights.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="rounded-3xl border border-tape-beige bg-tape-cream/30 p-6">
                 <h2 className="flex items-center gap-2 text-sm font-bold text-tape-brown mb-4">
                   <CalendarDays className="h-4 w-4 text-tape-orange" />
-                  予約可能な日時
+                  初回の予約日時を選ぶ
                 </h2>
-                
+
+                {activePlan && (
+                  <p className="mb-3 text-xs text-tape-brown">
+                    選択中のプラン: <span className="font-semibold">{activePlan.title}</span> / ¥
+                    {activePlan.priceYen.toLocaleString()}
+                  </p>
+                )}
+
                 <div className="space-y-2 mb-4">
                   {slots.slice(0, 6).map((slot) => (
                     <button
                       key={slot.id}
                       type="button"
                       onClick={() => setSelectedSlotId(slot.id)}
+                      disabled={!activePlan}
                       className={cn(
                         "w-full rounded-xl border px-4 py-3 text-left transition-all",
                         selectedSlotId === slot.id
                           ? "border-tape-orange bg-tape-orange/10 text-tape-brown shadow-sm"
-                          : "border-tape-beige bg-white hover:bg-white/80 text-tape-brown"
+                          : "border-tape-beige bg-white hover:bg-white/80 text-tape-brown",
+                        !activePlan && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <p className="font-bold text-sm">{formatDateTime(slot.start_time)}</p>
@@ -296,11 +377,17 @@ export function CounselorPage({ slug }: { slug: string }) {
 
                 <Button
                   onClick={handleBook}
-                  disabled={!selectedSlot || !isAuthenticated || pendingAction}
+                  disabled={!selectedSlot || !isAuthenticated || pendingAction || !activePlan}
                   className="mt-4 w-full bg-tape-brown text-white hover:bg-tape-brown/90"
                 >
-                  予約リクエスト
+                  {activePlan?.id === "monthly_course" ? "1ヶ月コースを申込む" : "単発セッションを予約"}
                 </Button>
+
+                {activePlan?.id === "monthly_course" && (
+                  <p className="mt-2 text-[11px] text-tape-light-brown">
+                    ※ 選択した日時は1ヶ月コースの初回セッションとして確定します。
+                  </p>
+                )}
 
                 {booking && booking.status === "pending" && (
                   <Button

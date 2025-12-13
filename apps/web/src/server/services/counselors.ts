@@ -4,10 +4,12 @@ import type {
   Database,
   BookingStatus,
   IntroChatStatus,
-  SlotStatus
+  SlotStatus,
+  CounselorPlanType
 } from "@tape/supabase";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getOrCreateWallet, consumeWallet, topUpWallet } from "@/server/services/wallet";
+import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -177,10 +179,18 @@ export const createBooking = async (
   slug: string,
   slotId: string,
   clientUserId: string,
-  notes: string | null
+  notes: string | null,
+  planType: CounselorPlanType
 ) => {
   const supabase = getSupabaseAdminClient();
   const counselor = await getCounselor(slug, supabase);
+
+  const planSelection = normalizePlanSelection(counselor.profile_metadata);
+  if (!planSelection[planType]) {
+    throw new SlotUnavailableError("このプランは現在提供されていません。");
+  }
+
+  const planConfig = COUNSELOR_PLAN_CONFIGS[planType];
 
   const { data: slot, error: slotError } = await supabase
     .from("counselor_slots")
@@ -206,8 +216,9 @@ export const createBooking = async (
       slot_id: slot.id,
       counselor_id: counselor.id,
       client_user_id: clientUserId,
-      price_cents: counselor.hourly_rate_cents,
-      notes
+      price_cents: planConfig.priceCents,
+      notes,
+      plan_type: planType
     })
     .select("*")
     .single();
@@ -404,7 +415,7 @@ export const getCounselorByAuthUser = async (authUserId: string) => {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("counselors")
-    .select("id, display_name, slug, avatar_url, bio, specialties, hourly_rate_cents, intro_video_url, is_active")
+    .select("id, display_name, slug, avatar_url, bio, specialties, hourly_rate_cents, intro_video_url, is_active, profile_metadata")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -418,6 +429,7 @@ export type CounselorDashboardBooking = {
   id: string;
   status: BookingStatus;
   payment_status: string;
+  plan_type: CounselorPlanType;
   start_time: string;
   end_time: string;
   client: {
@@ -437,6 +449,7 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
         id,
         status,
         payment_status,
+        plan_type,
         notes,
         intro_chat_id,
         client_user_id,
@@ -470,6 +483,7 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
     payment_status: booking.payment_status,
     notes: booking.notes,
     intro_chat_id: booking.intro_chat_id,
+    plan_type: booking.plan_type,
     start_time: booking.slot?.start_time ?? "",
     end_time: booking.slot?.end_time ?? "",
     client: clientsMap.get(booking.client_user_id) || { id: booking.client_user_id, display_name: null }

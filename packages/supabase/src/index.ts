@@ -16,6 +16,7 @@ export type {
   BookingStatus,
   SlotStatus,
   IntroChatStatus,
+  CounselorPlanType,
   PointAction,
   PointRedemptionStatus
 } from "./types";

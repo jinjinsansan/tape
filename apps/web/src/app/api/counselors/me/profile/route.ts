@@ -6,6 +6,10 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { getCounselorByAuthUser } from "@/server/services/counselors";
 import { updateCounselorProfile } from "@/server/services/admin";
+import {
+  DEFAULT_COUNSELOR_PLAN_SELECTION,
+  mergePlanSelectionIntoMetadata
+} from "@/constants/counselor-plans";
 
 const bodySchema = z.object({
   display_name: z.string().min(1).optional(),
@@ -14,6 +18,12 @@ const bodySchema = z.object({
   specialties: z.array(z.string()).nullable().optional(),
   hourly_rate_cents: z.number().int().min(0).optional(),
   intro_video_url: z.string().url().nullable().optional(),
+  plan_settings: z
+    .object({
+      single_session: z.boolean().optional(),
+      monthly_course: z.boolean().optional()
+    })
+    .optional()
 });
 
 export async function GET() {
@@ -60,7 +70,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid payload", details: parsed.error }, { status: 400 });
     }
 
-    const updated = await updateCounselorProfile(counselor.id, parsed.data);
+    const { plan_settings, ...rest } = parsed.data;
+    const updates: Parameters<typeof updateCounselorProfile>[1] = { ...rest };
+
+    if (plan_settings) {
+      const normalized = {
+        ...DEFAULT_COUNSELOR_PLAN_SELECTION,
+        ...plan_settings
+      };
+      updates.profile_metadata = mergePlanSelectionIntoMetadata(
+        counselor.profile_metadata,
+        normalized
+      );
+    }
+
+    const updated = await updateCounselorProfile(counselor.id, updates);
     return NextResponse.json({ counselor: updated });
   } catch (error) {
     console.error("Failed to update counselor profile", error);

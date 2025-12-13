@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  COUNSELOR_PLAN_CONFIGS,
+  CounselorPlanType,
+  CounselorPlanSelection,
+  normalizePlanSelection,
+  DEFAULT_COUNSELOR_PLAN_SELECTION
+} from "@/constants/counselor-plans";
 
 type DashboardBooking = {
   id: string;
@@ -11,6 +18,7 @@ type DashboardBooking = {
   end_time: string;
   notes: string | null;
   intro_chat_id: string | null;
+  plan_type: CounselorPlanType;
   client: {
     id: string;
     display_name: string | null;
@@ -37,6 +45,7 @@ type CounselorProfile = {
   specialties: string[] | null;
   hourly_rate_cents: number;
   intro_video_url: string | null;
+  profile_metadata: Record<string, unknown> | null;
 };
 
 type CounselorSlot = {
@@ -76,9 +85,9 @@ export function CounselorDashboardClient() {
     avatar_url: "",
     bio: "",
     specialties: "",
-    hourly_rate_cents: 12000,
     intro_video_url: "",
   });
+  const [planSettings, setPlanSettings] = useState<CounselorPlanSelection>(DEFAULT_COUNSELOR_PLAN_SELECTION);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [mySlots, setMySlots] = useState<CounselorSlot[]>([]);
   const [slotForm, setSlotForm] = useState({ date: "", startTime: "10:00", endTime: "11:00" });
@@ -131,9 +140,9 @@ export function CounselorDashboardClient() {
         avatar_url: data.counselor.avatar_url || "",
         bio: data.counselor.bio || "",
         specialties: data.counselor.specialties?.join(", ") || "",
-        hourly_rate_cents: data.counselor.hourly_rate_cents || 12000,
         intro_video_url: data.counselor.intro_video_url || "",
       });
+      setPlanSettings(normalizePlanSelection(data.counselor.profile_metadata));
       // Load slots after getting profile
       if (data.counselor?.slug) {
         loadSlots(data.counselor.slug);
@@ -235,8 +244,23 @@ export function CounselorDashboardClient() {
     }
   };
 
+  const togglePlanSetting = (planId: CounselorPlanType) => {
+    setPlanSettings((prev) => {
+      const next = { ...prev, [planId]: !prev[planId] } as CounselorPlanSelection;
+      if (!next.single_session && !next.monthly_course) {
+        return prev;
+      }
+      return next;
+    });
+  };
+
   const handleSaveProfile = async () => {
     try {
+      const sanitizedPlans = {
+        ...planSettings,
+        single_session: Boolean(planSettings.single_session),
+        monthly_course: Boolean(planSettings.monthly_course)
+      };
       const res = await fetch("/api/counselors/me/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -245,8 +269,8 @@ export function CounselorDashboardClient() {
           avatar_url: profileForm.avatar_url || null,
           bio: profileForm.bio || null,
           specialties: profileForm.specialties ? profileForm.specialties.split(",").map(s => s.trim()).filter(Boolean) : null,
-          hourly_rate_cents: profileForm.hourly_rate_cents,
           intro_video_url: profileForm.intro_video_url || null,
+          plan_settings: sanitizedPlans
         })
       });
       if (!res.ok) throw new Error("プロフィールの更新に失敗しました");
@@ -535,15 +559,34 @@ export function CounselorDashboardClient() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">時給（円）</label>
-                <input
-                  type="number"
-                  value={profileForm.hourly_rate_cents / 100}
-                  onChange={(e) => setProfileForm({ ...profileForm, hourly_rate_cents: Math.round(Number(e.target.value) * 100) })}
-                  min="0"
-                  step="100"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">提供プラン</label>
+                <div className="space-y-2">
+                  {Object.values(COUNSELOR_PLAN_CONFIGS).map((plan) => {
+                    const enabled = planSettings[plan.id];
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => togglePlanSetting(plan.id)}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                          enabled
+                            ? "border-purple-300 bg-purple-50 text-slate-900"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-purple-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold">{plan.title}</p>
+                            <p className="text-xs text-slate-500">{plan.subtitle}</p>
+                          </div>
+                          <p className="text-base font-bold text-slate-900">¥{plan.priceYen.toLocaleString()}</p>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">{plan.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">※ 少なくとも1つのプランを有効にしてください。</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">紹介動画URL（YouTube埋め込み用）</label>
@@ -610,8 +653,25 @@ export function CounselorDashboardClient() {
                 </div>
               )}
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-1">時給</p>
-                <p className="text-sm text-slate-700">¥{(profile.hourly_rate_cents / 100).toLocaleString()} / 60分</p>
+                <p className="text-xs font-semibold text-slate-500 mb-1">提供プラン</p>
+                <div className="space-y-1">
+                  {(() => {
+                    const selection = normalizePlanSelection(profile.profile_metadata);
+                    const enabled = Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => selection[plan.id]);
+                    if (enabled.length === 0) {
+                      return <p className="text-xs text-slate-500">未設定</p>;
+                    }
+                    return enabled.map((plan) => (
+                      <span
+                        key={plan.id}
+                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                      >
+                        <span>{plan.title}</span>
+                        <span className="font-semibold">¥{plan.priceYen.toLocaleString()}</span>
+                      </span>
+                    ));
+                  })()}
+                </div>
               </div>
             </div>
           )}
@@ -714,7 +774,9 @@ export function CounselorDashboardClient() {
               >
                 <p className="text-sm font-semibold text-slate-800">{booking.client?.display_name ?? "非公開"}</p>
                 <p className="text-slate-500">{new Date(booking.start_time).toLocaleString("ja-JP")}</p>
-                <p className="text-[11px] text-slate-400">{booking.status} · {booking.payment_status}</p>
+                <p className="text-[11px] text-slate-400">
+                  {COUNSELOR_PLAN_CONFIGS[booking.plan_type].title} · {booking.status} · {booking.payment_status}
+                </p>
               </button>
             ))}
             {bookings.length === 0 && <p className="text-xs text-slate-400">現在表示する予約はありません。</p>}
@@ -732,6 +794,9 @@ export function CounselorDashboardClient() {
                 <p className="text-sm text-slate-500">{new Date(selectedBooking.start_time).toLocaleString("ja-JP")}</p>
                 <p className="text-xs text-slate-400">
                   {selectedBooking.status} · {selectedBooking.payment_status}
+                </p>
+                <p className="text-xs text-slate-500">
+                  プラン: {COUNSELOR_PLAN_CONFIGS[selectedBooking.plan_type].title}
                 </p>
                 {selectedBooking.notes && <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-600">メモ: {selectedBooking.notes}</p>}
               </div>

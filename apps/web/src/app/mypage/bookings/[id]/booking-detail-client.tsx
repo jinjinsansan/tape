@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { ArrowLeft, Clock, Video, MessageSquare } from "lucide-react";
+import { COUNSELOR_PLAN_CONFIGS, CounselorPlanType } from "@/constants/counselor-plans";
 
 type BookingDetail = {
   id: string;
   status: string;
   payment_status: string;
   price_cents: number;
+  plan_type: CounselorPlanType;
   notes: string | null;
   created_at: string;
   intro_chat_id: string | null;
@@ -273,6 +275,9 @@ export function BookingDetailClient({ bookingId }: { bookingId: string }) {
               <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
                 {statusText}
               </span>
+              <p className="mt-2 text-xs text-tape-light-brown">
+                プラン: {COUNSELOR_PLAN_CONFIGS[booking.plan_type].title}
+              </p>
             </div>
           </div>
         </div>

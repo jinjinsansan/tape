@@ -35,6 +35,7 @@ export type LearningLessonStatus = "locked" | "in_progress" | "completed";
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 export type SlotStatus = "available" | "held" | "booked" | "unavailable";
 export type IntroChatStatus = "open" | "resolved" | "closed";
+export type CounselorPlanType = "single_session" | "monthly_course";
 
 export interface Database {
   public: {
@@ -1389,6 +1390,7 @@ export interface Database {
           notes: string | null;
           intro_chat_id: string | null;
           payment_status: string;
+          plan_type: CounselorPlanType;
           created_at: string;
           updated_at: string;
         };
@@ -1403,6 +1405,7 @@ export interface Database {
           notes?: string | null;
           intro_chat_id?: string | null;
           payment_status?: string;
+          plan_type?: CounselorPlanType;
           created_at?: string;
           updated_at?: string;
         };
@@ -1416,6 +1419,7 @@ export interface Database {
           notes?: string | null;
           intro_chat_id?: string | null;
           payment_status?: string;
+          plan_type?: CounselorPlanType;
           created_at?: string;
           updated_at?: string;
         };
@@ -1680,6 +1684,7 @@ export interface Database {
       notification_category: NotificationCategory;
       point_action: PointAction;
       point_redemption_status: PointRedemptionStatus;
+      counselor_plan_type: CounselorPlanType;
     };
   };
 }

@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "lucide-react"; // Wait, Badge is not in lucide. I'll use standard div or check lucide. 
-// Lucide doesn't have Badge component (it has BadgeIcon). I'll just use span.
+import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
 
 type Counselor = {
   slug: string;
@@ -13,9 +12,8 @@ type Counselor = {
   avatar_url: string | null;
   hourly_rate_cents: number;
   available_slots_count?: number;
+  profile_metadata: Record<string, unknown> | null;
 };
-
-const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
 export function CounselorsListClient() {
   const [counselors, setCounselors] = useState<Counselor[]>([]);
@@ -89,7 +87,21 @@ export function CounselorsListClient() {
                     </span>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-tape-light-brown font-medium">初回 {yen(counselor.hourly_rate_cents)} / 60分</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(() => {
+                    const selection = normalizePlanSelection(counselor.profile_metadata);
+                    return Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => selection[plan.id]);
+                  })()
+                    .map((plan) => (
+                      <span
+                        key={`${counselor.slug}-${plan.id}`}
+                        className="inline-flex flex-col rounded-2xl border border-tape-beige bg-white/80 px-3 py-1 text-[11px] text-tape-brown shadow-sm"
+                      >
+                        <span className="font-semibold">{plan.title}</span>
+                        <span className="text-[10px] text-tape-light-brown">¥{plan.priceYen.toLocaleString()}</span>
+                      </span>
+                    ))}
+                </div>
               </div>
             </div>
             

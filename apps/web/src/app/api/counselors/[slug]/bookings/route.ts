@@ -9,7 +9,8 @@ import { createBooking, CounselorNotFoundError, SlotUnavailableError } from "@/s
 const paramsSchema = z.object({ slug: z.string().min(1) });
 const bodySchema = z.object({
   slotId: z.string().uuid(),
-  notes: z.string().max(1000).optional().nullable()
+  notes: z.string().max(1000).optional().nullable(),
+  planType: z.enum(["single_session", "monthly_course"])
 });
 
 const handleAuthError = (error: unknown) => {
@@ -47,7 +48,13 @@ export async function POST(request: Request, context: { params: { slug: string }
   }
 
   try {
-    const result = await createBooking(slug, parsed.data.slotId, userId, parsed.data.notes ?? null);
+    const result = await createBooking(
+      slug,
+      parsed.data.slotId,
+      userId,
+      parsed.data.notes ?? null,
+      parsed.data.planType
+    );
     return NextResponse.json({ booking: result.booking, chatId: result.chatId });
   } catch (error) {
     if (error instanceof CounselorNotFoundError) {
