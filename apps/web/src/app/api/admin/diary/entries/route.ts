@@ -42,8 +42,7 @@ export async function GET(request: Request) {
           assigned_counselor,
           counselor_memo_read,
           is_counselor_comment_public,
-          is_ai_comment_public,
-          profile:profiles!emotion_diary_entries_user_id_fkey(id, display_name, email)
+          is_ai_comment_public
         `,
         { count: "exact" }
       )
@@ -84,12 +83,30 @@ export async function GET(request: Request) {
       }
     }
 
-    const entries = (data || []).map((entry) => ({
-      ...entry,
-      user_name: entry.profile?.display_name || "匿名ユーザー",
-      user_email: entry.profile?.email || null,
-      comments_count: commentCounts[entry.id] || 0
-    }));
+    // Fetch user profiles for display names + emails
+    const userIds = [...new Set((data || []).map((entry) => entry.user_id))];
+    let profilesMap = new Map<string, { display_name: string | null; email: string | null }>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profileError } = await adminSupabase
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", userIds);
+
+      if (!profileError && profiles) {
+        profilesMap = new Map(profiles.map((profile) => [profile.id, profile]));
+      }
+    }
+
+    const entries = (data || []).map((entry) => {
+      const profile = profilesMap.get(entry.user_id);
+      const fallbackEmail = profile?.email || null;
+      return {
+        ...entry,
+        user_name: profile?.display_name || fallbackEmail || "匿名ユーザー",
+        user_email: fallbackEmail,
+        comments_count: commentCounts[entry.id] || 0
+      };
+    });
 
     return NextResponse.json({ entries, total: count ?? entries.length });
   } catch (error) {
