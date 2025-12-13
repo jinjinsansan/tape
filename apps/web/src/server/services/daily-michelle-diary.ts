@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,7 +10,22 @@ import { MICHELLE_AI_ENABLED } from "@/lib/feature-flags";
 import { getMichelleOpenAIClient } from "@/lib/michelle/openai";
 import { getSupabaseAdminClient } from "@/server/supabase";
 
-const KNOWLEDGE_ROOT = path.join(process.cwd(), "apps/web/md/michelle");
+const resolveKnowledgeRoot = () => {
+  const candidates = [
+    path.join(process.cwd(), "md", "michelle"),
+    path.join(process.cwd(), "apps", "web", "md", "michelle")
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Michelle knowledge directory not found. Checked: ${candidates.join(", ")}`);
+};
+
+const KNOWLEDGE_ROOT = resolveKnowledgeRoot();
 const DAILY_SETTING_KEY = "michelle_daily_diary_state";
 const DAILY_MODEL = process.env.MICHELLE_DAILY_DIARY_MODEL || "gpt-4o-mini";
 const POST_HOUR_JST = 8;
