@@ -160,6 +160,7 @@ export function DiaryDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [commentVisibilitySavingId, setCommentVisibilitySavingId] = useState<string | null>(null);
@@ -458,6 +459,16 @@ export function DiaryDashboard() {
     loadInitialScore();
   }, [sessionChecked, getAuthHeaders]);
 
+  const showToast = useCallback((type: "success" | "error", message: string) => {
+    setToast({ type, message });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   const handleSelfScoreChange = (value: number) => {
     const clamped = Math.min(Math.max(value, 0), 100);
     setSelfEsteemScore(clamped);
@@ -549,6 +560,7 @@ export function DiaryDashboard() {
           self_esteem_score: guestEntry.self_esteem_score ?? selfEsteemScore
         });
         resetComposer(form.visibility);
+        showToast("success", "日記を保存しました（この端末に保管中）");
         return;
       }
 
@@ -566,9 +578,11 @@ export function DiaryDashboard() {
         self_esteem_score: createdEntry.self_esteem_score ?? selfEsteemScore
       });
       resetComposer(form.visibility);
+      showToast("success", "日記を保存しました");
     } catch (err) {
       console.error(err);
       setSaveError("保存に失敗しました");
+      showToast("error", "保存に失敗しました");
     } finally {
       setIsSaving(false);
     }
@@ -595,9 +609,10 @@ export function DiaryDashboard() {
         }
         return next;
       });
+      showToast("success", "日記を削除しました");
     } catch (err) {
       console.error(err);
-      alert("削除に失敗しました");
+      showToast("error", "削除に失敗しました");
     }
   };
 
@@ -620,9 +635,10 @@ export function DiaryDashboard() {
       }
       const data = (await res.json()) as { entry: DiaryEntry };
       setEntries((prev) => prev.map((entry) => (entry.id === entryId ? data.entry : entry)));
+      showToast("success", "公開設定を更新しました");
     } catch (err) {
       console.error(err);
-      alert("公開設定の更新に失敗しました");
+      showToast("error", "公開設定の更新に失敗しました");
     }
   };
 
@@ -674,9 +690,10 @@ export function DiaryDashboard() {
 
       const data = (await res.json()) as { entry: DiaryEntry };
       setEntries((prev) => prev.map((entry) => (entry.id === entryId ? data.entry : entry)));
+      showToast("success", "公開設定を保存しました");
     } catch (err) {
       console.error(err);
-      alert("コメント公開設定の更新に失敗しました");
+      showToast("error", "コメント公開設定の更新に失敗しました");
     } finally {
       setCommentVisibilitySavingId(null);
     }
@@ -684,6 +701,16 @@ export function DiaryDashboard() {
 
   return (
     <div className="space-y-10">
+      {toast && (
+        <div
+          className={cn(
+            "fixed left-1/2 top-4 z-[60] -translate-x-1/2 rounded-full px-6 py-2 text-sm font-semibold shadow-lg transition-all",
+            toast.type === "success" ? "bg-tape-brown text-white" : "bg-tape-pink text-white"
+          )}
+        >
+          {toast.message}
+        </div>
+      )}
       <section className="grid gap-6">
         <Card className="border-none shadow-md">
           <CardContent className="p-6">
