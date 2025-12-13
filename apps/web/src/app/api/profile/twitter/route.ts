@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -50,6 +51,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore);
+  const admin = getSupabaseAdminClient();
 
   try {
     const user = await getRouteUser(supabase, "Update Twitter profile");
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     // 現在の登録情報を取得
-    const { data: currentProfile, error: fetchError } = await supabase
+    const { data: currentProfile, error: fetchError } = await admin
       .from("profiles")
       .select("twitter_username, twitter_username_updated_at")
       .eq("id", user.id)
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     // ユニーク制約チェック（他のユーザーが同じユーザー名を使用していないか）
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUser, error: checkError } = await admin
       .from("profiles")
       .select("id")
       .eq("twitter_username", parsed.data.twitterUsername)
@@ -118,13 +120,14 @@ export async function POST(request: Request) {
     }
 
     // 更新
-    const { error: updateError } = await supabase
+    const updatedAt = new Date().toISOString();
+    const { error: updateError } = await admin
       .from("profiles")
-      .update({
+      .upsert({
+        id: user.id,
         twitter_username: parsed.data.twitterUsername,
-        twitter_username_updated_at: new Date().toISOString()
-      })
-      .eq("id", user.id);
+        twitter_username_updated_at: updatedAt
+      }, { onConflict: "id" });
 
     if (updateError) {
       console.error("Failed to update Twitter username", updateError);
@@ -133,7 +136,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       twitterUsername: parsed.data.twitterUsername,
-      updatedAt: new Date().toISOString()
+      updatedAt
     });
   } catch (error) {
     if (error instanceof SupabaseAuthUnavailableError) {
