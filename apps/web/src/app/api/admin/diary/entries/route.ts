@@ -36,7 +36,13 @@ export async function GET(request: Request) {
           created_at,
           ai_comment_status,
           counselor_memo,
-          urgency_level
+          urgency_level,
+          counselor_name,
+          is_visible_to_user,
+          assigned_counselor,
+          counselor_memo_read,
+          is_counselor_comment_public,
+          is_ai_comment_public
         `,
         { count: "exact" }
       )
