@@ -119,6 +119,14 @@ const splitTextIntoPoints = (value: string): string[] =>
     .map((line) => line.replace(/^[-*・\u2022]\s?/, "").trim())
     .filter(Boolean);
 
+const splitTextIntoParagraphs = (value?: string | null): string[] => {
+  if (!value) return [];
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+};
+
 const extractKeyPoints = (resources: unknown): string[] => {
   if (!resources) return [];
 
@@ -225,6 +233,10 @@ export function CourseLearnClient({ slug }: { slug: string }) {
 
   const activeLesson = useMemo(() => extractLesson(course, activeLessonId), [course, activeLessonId]);
   const activeLessonKeyPoints = useMemo(() => extractKeyPoints(activeLesson?.resources), [activeLesson?.resources]);
+  const activeLessonSummaryParagraphs = useMemo(
+    () => splitTextIntoParagraphs(activeLesson?.summary),
+    [activeLesson?.summary]
+  );
   const activeLessonVideo = useMemo(() => buildVideoSource(activeLesson?.videoUrl), [activeLesson?.videoUrl]);
   const nextLesson = useMemo(() => extractAdjacentLesson(course, activeLessonId, "next"), [course, activeLessonId]);
   const prevLesson = useMemo(() => extractAdjacentLesson(course, activeLessonId, "prev"), [course, activeLessonId]);
@@ -417,16 +429,13 @@ export function CourseLearnClient({ slug }: { slug: string }) {
           ))}
         </aside>
 
-        <section className="space-y-6">
+        <section className="w-full">
           {activeLesson ? (
-            <>
+            <div className="mx-auto w-full max-w-3xl space-y-6">
               <div className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
                 <div className="space-y-3 mb-6">
                   <p className="text-xs font-semibold text-tape-orange">LESSON</p>
                   <h2 className="text-2xl font-bold text-tape-brown">{activeLesson.title}</h2>
-                  <p className="text-sm text-tape-brown/80 whitespace-pre-line leading-relaxed">
-                    {activeLesson.summary}
-                  </p>
                 </div>
 
                 {activeLessonVideo.type !== "none" ? (
@@ -449,14 +458,36 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                   </div>
                 )}
 
+                {activeLessonSummaryParagraphs.length > 0 && (
+                  <div className="mt-6 rounded-2xl border border-tape-beige bg-tape-cream/40 p-6 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-tape-orange">動画の要約</p>
+                    {activeLessonSummaryParagraphs.map((paragraph, index) => (
+                      <p
+                        key={`${activeLesson.id}-summary-${index}`}
+                        className="text-sm leading-relaxed text-tape-brown whitespace-pre-line"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 {activeLessonKeyPoints.length > 0 && (
-                  <div className="mt-6 rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
-                    <p className="text-xs font-semibold text-tape-orange">重点ポイント</p>
-                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-tape-brown">
+                  <div className="mt-6 rounded-2xl border border-tape-beige bg-white p-6 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-tape-orange">
+                      <span className="h-2 w-2 rounded-full bg-tape-orange" />
+                      重点ポイント
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {activeLessonKeyPoints.map((point, index) => (
-                        <li key={`${activeLesson.id}-kp-${index}`}>{point}</li>
+                        <div
+                          key={`${activeLesson.id}-kp-${index}`}
+                          className="rounded-xl border border-tape-beige/70 bg-tape-cream/30 px-4 py-3 text-sm leading-relaxed text-tape-brown whitespace-pre-line shadow-sm"
+                        >
+                          {point}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
 
@@ -557,7 +588,7 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                   </div>
                 )}
               </div>
-            </>
+            </div>
           ) : (
             <Card className="flex items-center justify-center p-10 bg-white/50 border-dashed">
               <p className="text-sm text-tape-light-brown">左のリストからレッスンを選択してください。</p>
