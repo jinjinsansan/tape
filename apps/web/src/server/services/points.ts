@@ -255,14 +255,14 @@ export const fetchPointAnalytics = async (days = 30) => {
       supabase.rpc("admin_point_redemption_breakdown"),
       supabase
         .from("transactions")
-        .select("id, type, amount_cents, created_at")
+        .select("id, type, amount_cents, user_id, created_at")
         .in("type", ["topup", "consume"])
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(300),
       supabase
         .from("point_redemptions")
-        .select("id, points_spent, created_at")
+        .select("id, user_id, points_spent, created_at")
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(300)
@@ -300,9 +300,53 @@ export const fetchPointAnalytics = async (days = 30) => {
       redemptionPoints: bucket.redemption
     }));
 
-  const recentTopups = (transactionsResult.data ?? [])
+  const transactions = transactionsResult.data ?? [];
+  const redemptionRows = recentRedemptionsResult.data ?? [];
+  const userIds = new Set<string>();
+  transactions.forEach((tx) => {
+    if (tx.user_id) userIds.add(tx.user_id);
+  });
+  redemptionRows.forEach((row) => {
+    if (row.user_id) userIds.add(row.user_id);
+  });
+
+  let profileMap = new Map<string, { display_name: string | null }>();
+  if (userIds.size > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", Array.from(userIds));
+    if (profileError) {
+      console.error("[fetchPointAnalytics] Failed to load profile names", profileError);
+    } else {
+      profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    }
+  }
+
+  const getUserName = (userId: string | null) => {
+    if (!userId) return "不明なユーザー";
+    const displayName = profileMap.get(userId)?.display_name;
+    return displayName || `ユーザー(${userId.slice(0, 6)})`;
+  };
+
+  const recentTopups = transactions
     .filter((tx) => tx.type === "topup")
-    .slice(0, 10);
+    .slice(0, 10)
+    .map((tx) => ({
+      id: tx.id,
+      amount_cents: tx.amount_cents,
+      created_at: tx.created_at,
+      user_id: tx.user_id,
+      user_name: getUserName(tx.user_id ?? null)
+    }));
+
+  const recentRedemptions = redemptionRows.slice(0, 10).map((row) => ({
+    id: row.id,
+    points_spent: row.points_spent,
+    created_at: row.created_at,
+    user_id: row.user_id,
+    user_name: getUserName(row.user_id ?? null)
+  }));
 
   return {
     totals: totalsResult.data,
@@ -310,6 +354,6 @@ export const fetchPointAnalytics = async (days = 30) => {
     redemptionBreakdown: redemptionBreakdownResult.data ?? [],
     revenueSeries,
     recentTopups,
-    recentRedemptions: (recentRedemptionsResult.data ?? []).slice(0, 10)
+    recentRedemptions
   };
 };

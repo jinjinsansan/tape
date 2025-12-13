@@ -43,8 +43,8 @@ type PointAnalytics = {
   actionBreakdown: Array<{ action: string; total_points: number; event_count: number }>;
   redemptionBreakdown: Array<{ reward_title: string; total_points_spent: number; redemption_count: number }>;
   revenueSeries: Array<{ date: string; topupCents: number; consumeCents: number; redemptionPoints: number }>;
-  recentTopups: Array<{ id: string; amount_cents: number; created_at: string }>;
-  recentRedemptions: Array<{ id: string; points_spent: number; created_at: string }>;
+  recentTopups: Array<{ id: string; amount_cents: number; created_at: string; user_id: string | null; user_name: string }>; 
+  recentRedemptions: Array<{ id: string; points_spent: number; created_at: string; user_id: string | null; user_name: string }>;
 };
 
 
@@ -64,6 +64,9 @@ const formatPoints = (points?: number | null) => `${(points ?? 0).toLocaleString
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
 export function PointsManagementClient() {
   const [pointRules, setPointRules] = useState<PointRule[]>([]);
@@ -363,9 +366,18 @@ export function PointsManagementClient() {
                     ) : (
                       <div className="mt-3 space-y-2 text-sm">
                         {analytics.recentTopups.map((tx) => (
-                          <div key={tx.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
-                            <p className="font-semibold text-slate-900">{formatYen(tx.amount_cents)}</p>
-                            <p className="text-xs text-slate-500">{formatDate(tx.created_at)}</p>
+                          <div
+                            key={tx.id}
+                            className="flex flex-wrap items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-900">{tx.user_name}</p>
+                              <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-emerald-600">{formatYen(tx.amount_cents)}</p>
+                              <p className="text-[11px] text-slate-400">ID: {tx.user_id ?? "-"}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -373,21 +385,40 @@ export function PointsManagementClient() {
                   </div>
 
                   <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4">
-                    <h3 className="text-sm font-semibold text-rose-700">ポイント使用トップ</h3>
-                    {redemptionBreakdown.length === 0 ? (
+                    <h3 className="text-sm font-semibold text-rose-700">最新のポイント使用/交換</h3>
+                    {analytics.recentRedemptions.length === 0 ? (
                       <p className="mt-3 text-sm text-rose-600">まだ使用履歴がありません</p>
                     ) : (
-                      <ul className="mt-3 space-y-2 text-sm">
-                        {redemptionBreakdown.slice(0, 5).map((item) => (
-                          <li key={item.reward_title} className="flex items-center justify-between rounded-xl border border-white/40 bg-white/60 px-3 py-2">
+                      <div className="mt-3 space-y-2 text-sm">
+                        {analytics.recentRedemptions.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex flex-wrap items-center justify-between rounded-xl border border-white/50 bg-white/70 px-3 py-2"
+                          >
                             <div>
-                              <p className="font-semibold text-slate-900">{item.reward_title}</p>
-                              <p className="text-xs text-slate-500">{item.redemption_count} 件</p>
+                              <p className="font-semibold text-slate-900">{item.user_name}</p>
+                              <p className="text-xs text-slate-500">{formatDateTime(item.created_at)}</p>
                             </div>
-                            <p className="text-sm font-bold text-rose-600">{formatPoints(item.total_points_spent)}</p>
-                          </li>
+                            <div className="text-right">
+                              <p className="font-bold text-rose-600">-{formatPoints(item.points_spent)}</p>
+                              <p className="text-[11px] text-slate-400">ID: {item.user_id ?? "-"}</p>
+                            </div>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
+                    )}
+                    {redemptionBreakdown.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-rose-100 bg-white/70 p-3 text-xs text-slate-500">
+                        <p className="font-semibold text-rose-700">人気の交換先</p>
+                        <ul className="mt-2 space-y-1">
+                          {redemptionBreakdown.slice(0, 3).map((item) => (
+                            <li key={item.reward_title} className="flex items-center justify-between">
+                              <span>{item.reward_title}</span>
+                              <span>{item.redemption_count}件 / {formatPoints(item.total_points_spent)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 </div>
