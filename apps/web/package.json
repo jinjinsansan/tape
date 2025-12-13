@@ -17,6 +17,8 @@
     "@tape/rag": "file:../../packages/rag",
     "@tape/supabase": "file:../../packages/supabase",
     "@tape/ui": "file:../../packages/ui",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.446.0",
