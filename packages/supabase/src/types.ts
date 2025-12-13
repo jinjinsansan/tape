@@ -1258,6 +1258,57 @@ export interface Database {
           created_at?: string;
         };
       };
+      learning_lesson_unlocks: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          lesson_id: string;
+          amount_cents: number;
+          status: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          lesson_id: string;
+          amount_cents: number;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          course_id?: string;
+          lesson_id?: string;
+          amount_cents?: number;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_lesson_unlocks_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "learning_courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_lesson_unlocks_lesson_id_fkey";
+            columns: ["lesson_id"];
+            referencedRelation: "learning_lessons";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_lesson_unlocks_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       course_purchases: {
         Row: {
           id: string;

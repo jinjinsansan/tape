@@ -5,6 +5,11 @@ import type {
   LearningLessonStatus
 } from "@tape/supabase";
 import { getSupabaseAdminClient } from "@/server/supabase";
+import { isPrivilegedUser } from "@/server/services/roles";
+
+export const INSTALLMENT_COURSE_SLUG = "counselor-training";
+export const INSTALLMENT_LESSON_PRICE_YEN = 6000;
+export const INSTALLMENT_LESSON_PRICE_CENTS = INSTALLMENT_LESSON_PRICE_YEN * 100;
 
 type Supabase = SupabaseClient<Database>;
 
@@ -96,12 +101,23 @@ export type CourseViewModel = {
   };
   viewer: {
     authenticated: boolean;
+    isPrivileged: boolean;
+    hasFullCourseAccess: boolean;
+    unlockedLessonIds: string[];
   };
 };
 
 type LessonState = {
   status: LearningLessonStatus;
   isUnlocked: boolean;
+};
+
+type LessonUnlockOptions = {
+  viewerAuthenticated: boolean;
+  unlockedLessonIds: Set<string>;
+  allowDefaultFirstLesson: boolean;
+  allowSequentialUnlock: boolean;
+  forceUnlockAll: boolean;
 };
 
 const parseQuizQuestions = (raw: unknown): QuizQuestion[] => {
@@ -133,7 +149,7 @@ const fetchRawCourse = async (supabase: Supabase, slug: string): Promise<CourseR
     .from("learning_courses")
     .select(
       `
-        id, slug, title, subtitle, description, hero_url, level, tags, total_duration_seconds,
+        id, slug, title, subtitle, description, hero_url, level, tags, total_duration_seconds, price, currency,
         modules:learning_course_modules(
           id, order_index, title, summary,
           lessons:learning_lessons(
@@ -170,7 +186,7 @@ const getLessonIdsInOrder = (course: CourseRecord): string[] => {
 const computeLessonStates = (
   orderedIds: string[],
   progressMap: Map<string, LessonProgressRow>,
-  viewerAuthenticated: boolean
+  options: LessonUnlockOptions
 ): Map<string, LessonState> => {
   const states = new Map<string, LessonState>();
 
@@ -178,12 +194,17 @@ const computeLessonStates = (
     const prevLessonId = index > 0 ? orderedIds[index - 1] : null;
     const prevState = prevLessonId ? states.get(prevLessonId) : undefined;
     const progress = progressMap.get(lessonId);
-    const unlockedByDefault = index === 0;
+    const unlockedByDefault = options.allowDefaultFirstLesson && index === 0;
     const unlockedByProgress = Boolean(progress && progress.status !== "locked");
-    const unlockedByPrevious = Boolean(prevState && prevState.status === "completed");
-    const isUnlocked = viewerAuthenticated ? unlockedByDefault || unlockedByProgress || unlockedByPrevious : unlockedByDefault;
-    const status: LearningLessonStatus = progress?.status ?? (isUnlocked && viewerAuthenticated ? "in_progress" : "locked");
-    states.set(lessonId, { status, isUnlocked: viewerAuthenticated ? isUnlocked : unlockedByDefault });
+    const unlockedByPrevious = options.allowSequentialUnlock && Boolean(prevState && prevState.status === "completed");
+    const unlockedByPurchase = options.unlockedLessonIds.has(lessonId);
+    const unlocked =
+      options.forceUnlockAll || unlockedByPurchase || unlockedByDefault || unlockedByProgress || unlockedByPrevious;
+    const isUnlocked = options.viewerAuthenticated ? unlocked : unlockedByDefault;
+    const status: LearningLessonStatus = options.forceUnlockAll
+      ? "in_progress"
+      : progress?.status ?? (isUnlocked && options.viewerAuthenticated ? "in_progress" : "locked");
+    states.set(lessonId, { status, isUnlocked: options.forceUnlockAll ? true : isUnlocked });
   });
 
   return states;
@@ -195,11 +216,26 @@ const buildCourseViewModel = (
     progressMap: Map<string, LessonProgressRow>;
     notesMap: Map<string, LessonNoteRow>;
     attemptsMap: Map<string, QuizAttemptRow>;
-    viewerAuthenticated: boolean;
+    viewer: {
+      authenticated: boolean;
+      isPrivileged: boolean;
+      hasFullCourseAccess: boolean;
+      unlockedLessonIds: string[];
+    };
+    unlockedLessonIds: Set<string>;
+    allowDefaultFirstLesson: boolean;
+    allowSequentialUnlock: boolean;
+    forceUnlockAll: boolean;
   }
 ): CourseViewModel => {
   const orderedLessonIds = getLessonIdsInOrder(course);
-  const lessonStates = computeLessonStates(orderedLessonIds, options.progressMap, options.viewerAuthenticated);
+  const lessonStates = computeLessonStates(orderedLessonIds, options.progressMap, {
+    viewerAuthenticated: options.viewer.authenticated,
+    unlockedLessonIds: options.unlockedLessonIds,
+    allowDefaultFirstLesson: options.allowDefaultFirstLesson,
+    allowSequentialUnlock: options.allowSequentialUnlock,
+    forceUnlockAll: options.forceUnlockAll
+  });
 
   const modules = course.modules
     .slice()
@@ -241,7 +277,7 @@ const buildCourseViewModel = (
             resources: lesson.resources ?? [],
             orderIndex: lesson.order_index,
             status: state.status,
-            isUnlocked: state.isUnlocked && options.viewerAuthenticated,
+            isUnlocked: state.isUnlocked && options.viewer.authenticated,
             note,
             quiz
           } satisfies LessonViewModel;
@@ -276,9 +312,7 @@ const buildCourseViewModel = (
       completedLessons,
       percentage
     },
-    viewer: {
-      authenticated: options.viewerAuthenticated
-    }
+    viewer: options.viewer
   } satisfies CourseViewModel;
 };
 
@@ -334,16 +368,85 @@ const fetchUserProgressMaps = async (
   return { progressMap, notesMap, attemptsMap };
 };
 
-export const getCourseForUser = async (slug: string, userId?: string | null): Promise<CourseViewModel> => {
+export const getCourseForUser = async (
+  slug: string,
+  userId?: string | null,
+  options?: { isPrivileged?: boolean }
+): Promise<CourseViewModel> => {
   const supabase = getSupabaseAdminClient();
   const course = await fetchRawCourse(supabase, slug);
   const orderedLessonIds = getLessonIdsInOrder(course);
   const { progressMap, notesMap, attemptsMap } = await fetchUserProgressMaps(supabase, userId ?? null, orderedLessonIds);
+
+  const viewerAuthenticated = Boolean(userId);
+  let isPrivileged = false;
+  if (viewerAuthenticated) {
+    if (typeof options?.isPrivileged === "boolean") {
+      isPrivileged = options.isPrivileged;
+    } else {
+      isPrivileged = await isPrivilegedUser(userId!, supabase);
+    }
+  }
+
+  let hasFullCourseAccess = course.price === 0;
+  if (viewerAuthenticated && !hasFullCourseAccess) {
+    if (isPrivileged) {
+      hasFullCourseAccess = true;
+    } else {
+      const { data: purchaseRow, error: purchaseError } = await supabase
+        .from("course_purchases")
+        .select("id")
+        .eq("user_id", userId!)
+        .eq("course_id", course.id)
+        .eq("status", "completed")
+        .maybeSingle();
+
+      if (purchaseError) {
+        throw purchaseError;
+      }
+
+      hasFullCourseAccess = Boolean(purchaseRow);
+    }
+  }
+
+  let unlockedLessonIds: string[] = [];
+  if (viewerAuthenticated && !hasFullCourseAccess) {
+    const { data: unlockedRows, error: unlockError } = await supabase
+      .from("learning_lesson_unlocks")
+      .select("lesson_id")
+      .eq("user_id", userId!)
+      .eq("course_id", course.id)
+      .eq("status", "active");
+
+    if (unlockError) {
+      throw unlockError;
+    }
+
+    unlockedLessonIds = (unlockedRows ?? []).map((row) => row.lesson_id);
+  }
+
+  const strictInstallment =
+    course.slug === INSTALLMENT_COURSE_SLUG && !hasFullCourseAccess && !isPrivileged;
+  const allowDefaultFirstLesson = !strictInstallment;
+  const allowSequentialUnlock = !strictInstallment;
+  const forceUnlockAll = isPrivileged;
+
+  const viewerInfo = {
+    authenticated: viewerAuthenticated,
+    isPrivileged,
+    hasFullCourseAccess,
+    unlockedLessonIds
+  } satisfies CourseViewModel["viewer"];
+
   return buildCourseViewModel(course, {
     progressMap,
     notesMap,
     attemptsMap,
-    viewerAuthenticated: Boolean(userId)
+    viewer: viewerInfo,
+    unlockedLessonIds: new Set(unlockedLessonIds),
+    allowDefaultFirstLesson,
+    allowSequentialUnlock,
+    forceUnlockAll
   });
 };
 
@@ -401,7 +504,8 @@ export const recordLessonProgress = async (
     });
 
     const nextLessonId = findNextLessonId(courseBefore, lessonId);
-    if (nextLessonId) {
+    const canAutoUnlockNext = courseBefore.viewer.hasFullCourseAccess || courseBefore.viewer.isPrivileged;
+    if (canAutoUnlockNext && nextLessonId) {
       await upsertLessonProgress(supabase, userId, nextLessonId, {
         status: "in_progress",
         unlocked_at: new Date().toISOString()

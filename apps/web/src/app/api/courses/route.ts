@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
+import { isPrivilegedUser } from "@/server/services/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export async function GET() {
   try {
     const supabase = getSupabaseAdminClient();
     const user = await getRouteUser();
+    const isPrivileged = user ? await isPrivilegedUser(user.id, supabase) : false;
 
     // Get all published courses
     const { data: courses, error } = await supabase
@@ -46,7 +48,7 @@ export async function GET() {
       tags: course.tags,
       totalDurationSeconds: course.total_duration_seconds,
       heroUrl: course.hero_url,
-      isPurchased: purchaseSet.has(course.id) || course.price === 0
+      isPurchased: isPrivileged || course.price === 0 || purchaseSet.has(course.id)
     }));
 
     return NextResponse.json({ courses: coursesWithPurchaseStatus });

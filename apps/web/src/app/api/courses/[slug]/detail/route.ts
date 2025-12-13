@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
+import { isPrivilegedUser } from "@/server/services/roles";
+import { INSTALLMENT_COURSE_SLUG, INSTALLMENT_LESSON_PRICE_YEN } from "@/server/services/courses";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +11,7 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
     const { slug } = params;
     const supabase = getSupabaseAdminClient();
     const user = await getRouteUser();
+    const isPrivileged = user ? await isPrivilegedUser(user.id, supabase) : false;
 
     // Get course with modules
     const { data: courseData, error: courseError } = await supabase
@@ -67,8 +70,8 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
     }
 
     // Check if user has purchased this course
-    let isPurchased = courseData.price === 0; // Free courses are always "purchased"
-    if (user && courseData.price > 0) {
+    let isPurchased = courseData.price === 0 || isPrivileged; // Free or privileged users
+    if (user && courseData.price > 0 && !isPurchased) {
       const { data: purchaseData } = await supabase
         .from("course_purchases")
         .select("id")
@@ -78,6 +81,37 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
         .maybeSingle();
 
       isPurchased = !!purchaseData;
+    }
+
+    let installmentInfo: {
+      enabled: boolean;
+      priceYen: number;
+      unlockedLessonCount: number;
+      totalLessons: number;
+    } | null = null;
+
+    if (courseData.slug === INSTALLMENT_COURSE_SLUG) {
+      let unlockedLessonCount = 0;
+      if (user) {
+        if (isPurchased) {
+          unlockedLessonCount = totalLessons;
+        } else {
+          const { data: unlockedRows } = await supabase
+            .from("learning_lesson_unlocks")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("course_id", courseData.id)
+            .eq("status", "active");
+          unlockedLessonCount = unlockedRows?.length ?? 0;
+        }
+      }
+
+      installmentInfo = {
+        enabled: true,
+        priceYen: INSTALLMENT_LESSON_PRICE_YEN,
+        unlockedLessonCount,
+        totalLessons
+      };
     }
 
     const modules = (courseData.modules || [])
@@ -104,7 +138,8 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
       heroUrl: courseData.hero_url,
       modules,
       isPurchased,
-      totalLessons
+      totalLessons,
+      installmentInfo
     };
 
     return NextResponse.json({ course });

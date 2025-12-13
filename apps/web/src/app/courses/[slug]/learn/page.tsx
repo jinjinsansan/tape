@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
+import { isPrivilegedUser } from "@/server/services/roles";
+import { INSTALLMENT_COURSE_SLUG } from "@/server/services/courses";
 import { CourseLearnClient } from "./course-learn-client";
 
 type PageProps = {
@@ -30,15 +32,34 @@ export default async function CourseLearnPage({ params }: PageProps) {
       redirect(`/courses/${slug}`);
     }
 
-    const { data: purchaseData } = await supabase
-      .from("course_purchases")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("course_id", courseData.id)
-      .eq("status", "completed")
-      .maybeSingle();
+    const isPrivileged = await isPrivilegedUser(user.id, supabase);
+    let hasAccess = isPrivileged;
 
-    if (!purchaseData) {
+    if (!hasAccess) {
+      const { data: purchaseData } = await supabase
+        .from("course_purchases")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("course_id", courseData.id)
+        .eq("status", "completed")
+        .maybeSingle();
+
+      hasAccess = Boolean(purchaseData);
+    }
+
+    if (!hasAccess && courseData.slug === INSTALLMENT_COURSE_SLUG) {
+      const { data: unlockedRows } = await supabase
+        .from("learning_lesson_unlocks")
+        .select("lesson_id")
+        .eq("user_id", user.id)
+        .eq("course_id", courseData.id)
+        .eq("status", "active")
+        .limit(1);
+
+      hasAccess = (unlockedRows?.length ?? 0) > 0;
+    }
+
+    if (!hasAccess) {
       redirect(`/courses/${slug}`);
     }
   }

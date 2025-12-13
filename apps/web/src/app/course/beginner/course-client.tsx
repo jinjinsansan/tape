@@ -60,6 +60,9 @@ type CourseData = {
   };
   viewer: {
     authenticated: boolean;
+    isPrivileged: boolean;
+    hasFullCourseAccess: boolean;
+    unlockedLessonIds: string[];
   };
 };
 

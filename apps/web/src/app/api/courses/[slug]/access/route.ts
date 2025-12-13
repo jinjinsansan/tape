@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
+import { isPrivilegedUser } from "@/server/services/roles";
+import { INSTALLMENT_COURSE_SLUG } from "@/server/services/courses";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,8 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
       return NextResponse.json({ hasAccess: false, reason: "not_authenticated" });
     }
 
+    const isPrivileged = await isPrivilegedUser(user.id, supabase);
+
     // Get course info
     const { data: courseData, error: courseError } = await supabase
       .from("learning_courses")
@@ -29,9 +33,13 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
       return NextResponse.json({ hasAccess: false, reason: "course_not_found" }, { status: 404 });
     }
 
-    // Free courses are always accessible
+    // Free courses or privileged users are always accessible
     if (courseData.price === 0) {
       return NextResponse.json({ hasAccess: true, reason: "free_course" });
+    }
+
+    if (isPrivileged) {
+      return NextResponse.json({ hasAccess: true, reason: "privileged" });
     }
 
     // Check purchase status
@@ -45,6 +53,20 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
 
     if (purchaseData) {
       return NextResponse.json({ hasAccess: true, reason: "purchased" });
+    }
+
+    if (courseData.slug === INSTALLMENT_COURSE_SLUG) {
+      const { data: unlockedRows } = await supabase
+        .from("learning_lesson_unlocks")
+        .select("lesson_id")
+        .eq("user_id", user.id)
+        .eq("course_id", courseData.id)
+        .eq("status", "active")
+        .limit(1);
+
+      if ((unlockedRows?.length ?? 0) > 0) {
+        return NextResponse.json({ hasAccess: true, reason: "lesson_unlocked" });
+      }
     }
 
     return NextResponse.json({ hasAccess: false, reason: "not_purchased" });

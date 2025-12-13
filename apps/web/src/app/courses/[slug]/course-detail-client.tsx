@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +40,12 @@ type CourseDetail = {
   modules: CourseModule[];
   isPurchased: boolean;
   totalLessons: number;
+  installmentInfo?: {
+    enabled: boolean;
+    priceYen: number;
+    unlockedLessonCount: number;
+    totalLessons: number;
+  } | null;
 };
 
 type ApiResponse = {
@@ -80,30 +87,34 @@ export function CourseDetailClient({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [installmentError, setInstallmentError] = useState<string | null>(null);
+  const [installmentLoading, setInstallmentLoading] = useState(false);
+
+  const fetchCourse = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/courses/${slug}/detail`, { cache: "no-store" });
+      if (res.status === 404) {
+        setError("コースが見つかりません");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("コース情報の取得に失敗しました");
+      }
+      const data = (await res.json()) as ApiResponse;
+      setCourse(data.course);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
 
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const res = await fetch(`/api/courses/${slug}/detail`, { cache: "no-store" });
-        if (res.status === 404) {
-          setError("コースが見つかりません");
-          return;
-        }
-        if (!res.ok) {
-          throw new Error("コース情報の取得に失敗しました");
-        }
-        const data = (await res.json()) as ApiResponse;
-        setCourse(data.course);
-      } catch (err) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : "エラーが発生しました");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCourse();
-  }, [slug]);
+  }, [fetchCourse]);
 
   const handleStart = async () => {
     if (!course) return;
@@ -123,6 +134,34 @@ export function CourseDetailClient({ slug }: { slug: string }) {
     setShowPurchaseModal(false);
     // 購入完了後、学習ページへ
     router.push(`/courses/${slug}/learn`);
+  };
+
+  const handleInstallmentPurchase = async () => {
+    setInstallmentError(null);
+    if (!window.confirm("ウォレット残高から6,000円を使用して次のレッスンを購入します。よろしいですか？")) {
+      return;
+    }
+    setInstallmentLoading(true);
+    try {
+      const res = await fetch(`/api/courses/${slug}/installments/purchase`, {
+        method: "POST"
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error ?? "分割購入に失敗しました");
+      }
+      await fetchCourse();
+      alert(
+        payload?.lessonTitle
+          ? `${payload.lessonTitle} を購入しました`
+          : "レッスンを購入しました"
+      );
+    } catch (err) {
+      console.error(err);
+      setInstallmentError(err instanceof Error ? err.message : "分割購入に失敗しました");
+    } finally {
+      setInstallmentLoading(false);
+    }
   };
 
   if (loading) {
@@ -258,6 +297,44 @@ export function CourseDetailClient({ slug }: { slug: string }) {
                     </>
                   )}
                 </Button>
+
+                {course.installmentInfo?.enabled &&
+                  !course.isPurchased &&
+                  course.installmentInfo.unlockedLessonCount < course.installmentInfo.totalLessons && (
+                    <div className="rounded-2xl border border-tape-beige bg-white/70 p-4 space-y-3">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-semibold text-tape-brown">レッスンごとに受講する</p>
+                        <p className="text-xs text-tape-light-brown">
+                          ウォレット残高から <span className="font-bold">¥{course.installmentInfo.priceYen.toLocaleString()}</span>
+                          /レッスン で順次アンロックできます。
+                          <span className="ml-1">購入済み {course.installmentInfo.unlockedLessonCount}/{course.installmentInfo.totalLessons}</span>
+                        </p>
+                      </div>
+                      {installmentError && (
+                        <p className="text-xs text-red-600">{installmentError}</p>
+                      )}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <Button
+                          onClick={handleInstallmentPurchase}
+                          disabled={installmentLoading}
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                        >
+                          {installmentLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              購入処理中...
+                            </>
+                          ) : (
+                            <>レッスンを ¥{course.installmentInfo.priceYen.toLocaleString()} で購入</>
+                          )}
+                        </Button>
+                        <p className="text-xs text-tape-light-brown">
+                          残高不足の際は <Link href="/mypage/wallet" className="underline">ウォレット</Link> でチャージしてください。
+                        </p>
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           </div>
