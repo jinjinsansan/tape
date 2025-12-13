@@ -9,9 +9,9 @@ const footerLinks = [
 ];
 
 const socialLinks = [
-  { label: "一般社団法人NAMIDAサポート協会", href: "#", icon: ExternalLink },
-  { label: "YouTube", href: "#", icon: Youtube },
-  { label: "X (Twitter)", href: "#", icon: Twitter }
+  { label: "一般社団法人NAMIDAサポート協会", href: "https://web.namisapo.com/", icon: ExternalLink },
+  { label: "YouTube", href: "https://www.youtube.com/channel/UCHWAYMRP3Ia7CgH6sg1USGg", icon: Youtube },
+  { label: "X (Twitter)", href: "https://x.com/iamiamthatthat", icon: Twitter }
 ];
 
 export function SiteFooter() {
