@@ -31,6 +31,8 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   const [twitterSubmitting, setTwitterSubmitting] = useState(false);
   const [twitterMessage, setTwitterMessage] = useState<string | null>(null);
   const [twitterError, setTwitterError] = useState<string | null>(null);
+  const [diaryReminderEnabled, setDiaryReminderEnabled] = useState(true);
+  const [reminderLoading, setReminderLoading] = useState(false);
 
   const initials = useMemo(() => {
     if (displayName) {
@@ -95,6 +97,21 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
       }
     };
     loadTwitterProfile();
+  }, []);
+
+  useEffect(() => {
+    const loadDiaryReminderSetting = async () => {
+      try {
+        const res = await fetch("/api/profile/diary-reminder");
+        if (res.ok) {
+          const data = await res.json();
+          setDiaryReminderEnabled(data.diaryReminderEnabled ?? true);
+        }
+      } catch (err) {
+        console.error("Failed to load diary reminder setting", err);
+      }
+    };
+    loadDiaryReminderSetting();
   }, []);
 
   const handleSubmit = useCallback(
@@ -188,6 +205,29 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
     return Math.ceil(remaining / (24 * 60 * 60 * 1000));
   }, [twitterUpdatedAt, canUpdateTwitter]);
 
+  const handleReminderToggle = useCallback(async () => {
+    setReminderLoading(true);
+    try {
+      const response = await fetch("/api/profile/diary-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !diaryReminderEnabled })
+      });
+
+      if (!response.ok) {
+        throw new Error("設定の更新に失敗しました");
+      }
+
+      const data = await response.json();
+      setDiaryReminderEnabled(data.diaryReminderEnabled);
+    } catch (err) {
+      console.error("Failed to update diary reminder setting", err);
+      alert(err instanceof Error ? err.message : "設定の更新に失敗しました");
+    } finally {
+      setReminderLoading(false);
+    }
+  }, [diaryReminderEnabled]);
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
@@ -271,6 +311,40 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
           </div>
         </div>
       </form>
+
+      <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">DIARY REMINDER</p>
+        <h2 className="text-2xl font-bold text-tape-brown">日記リマインダー</h2>
+        <p className="text-sm text-tape-light-brown">
+          毎日22時に、その日の日記を書いていない場合にメールでお知らせします。
+        </p>
+
+        <div className="mt-6 flex items-center justify-between rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
+          <div className="space-y-1">
+            <p className="font-semibold text-tape-brown">🌙 日記リマインダーメール</p>
+            <p className="text-xs text-tape-light-brown">
+              毎日22時に日記のリマインダーをメールで受け取る
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleReminderToggle}
+            disabled={reminderLoading}
+            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-tape-pink focus:ring-offset-2 ${
+              diaryReminderEnabled ? "bg-tape-pink" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                diaryReminderEnabled ? "translate-x-7" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-xs text-tape-light-brown">
+          ※ 配信停止は、いつでもこの設定から変更できます。
+        </p>
+      </section>
 
       <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">X (TWITTER) ACCOUNT</p>

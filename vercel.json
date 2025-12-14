@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/internal/cron/diary-reminder",
+      "schedule": "0 13 * * *"
+    },
+    {
       "path": "/api/internal/cron/michelle-daily-diary",
       "schedule": "0 23 * * *"
     }
