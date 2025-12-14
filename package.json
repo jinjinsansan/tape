@@ -21,13 +21,11 @@
     "node": ">=18.18.0"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.84",
     "@paypal/paypal-js": "^9.0.1",
     "@paypal/paypal-server-sdk": "^2.1.0",
     "@paypal/react-paypal-js": "^8.9.2",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
-    "sharp": "^0.34.5",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

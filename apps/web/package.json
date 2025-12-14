@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.84",
     "@paypal/paypal-js": "^9.0.1",
     "@paypal/paypal-server-sdk": "^2.1.0",
     "@paypal/react-paypal-js": "^8.9.2",
@@ -28,6 +29,7 @@
     "react-dom": "18.3.1",
     "recharts": "^2.12.7",
     "resend": "^4.0.0",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.5.2",
     "zod": "^3.23.8"
   },
