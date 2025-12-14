@@ -52,7 +52,8 @@ const publicSelect = `
   specialties,
   hourly_rate_cents,
   intro_video_url,
-  profile_metadata
+  profile_metadata,
+  accepting_bookings
 `;
 
 export const listCounselors = async (supabase = getSupabaseAdminClient()) => {

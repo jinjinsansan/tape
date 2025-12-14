@@ -23,6 +23,7 @@ type Counselor = {
   hourly_rate_cents: number;
   intro_video_url: string | null;
   profile_metadata: Record<string, unknown> | null;
+  accepting_bookings: boolean;
 };
 
 type Booking = {
@@ -396,19 +397,26 @@ export function CounselorPage({ slug }: { slug: string }) {
                   <p className="text-xs text-tape-pink text-center font-medium">ログインするとチャット/決済をご利用いただけます。</p>
                 )}
 
+                {counselor && !counselor.accepting_bookings && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
+                    <p className="text-sm font-bold text-amber-700">受付停止中</p>
+                    <p className="text-xs text-amber-600 mt-1">現在このカウンセラーは新規予約を受け付けておりません。</p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Button
                     onClick={() => handleBookingAction(false)}
-                    disabled={!isAuthenticated || pendingAction || !activePlan}
-                    className="w-full bg-tape-brown text-white hover:bg-tape-brown/90"
+                    disabled={!isAuthenticated || pendingAction || !activePlan || (counselor && !counselor.accepting_bookings)}
+                    className="w-full bg-tape-brown text-white hover:bg-tape-brown/90 disabled:opacity-50"
                   >
                     チャットで相談を始める
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleBookingAction(true)}
-                    disabled={!isAuthenticated || pendingAction || !activePlan}
-                    className="w-full border-tape-orange text-tape-orange hover:bg-tape-orange/5"
+                    disabled={!isAuthenticated || pendingAction || !activePlan || (counselor && !counselor.accepting_bookings)}
+                    className="w-full border-tape-orange text-tape-orange hover:bg-tape-orange/5 disabled:opacity-50"
                   >
                     ウォレットで即時決済する
                   </Button>

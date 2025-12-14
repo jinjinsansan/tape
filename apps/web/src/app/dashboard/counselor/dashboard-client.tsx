@@ -91,6 +91,8 @@ export function CounselorDashboardClient() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [earningsStats, setEarningsStats] = useState<EarningsStats | null>(null);
+  const [acceptingBookings, setAcceptingBookings] = useState(true);
+  const [updatingAccepting, setUpdatingAccepting] = useState(false);
   const socialLinksPreview = useMemo(
     () => (profile ? extractCounselorSocialLinks(profile.profile_metadata) : null),
     [profile]
@@ -250,11 +252,48 @@ export function CounselorDashboardClient() {
     }
   }, []);
 
+  const fetchAcceptingStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/counselors/me/accepting");
+      if (res.ok) {
+        const data = await res.json();
+        setAcceptingBookings(data.accepting_bookings ?? true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch accepting status", err);
+    }
+  }, []);
+
+  const handleToggleAccepting = useCallback(async () => {
+    setUpdatingAccepting(true);
+    try {
+      const newStatus = !acceptingBookings;
+      const res = await fetch("/api/counselors/me/accepting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepting_bookings: newStatus })
+      });
+
+      if (!res.ok) {
+        throw new Error("受付状態の更新に失敗しました");
+      }
+
+      setAcceptingBookings(newStatus);
+      alert(newStatus ? "予約受付を再開しました" : "予約受付を停止しました");
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "受付状態の更新に失敗しました");
+    } finally {
+      setUpdatingAccepting(false);
+    }
+  }, [acceptingBookings]);
+
   useEffect(() => {
     fetchBookings();
     fetchProfile();
     fetchEarnings();
-  }, [fetchBookings, fetchProfile, fetchEarnings]);
+    fetchAcceptingStatus();
+  }, [fetchBookings, fetchProfile, fetchEarnings, fetchAcceptingStatus]);
 
   useEffect(() => {
     const booking = bookings.find((item) => item.id === selectedBookingId);
@@ -351,8 +390,33 @@ export function CounselorDashboardClient() {
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 py-8 sm:py-12">
       <header className="space-y-2">
         <p className="text-xs font-semibold tracking-[0.3em] text-rose-500">COUNSELOR DASHBOARD</p>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">カウンセラーダッシュボード</h1>
-        <p className="text-sm text-slate-500">予約、チャット、プロフィールをここから管理できます。</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">カウンセラーダッシュボード</h1>
+            <p className="text-sm text-slate-500">予約、チャット、プロフィールをここから管理できます。</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-xs font-semibold text-slate-600">予約受付状態</p>
+              <p className={`text-sm font-bold ${acceptingBookings ? "text-green-600" : "text-amber-600"}`}>
+                {acceptingBookings ? "受付中" : "受付停止中"}
+              </p>
+            </div>
+            <button
+              onClick={handleToggleAccepting}
+              disabled={updatingAccepting}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 ${
+                acceptingBookings ? "bg-green-500" : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  acceptingBookings ? "translate-x-7" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       </header>
 
       {error && <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-600">{error}</p>}

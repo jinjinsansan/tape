@@ -12,6 +12,7 @@ type Counselor = {
   avatar_url: string | null;
   hourly_rate_cents: number;
   profile_metadata: Record<string, unknown> | null;
+  accepting_bookings: boolean;
 };
 
 export function CounselorsListClient() {
@@ -60,7 +61,7 @@ export function CounselorsListClient() {
       {counselors.map((counselor) => {
         const selection = normalizePlanSelection(counselor.profile_metadata);
         const enabledPlans = Object.values(COUNSELOR_PLAN_CONFIGS).filter((plan) => selection[plan.id]);
-        const accepting = enabledPlans.length > 0;
+        const isAccepting = counselor.accepting_bookings && enabledPlans.length > 0;
 
         return (
           <Card key={counselor.slug} className="h-full border-tape-beige shadow-sm transition-all hover:shadow-md">
@@ -76,12 +77,14 @@ export function CounselorsListClient() {
                   <p className="text-lg font-bold text-tape-brown truncate">{counselor.display_name}</p>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
-                      accepting
+                      isAccepting
                         ? "text-green-600 bg-green-50"
+                        : counselor.accepting_bookings === false
+                        ? "text-amber-600 bg-amber-50"
                         : "text-slate-500 bg-slate-100"
                     }`}
                   >
-                    {accepting ? "チャット受付中" : "準備中"}
+                    {isAccepting ? "受付中" : counselor.accepting_bookings === false ? "受付停止中" : "準備中"}
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
