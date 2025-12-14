@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { getServerEnv, isResendEnabled } from "@/lib/env";
+import { getServerEnv, isResendEnabled, getResendFromEmail } from "@/lib/env";
 
 let cachedResend: Resend | null = null;
 
@@ -30,8 +30,9 @@ export const sendNotificationEmail = async (params: SendEmailParams) => {
   }
 
   const resend = getResendClient();
+  const fromEmail = getResendFromEmail();
   return resend.emails.send({
-    from: "notifications@tapeshiki.ai",
+    from: fromEmail,
     to: params.to,
     subject: params.subject,
     html: params.html

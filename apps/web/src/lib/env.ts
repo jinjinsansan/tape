@@ -8,6 +8,7 @@ const serverEnvSchema = z
     SUPABASE_ANON_KEY: z.string().min(1).optional(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     RESEND_API_KEY: z.string().optional(),
+    RESEND_FROM_EMAIL: z.string().email().optional(),
     TURNSTILE_SECRET_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     MICHELLE_ASSISTANT_ID: z.string().optional(),
@@ -54,6 +55,7 @@ export const getServerEnv = (): ServerEnv => {
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     MICHELLE_ASSISTANT_ID: process.env.MICHELLE_ASSISTANT_ID ?? process.env.ASSISTANT_ID,
@@ -76,6 +78,7 @@ export const getServerEnv = (): ServerEnv => {
 };
 
 export const isResendEnabled = () => Boolean(getServerEnv().RESEND_API_KEY);
+export const getResendFromEmail = () => getServerEnv().RESEND_FROM_EMAIL ?? "notifications@tapeshiki.ai";
 export const isTurnstileEnabled = () => Boolean(getServerEnv().TURNSTILE_SECRET_KEY);
 
 export const getPublicSupabaseUrl = () => {
