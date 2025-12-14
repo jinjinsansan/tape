@@ -9,7 +9,8 @@ import {
   ArrowRight,
   TrendingUp,
   Calendar,
-  Shield
+  Shield,
+  Sparkles
 } from "lucide-react";
 
 import { getSupabaseAdminClient } from "@/server/supabase";
@@ -124,6 +125,15 @@ export default async function AdminDashboard() {
       color: "from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20",
       iconColor: "text-amber-600",
       stats: `${stats.publicDiaries}件`
+    },
+    {
+      href: "/admin/comics",
+      title: "4コマ生成",
+      description: "テープ式心理学を漫画に変換してSNSへ拡散",
+      icon: Sparkles,
+      color: "from-pink-500/10 to-pink-600/10 hover:from-pink-500/20 hover:to-pink-600/20",
+      iconColor: "text-pink-600",
+      stats: "Nano Banana"
     },
     {
       href: "/admin/michelle-monitoring",
