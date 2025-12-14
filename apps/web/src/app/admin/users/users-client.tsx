@@ -87,11 +87,7 @@ type UserInsights = {
 type InsightTab = "overview" | "points" | "wallet" | "bookings" | "diary";
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    cache: init?.cache ?? "no-store",
-    credentials: init?.credentials ?? "include"
-  });
+  const res = await fetch(url, init);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || res.statusText);
