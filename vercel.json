@@ -12,6 +12,15 @@
   "functions": {
     "apps/web/app/api/internal/cron/michelle-daily-diary/route.ts": {
       "includeFiles": "apps/web/md/**"
+    },
+    "apps/web/app/api/admin/comics/chunks/route.ts": {
+      "includeFiles": "apps/web/md/**"
+    },
+    "apps/web/app/api/admin/comics/chunks/[chunkId]/route.ts": {
+      "includeFiles": "apps/web/md/**"
+    },
+    "apps/web/app/api/admin/comics/generate/route.ts": {
+      "includeFiles": "apps/web/md/**"
     }
   }
 }
