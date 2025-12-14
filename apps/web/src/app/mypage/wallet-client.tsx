@@ -346,6 +346,7 @@ export function WalletClient() {
               type="number"
               value={chargeAmount}
               onChange={(e) => setChargeAmount(Number(e.target.value))}
+              onFocus={(e) => e.target.select()}
               min="100"
               max="50000"
               step="100"
