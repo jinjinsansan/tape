@@ -52,21 +52,38 @@ export const getReferralSummary = async (userId: string) => {
 
   const invites = invitesRes.data ?? [];
   const inviteeProfilesMap = new Map<string, string | null>();
+  const inviteeDiaryCountMap = new Map<string, number>();
   const inviteeIds = invites
     .map((invite) => invite.invitee_user_id)
     .filter((id): id is string => Boolean(id));
 
   if (inviteeIds.length > 0) {
-    const { data: inviteeProfiles, error: inviteeProfilesError } = await supabase
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", inviteeIds);
-    if (inviteeProfilesError) {
-      throw inviteeProfilesError;
+    const [inviteeProfilesRes, diaryCountsRes] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", inviteeIds),
+      supabase
+        .from("emotion_diary_entries")
+        .select("user_id")
+        .in("user_id", inviteeIds)
+    ]);
+
+    if (inviteeProfilesRes.error) {
+      throw inviteeProfilesRes.error;
     }
-    (inviteeProfiles ?? []).forEach((profileRow) => {
+
+    (inviteeProfilesRes.data ?? []).forEach((profileRow) => {
       inviteeProfilesMap.set(profileRow.id, profileRow.display_name);
     });
+
+    // Count diary entries per user
+    if (diaryCountsRes.data) {
+      diaryCountsRes.data.forEach((entry) => {
+        const currentCount = inviteeDiaryCountMap.get(entry.user_id) ?? 0;
+        inviteeDiaryCountMap.set(entry.user_id, currentCount + 1);
+      });
+    }
   }
 
   return {
@@ -83,6 +100,7 @@ export const getReferralSummary = async (userId: string) => {
       inviteeUserId: invite.invitee_user_id,
       inviteeName: invite.invitee_user_id ? inviteeProfilesMap.get(invite.invitee_user_id) ?? "参加者" : "参加者",
       dayCount: invite.invitee_day_count,
+      diaryCount: invite.invitee_user_id ? inviteeDiaryCountMap.get(invite.invitee_user_id) ?? 0 : 0,
       joinedAt: invite.invitee_joined_at,
       reward5Granted: invite.reward_5day_awarded,
       reward10Granted: invite.reward_10day_awarded

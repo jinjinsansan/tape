@@ -35,6 +35,7 @@ type ReferralSummary = {
     inviteeUserId: string | null;
     inviteeName: string;
     dayCount: number;
+    diaryCount: number;
     joinedAt: string | null;
     reward5Granted: boolean;
     reward10Granted: boolean;
@@ -481,6 +482,32 @@ export function WalletClient() {
           <Users className="h-5 w-5 text-tape-orange" />
           <h3 className="text-lg font-bold text-tape-brown">友達紹介プログラム</h3>
         </div>
+
+        {/* 紹介人数サマリー */}
+        <div className="mb-6 rounded-2xl bg-gradient-to-br from-tape-orange/10 to-tape-pink/10 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-tape-light-brown mb-1">紹介した人数</p>
+              <p className="text-3xl font-black text-tape-brown">{referral?.invites?.length ?? 0}</p>
+              <p className="text-[10px] text-tape-light-brown">人</p>
+            </div>
+            <div>
+              <p className="text-xs text-tape-light-brown mb-1">合計投稿日数</p>
+              <p className="text-3xl font-black text-tape-green">
+                {(referral?.invites ?? []).reduce((sum, invite) => sum + invite.dayCount, 0)}
+              </p>
+              <p className="text-[10px] text-tape-light-brown">日</p>
+            </div>
+            <div>
+              <p className="text-xs text-tape-light-brown mb-1">合計日記投稿数</p>
+              <p className="text-3xl font-black text-tape-pink">
+                {(referral?.invites ?? []).reduce((sum, invite) => sum + invite.diaryCount, 0)}
+              </p>
+              <p className="text-[10px] text-tape-light-brown">件</p>
+            </div>
+          </div>
+        </div>
+
         {referralMessage && <p className="mb-3 text-xs text-tape-pink">{referralMessage}</p>}
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-dashed border-tape-beige p-4 text-sm text-tape-brown flex flex-col gap-3">
@@ -512,26 +539,36 @@ export function WalletClient() {
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-xs text-tape-light-brown">友達の状況</p>
+            <p className="text-sm font-semibold text-tape-brown mb-2">紹介した友達一覧</p>
             <div className="mt-2 space-y-2">
               {(referral?.invites ?? []).map((invite) => (
-                <div key={invite.id} className="rounded-xl border border-tape-beige p-3 text-sm">
-                  <div className="flex items-center justify-between">
+                <div key={invite.id} className="rounded-xl border border-tape-beige bg-tape-cream/30 p-3 text-sm">
+                  <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold text-tape-brown">{invite.inviteeName}</p>
                     <p className="text-xs text-tape-light-brown">{invite.dayCount} / 10日</p>
                   </div>
-                  <p className="text-[11px] text-tape-light-brown">
-                    {invite.reward5Granted ? "5日特典済" : "5日まであと" + Math.max(0, 5 - invite.dayCount) + "日"} / {invite.reward10Granted ? "10日特典済" : `10日まであと${Math.max(0, 10 - invite.dayCount)}日`}
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-tape-light-brown">
+                    <div className="rounded-lg bg-white px-2 py-1">
+                      <p className="text-[10px] opacity-70">投稿日数</p>
+                      <p className="font-semibold text-tape-brown">{invite.dayCount}日</p>
+                    </div>
+                    <div className="rounded-lg bg-white px-2 py-1">
+                      <p className="text-[10px] opacity-70">日記投稿数</p>
+                      <p className="font-semibold text-tape-pink">{invite.diaryCount}件</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-tape-light-brown mt-2">
+                    {invite.reward5Granted ? "✓ 5日特典済" : `5日まであと${Math.max(0, 5 - invite.dayCount)}日`} / {invite.reward10Granted ? "✓ 10日特典済" : `10日まであと${Math.max(0, 10 - invite.dayCount)}日`}
                   </p>
                 </div>
               ))}
               {(referral?.invites?.length ?? 0) === 0 && (
-                <p className="text-xs text-tape-light-brown">まだ紹介はありません。</p>
+                <p className="text-xs text-tape-light-brown text-center py-4">まだ紹介はありません。</p>
               )}
             </div>
           </div>
           <div>
-            <p className="text-xs text-tape-light-brown">紹介コードを入力</p>
+            <p className="text-sm font-semibold text-tape-brown mb-2">紹介コードを入力</p>
             <div className="mt-2 flex flex-col gap-2">
               <input
                 value={claimCode}
