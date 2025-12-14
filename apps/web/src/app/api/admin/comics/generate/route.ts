@@ -6,7 +6,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { getKnowledgeChunkById } from "@/server/services/knowledge";
 import { buildComicsPrompt } from "@/lib/comics-prompt";
-import { getNanoBananaConfig } from "@/lib/env";
+import { getGeminiConfig, getOpenAIApiKey } from "@/lib/env";
 
 const bodySchema = z.object({
   chunkId: z.string(),
@@ -41,9 +41,10 @@ export async function POST(request: Request) {
 
   let panels: Array<{ index: number; caption?: string; imageData: string }> = [];
   try {
-    const { apiUrl, apiKey } = getNanoBananaConfig();
+    // Step 1: Generate panel descriptions using Gemini
+    const { apiUrl, apiKey } = getGeminiConfig();
     const endpoint = apiUrl.includes("?") ? `${apiUrl}&key=${apiKey}` : `${apiUrl}?key=${apiKey}`;
-    const res = await fetch(endpoint, {
+    const geminiRes = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -53,46 +54,86 @@ export async function POST(request: Request) {
           {
             parts: [
               {
-                text: `${prompt}\n\nReturn JSON with 4 panel descriptions under key panels.`
+                text: `${prompt}\n\nReturn ONLY valid JSON in this exact format:\n{"panels":[{"index":1,"caption":"日本語のキャプション","prompt":"Detailed English visual description for DALL-E"},{"index":2,"caption":"...","prompt":"..."},{"index":3,"caption":"...","prompt":"..."},{"index":4,"caption":"...","prompt":"..."}]}`
               }
             ]
           }
         ],
         generationConfig: {
-          temperature: 0.6,
+          temperature: 0.7,
           maxOutputTokens: 2048
         }
       })
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Nano Banana API error");
+    if (!geminiRes.ok) {
+      const text = await geminiRes.text();
+      throw new Error(`Gemini API error: ${text}`);
     }
 
-    const data = await res.json();
-    const candidates = data?.candidates ?? [];
-    const panelsJsonText = candidates[0]?.content?.parts?.[0]?.text ?? "";
+    const geminiData = await geminiRes.json();
+    const candidates = geminiData?.candidates ?? [];
+    let panelsJsonText = candidates[0]?.content?.parts?.[0]?.text ?? "";
     if (!panelsJsonText) {
-      throw new Error("Nano Banana response did not include panels description");
+      throw new Error("Gemini response did not include panel descriptions");
     }
-    const parsed = JSON.parse(panelsJsonText);
-    const rawPanels = parsed.panels ?? [];
-    panels = rawPanels.map((panel: any, index: number) => {
-      const imageData = panel.image ?? panel.imageData ?? panel.url;
-      if (!imageData) {
-        throw new Error("Nano Banana panel is missing image data");
+
+    // Extract JSON from markdown code blocks if present
+    panelsJsonText = panelsJsonText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    
+    const panelDescriptions = JSON.parse(panelsJsonText);
+    const rawPanels = panelDescriptions.panels ?? [];
+    
+    if (rawPanels.length !== 4) {
+      throw new Error(`Expected 4 panels, got ${rawPanels.length}`);
+    }
+
+    // Step 2: Generate images using DALL-E 3
+    const openaiApiKey = getOpenAIApiKey();
+    
+    for (const panel of rawPanels) {
+      const imagePrompt = panel.prompt || panel.description || "";
+      if (!imagePrompt) {
+        throw new Error(`Panel ${panel.index} missing prompt/description`);
       }
-      const isUrl = typeof imageData === "string" && imageData.startsWith("http");
-      return {
-        index: panel.index ?? index + 1,
-        caption: panel.caption ?? panel.text ?? undefined,
-        imageData: isUrl ? imageData : `data:image/png;base64,${imageData}`
-      };
-    });
+
+      const dalleRes = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: "dall-e-3",
+          prompt: imagePrompt,
+          n: 1,
+          size: "1024x1024",
+          quality: "standard"
+        })
+      });
+
+      if (!dalleRes.ok) {
+        const text = await dalleRes.text();
+        throw new Error(`DALL-E API error for panel ${panel.index}: ${text}`);
+      }
+
+      const dalleData = await dalleRes.json();
+      const imageUrl = dalleData?.data?.[0]?.url;
+      if (!imageUrl) {
+        throw new Error(`DALL-E did not return image URL for panel ${panel.index}`);
+      }
+
+      panels.push({
+        index: panel.index ?? panels.length + 1,
+        caption: panel.caption ?? undefined,
+        imageData: imageUrl
+      });
+    }
   } catch (error) {
-    console.error("Nano Banana generation failed", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to generate comic" }, { status: 502 });
+    console.error("Comics generation failed", error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to generate comic" 
+    }, { status: 502 });
   }
 
   return NextResponse.json({ prompt, panels });

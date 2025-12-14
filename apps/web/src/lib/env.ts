@@ -17,8 +17,8 @@ const serverEnvSchema = z
     MICHELLE_DAILY_DIARY_MODEL: z.string().optional(),
     ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
     ADMIN_NOTIFICATION_USER_ID: z.string().uuid().optional(),
-    NANO_BANANA_API_URL: z.string().url().optional(),
-    NANO_BANANA_API_KEY: z.string().min(1).optional()
+    GEMINI_API_URL: z.string().url().optional(),
+    GEMINI_API_KEY: z.string().min(1).optional()
   })
   .superRefine((env, ctx) => {
     if (!env.NEXT_PUBLIC_SUPABASE_URL && !env.SUPABASE_URL) {
@@ -63,8 +63,8 @@ export const getServerEnv = (): ServerEnv => {
     MICHELLE_DAILY_DIARY_MODEL: process.env.MICHELLE_DAILY_DIARY_MODEL,
     ADMIN_NOTIFICATION_EMAIL: process.env.ADMIN_NOTIFICATION_EMAIL,
     ADMIN_NOTIFICATION_USER_ID: process.env.ADMIN_NOTIFICATION_USER_ID,
-    NANO_BANANA_API_URL: process.env.NANO_BANANA_API_URL,
-    NANO_BANANA_API_KEY: process.env.NANO_BANANA_API_KEY
+    GEMINI_API_URL: process.env.GEMINI_API_URL,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY
   });
 
   if (!parsed.success) {
@@ -112,14 +112,14 @@ export const getMichelleAttractionAssistantId = () => {
   return env.MICHELLE_ATTRACTION_ASSISTANT_ID;
 };
 
-export const getNanoBananaConfig = () => {
+export const getGeminiConfig = () => {
   const env = getServerEnv();
-  if (!env.NANO_BANANA_API_URL || !env.NANO_BANANA_API_KEY) {
-    throw new Error("NANO_BANANA_API_URL and NANO_BANANA_API_KEY must be configured");
+  if (!env.GEMINI_API_URL || !env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_URL and GEMINI_API_KEY must be configured");
   }
   return {
-    apiUrl: env.NANO_BANANA_API_URL,
-    apiKey: env.NANO_BANANA_API_KEY
+    apiUrl: env.GEMINI_API_URL,
+    apiKey: env.GEMINI_API_KEY
   };
 };
 

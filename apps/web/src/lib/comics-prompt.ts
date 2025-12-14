@@ -32,7 +32,11 @@ export type ComicsPromptInput = {
 const PANEL_GUIDE = `Panel 1: Show the protagonist's current misunderstanding or automatic thought. Use a relatable daily-life scene.
 Panel 2: Visualize the emotional or bodily strain that the misunderstanding creates. Highlight internal dialogue.
 Panel 3: Introduce the Tape-style psychological insight (ガムテープや「私」の構造など) as a turning point. Personify key concepts if helpful.
-Panel 4: Depict the new perspective or action step with hope and calm body language. Include a concise reflective caption.`;
+Panel 4: Depict the new perspective or action step with hope and calm body language. Include a concise reflective caption.
+
+For each panel, provide:
+- "caption": Short Japanese caption/dialogue for the panel
+- "prompt": Detailed English visual description for DALL-E image generation (include character appearance, setting, mood, composition, style)`;
 
 const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
 - 4 panels only. Each panel needs a short onomatopoeia or caption that fits the scene.
