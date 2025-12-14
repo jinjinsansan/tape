@@ -7,6 +7,7 @@ import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { getKnowledgeChunkById } from "@/server/services/knowledge";
 import { buildComicsPrompt } from "@/lib/comics-prompt";
 import { getOpenAIApiKey } from "@/lib/env";
+import { compose4KomaManga } from "@/server/services/comics-composer";
 
 const bodySchema = z.object({
   chunkId: z.string(),
@@ -97,8 +98,8 @@ export async function POST(request: Request) {
         throw new Error(`Panel ${panel.index} missing prompt/description`);
       }
 
-      // Enhance prompt with manga style and character consistency
-      const enhancedPrompt = `Japanese 4-koma manga illustration style with clean black ink line art and subtle colors. Include speech bubbles or thought bubbles with Japanese text. ${characterConsistency} ${imagePrompt}`;
+      // Enhance prompt with manga style and character consistency (NO text/bubbles - we'll add them later)
+      const enhancedPrompt = `Japanese 4-koma manga illustration style with clean black ink line art and subtle colors. NO speech bubbles, NO text, NO written words - just the illustration. ${characterConsistency} ${imagePrompt}`;
 
       const dalleRes = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
@@ -133,12 +134,28 @@ export async function POST(request: Request) {
         imageData: imageUrl
       });
     }
+
+    // Step 3: Compose into single 4-koma manga image
+    const composedImageBuffer = await compose4KomaManga(
+      panels.map(p => ({
+        index: p.index,
+        caption: p.caption,
+        imageUrl: p.imageData
+      }))
+    );
+
+    // Convert to base64 for response
+    const base64Image = `data:image/png;base64,${composedImageBuffer.toString("base64")}`;
+
+    return NextResponse.json({ 
+      prompt, 
+      panels,
+      composedImage: base64Image
+    });
   } catch (error) {
     console.error("Comics generation failed", error);
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : "Failed to generate comic" 
     }, { status: 502 });
   }
-
-  return NextResponse.json({ prompt, panels });
 }

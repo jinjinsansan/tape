@@ -20,6 +20,8 @@
       "includeFiles": "apps/web/md/**"
     },
     "apps/web/app/api/admin/comics/generate/route.ts": {
+      "maxDuration": 300,
+      "memory": 3008,
       "includeFiles": "apps/web/md/**"
     }
   }

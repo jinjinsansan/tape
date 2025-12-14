@@ -26,6 +26,12 @@ type PanelResult = {
   imageData: string;
 };
 
+type GenerateResponse = {
+  prompt: string;
+  panels: PanelResult[];
+  composedImage?: string;
+};
+
 export function ComicsGeneratorClient() {
   type StyleKey = StyleOption["value"];
   const defaultStyle = (comicStyleOptions[0]?.value ?? "gentle") as StyleKey;
@@ -39,6 +45,7 @@ export function ComicsGeneratorClient() {
   );
   const [stylePreset, setStylePreset] = useState<StyleKey>(defaultStyle);
   const [panels, setPanels] = useState<PanelResult[]>([]);
+  const [composedImage, setComposedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -79,6 +86,7 @@ export function ComicsGeneratorClient() {
       const data = (await res.json()) as { chunk: ChunkDetail };
       setSelectedChunk(data.chunk);
       setPanels([]);
+      setComposedImage(null);
       setSuccessMessage(null);
     } catch (err) {
       console.error(err);
@@ -114,12 +122,13 @@ export function ComicsGeneratorClient() {
           stylePreset
         })
       });
-      const payload = await res.json();
+      const payload = (await res.json()) as GenerateResponse;
       if (!res.ok) {
-        throw new Error(payload?.error ?? "生成に失敗しました");
+        throw new Error((payload as any)?.error ?? "生成に失敗しました");
       }
       setPanels(payload.panels ?? []);
-      setSuccessMessage("4コマを生成しました。ダウンロードしてSNSに投稿できます。");
+      setComposedImage(payload.composedImage ?? null);
+      setSuccessMessage("4コマ漫画を生成しました。合成画像をダウンロードできます。");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "生成に失敗しました");
@@ -133,6 +142,17 @@ export function ComicsGeneratorClient() {
     link.href = panel.imageData;
     const label = panel.caption ? panel.caption.replace(/\s+/g, "_") : `panel-${panel.index}`;
     link.download = `tape-4koma-${panel.index}-${label}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadComposed = () => {
+    if (!composedImage) return;
+    const link = document.createElement("a");
+    link.href = composedImage;
+    const title = selectedChunk?.title.replace(/\s+/g, "_").substring(0, 30) ?? "4koma";
+    link.download = `tape-4koma-${title}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -264,13 +284,35 @@ export function ComicsGeneratorClient() {
             {error && <p className="text-sm text-rose-500">{error}</p>}
             {successMessage && <p className="text-sm text-emerald-600">{successMessage}</p>}
 
-            {panels.length > 0 && (
+            {composedImage && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-pink-400" />
-                  <h3 className="text-sm font-semibold text-slate-800">生成結果</h3>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-pink-400" />
+                    <h3 className="text-sm font-semibold text-slate-800">完成した4コマ漫画</h3>
+                  </div>
+                  <Button onClick={handleDownloadComposed} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    ダウンロード
+                  </Button>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="overflow-hidden rounded-lg border border-slate-100">
+                  <img
+                    src={composedImage}
+                    alt="4コマ漫画"
+                    className="w-full"
+                  />
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  2×2グリッドで合成され、各パネルの下にキャプションが表示されています。SNSに投稿する前に内容を確認してください。
+                </p>
+              </div>
+            )}
+
+            {panels.length > 0 && (
+              <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-800">個別パネル（参考）</summary>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {panels.map((panel) => (
                     <div key={panel.index} className="space-y-2 rounded-xl border border-slate-100 p-3">
                       <img
@@ -290,7 +332,7 @@ export function ComicsGeneratorClient() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             )}
           </div>
         </section>

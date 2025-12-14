@@ -5,19 +5,19 @@ export const COMIC_STYLE_PRESETS: Record<StylePresetKey, { label: string; descri
     label: "やさしい共感",
     description: "柔らかい線と淡い色、安心感のある表情",
     directives:
-      "Japanese manga illustration style with soft line art, gentle shading, warm facial expressions, simple backgrounds, and clear speech bubbles. Keep the tone comforting and hopeful."
+      "Japanese manga illustration style with soft line art, gentle shading, warm facial expressions, simple backgrounds. NO text. Keep the tone comforting and hopeful."
   },
   dramatic: {
     label: "ドラマティック",
     description: "コントラスト強／光と影で葛藤を表現",
     directives:
-      "Japanese manga illustration style with dramatic shading, strong contrasts, dynamic angles, and expressive panel composition to highlight conflict and breakthrough moments."
+      "Japanese manga illustration style with dramatic shading, strong contrasts, dynamic angles, and expressive panel composition. NO text. Highlight conflict and breakthrough moments."
   },
   comic: {
     label: "コミカル",
     description: "ポップな色とデフォルメ表情で軽快に",
     directives:
-      "Japanese manga illustration style with simplified chibi-style character, exaggerated expressions, comedic visual effects, and playful speech bubbles to keep the story light and accessible."
+      "Japanese manga illustration style with simplified chibi-style character, exaggerated expressions, comedic visual effects. NO text. Keep the story light and accessible."
   }
 };
 
@@ -49,15 +49,15 @@ She appears in ALL FOUR PANELS with the exact same appearance.`;
 const MANGA_STYLE_RULES = `CRITICAL STYLE REQUIREMENTS:
 - Japanese manga/comic illustration style (NOT photorealistic, NOT 3D render)
 - Black ink line art with subtle colors or grayscale
-- Include speech bubbles with Japanese text for dialogue
-- Include thought bubbles for internal monologue
+- NO speech bubbles, NO text, NO written words - just clean illustrations
 - Simple, clean backgrounds that don't distract from the character
-- Typical 4-koma manga panel composition`;
+- Typical 4-koma manga panel composition
+- Clear body language and facial expressions to convey emotion`;
 
 const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
 - 4 panels only. Each panel shows the SAME protagonist (see character design above).
-- Each panel MUST include speech bubbles or thought bubbles with Japanese text.
 - Use manga/comic illustration style, NOT photorealistic images.
+- NO text or speech bubbles in the image - convey story through expressions and actions only.
 - Keep visual storytelling clear and simple.
 - Avoid gore, violence, or suggestive imagery.
 - Convey empathy and practical action, not generic motivational phrases.`;
