@@ -1,3 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4b3625" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle with warm beige -->
+  <circle cx="50" cy="50" r="48" fill="#F5F2EA"/>
+  
+  <!-- "T" letter with gradient (pink to orange) -->
+  <defs>
+    <linearGradient id="tGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8A5B0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8A487;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- T letter: horizontal bar -->
+  <rect x="22" y="25" width="56" height="12" rx="6" fill="url(#tGradient)"/>
+  
+  <!-- T letter: vertical bar -->
+  <rect x="44" y="25" width="12" height="50" rx="6" fill="url(#tGradient)"/>
 </svg>
