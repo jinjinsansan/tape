@@ -33,6 +33,8 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   const [twitterError, setTwitterError] = useState<string | null>(null);
   const [diaryReminderEnabled, setDiaryReminderEnabled] = useState(true);
   const [reminderLoading, setReminderLoading] = useState(false);
+  const [onboardingEmailEnabled, setOnboardingEmailEnabled] = useState(true);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
 
   const initials = useMemo(() => {
     if (displayName) {
@@ -112,6 +114,21 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
       }
     };
     loadDiaryReminderSetting();
+  }, []);
+
+  useEffect(() => {
+    const loadOnboardingEmailSetting = async () => {
+      try {
+        const res = await fetch("/api/profile/onboarding-email");
+        if (res.ok) {
+          const data = await res.json();
+          setOnboardingEmailEnabled(data.onboardingEmailEnabled ?? true);
+        }
+      } catch (err) {
+        console.error("Failed to load onboarding email setting", err);
+      }
+    };
+    loadOnboardingEmailSetting();
   }, []);
 
   const handleSubmit = useCallback(
@@ -228,6 +245,29 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
     }
   }, [diaryReminderEnabled]);
 
+  const handleOnboardingEmailToggle = useCallback(async () => {
+    setOnboardingLoading(true);
+    try {
+      const response = await fetch("/api/profile/onboarding-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !onboardingEmailEnabled })
+      });
+
+      if (!response.ok) {
+        throw new Error("設定の更新に失敗しました");
+      }
+
+      const data = await response.json();
+      setOnboardingEmailEnabled(data.onboardingEmailEnabled);
+    } catch (err) {
+      console.error("Failed to update onboarding email setting", err);
+      alert(err instanceof Error ? err.message : "設定の更新に失敗しました");
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }, [onboardingEmailEnabled]);
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
@@ -343,6 +383,40 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
         </div>
         <p className="text-xs text-tape-light-brown">
           ※ 配信停止は、いつでもこの設定から変更できます。
+        </p>
+      </section>
+
+      <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">ONBOARDING EMAIL</p>
+        <h2 className="text-2xl font-bold text-tape-brown">ステップメール</h2>
+        <p className="text-sm text-tape-light-brown">
+          登録後8日間、毎日12時にアプリの使い方をメールでお届けします。
+        </p>
+
+        <div className="mt-6 flex items-center justify-between rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
+          <div className="space-y-1">
+            <p className="font-semibold text-tape-brown">📧 ステップメール</p>
+            <p className="text-xs text-tape-light-brown">
+              毎日12時に機能紹介メールを受け取る（全8通）
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOnboardingEmailToggle}
+            disabled={onboardingLoading}
+            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-tape-pink focus:ring-offset-2 ${
+              onboardingEmailEnabled ? "bg-tape-pink" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                onboardingEmailEnabled ? "translate-x-7" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-xs text-tape-light-brown">
+          ※ 配信停止後も、いつでも再開できます。
         </p>
       </section>
 
