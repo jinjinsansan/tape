@@ -94,7 +94,7 @@ const buildEmailHtml = (title: string, body: string) => {
       <div class="card">
         <div class="title">${safeTitle}</div>
         <div class="body">${safeBody}</div>
-        <div class="footer">テープ式心理学プラットフォームより</div>
+        <div class="footer">一般社団法人NAMIDAサポート協会</div>
       </div>
     </body>
   </html>`;
