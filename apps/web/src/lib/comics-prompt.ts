@@ -5,19 +5,19 @@ export const COMIC_STYLE_PRESETS: Record<StylePresetKey, { label: string; descri
     label: "やさしい共感",
     description: "柔らかい線と淡い色、安心感のある表情",
     directives:
-      "Use soft pastel colors, rounded line art, warm facial expressions, and gentle typographic sound effects. Keep the tone comforting and hopeful."
+      "Japanese manga illustration style with soft line art, gentle shading, warm facial expressions, simple backgrounds, and clear speech bubbles. Keep the tone comforting and hopeful."
   },
   dramatic: {
     label: "ドラマティック",
     description: "コントラスト強／光と影で葛藤を表現",
     directives:
-      "Use cinematic lighting, strong contrasts, dynamic angles, and expressive panel transitions to highlight conflict and breakthrough moments."
+      "Japanese manga illustration style with dramatic shading, strong contrasts, dynamic angles, and expressive panel composition to highlight conflict and breakthrough moments."
   },
   comic: {
     label: "コミカル",
     description: "ポップな色とデフォルメ表情で軽快に",
     directives:
-      "Use bold pop colors, chibi proportions, comedic timing, and playful lettering to keep the story light and accessible."
+      "Japanese manga illustration style with simplified chibi-style character, exaggerated expressions, comedic visual effects, and playful speech bubbles to keep the story light and accessible."
   }
 };
 
@@ -38,10 +38,27 @@ For each panel, provide:
 - "caption": Short Japanese caption/dialogue for the panel
 - "prompt": Detailed English visual description for DALL-E image generation (include character appearance, setting, mood, composition, style)`;
 
+// Define consistent protagonist
+const PROTAGONIST_DESIGN = `The protagonist is a young Japanese woman in her late 20s:
+- Shoulder-length black hair with slight waves
+- Wearing a simple casual outfit (light sweater and jeans)
+- Expressive eyes and gentle facial features
+- Medium build, average height
+She appears in ALL FOUR PANELS with the exact same appearance.`;
+
+const MANGA_STYLE_RULES = `CRITICAL STYLE REQUIREMENTS:
+- Japanese manga/comic illustration style (NOT photorealistic, NOT 3D render)
+- Black ink line art with subtle colors or grayscale
+- Include speech bubbles with Japanese text for dialogue
+- Include thought bubbles for internal monologue
+- Simple, clean backgrounds that don't distract from the character
+- Typical 4-koma manga panel composition`;
+
 const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
-- 4 panels only. Each panel needs a short onomatopoeia or caption that fits the scene.
-- Keep characters consistent across panels (hair, outfit, colors).
-- Prefer medium shots for clarity; reserve one close-up for emotional emphasis.
+- 4 panels only. Each panel shows the SAME protagonist (see character design above).
+- Each panel MUST include speech bubbles or thought bubbles with Japanese text.
+- Use manga/comic illustration style, NOT photorealistic images.
+- Keep visual storytelling clear and simple.
 - Avoid gore, violence, or suggestive imagery.
 - Convey empathy and practical action, not generic motivational phrases.`;
 
@@ -59,8 +76,11 @@ export const buildComicsPrompt = ({
 
   const extra = customInstructions?.trim() ? `\n# Additional director notes\n${customInstructions.trim()}` : "";
 
-  return `You are an award-winning four-panel manga artist specialized in therapy education.
-Create a cohesive story that explains Tape-style Psychology concepts through metaphor and dialogue.
+  return `You are an award-winning Japanese four-panel manga (4-koma) artist specialized in therapy education.
+Create a cohesive story that explains Tape-style Psychology concepts through manga-style illustration and dialogue.
+
+# Character design (USE IN ALL PANELS)
+${PROTAGONIST_DESIGN}
 
 # Theme
 ${title}
@@ -70,6 +90,9 @@ ${summary}
 
 # Key takeaways to visualize
 ${keyPointSection}
+
+# Manga style requirements
+${MANGA_STYLE_RULES}
 
 # Visual style directives
 ${style.directives}

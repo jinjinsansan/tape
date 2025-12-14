@@ -89,12 +89,16 @@ export async function POST(request: Request) {
     }
 
     // Step 2: Generate images using DALL-E 3
+    const characterConsistency = `The main character is a young Japanese woman in her late 20s with shoulder-length black wavy hair, wearing a light sweater and jeans. She has expressive eyes and gentle facial features.`;
     
     for (const panel of rawPanels) {
       const imagePrompt = panel.prompt || panel.description || "";
       if (!imagePrompt) {
         throw new Error(`Panel ${panel.index} missing prompt/description`);
       }
+
+      // Enhance prompt with manga style and character consistency
+      const enhancedPrompt = `Japanese 4-koma manga illustration style with clean black ink line art and subtle colors. Include speech bubbles or thought bubbles with Japanese text. ${characterConsistency} ${imagePrompt}`;
 
       const dalleRes = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
@@ -104,10 +108,11 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           model: "dall-e-3",
-          prompt: imagePrompt,
+          prompt: enhancedPrompt,
           n: 1,
           size: "1024x1024",
-          quality: "standard"
+          quality: "standard",
+          style: "vivid"
         })
       });
 
