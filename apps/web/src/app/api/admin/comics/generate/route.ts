@@ -6,7 +6,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { getKnowledgeChunkById } from "@/server/services/knowledge";
 import { buildComicsPrompt } from "@/lib/comics-prompt";
-import { getGeminiConfig, getOpenAIApiKey } from "@/lib/env";
+import { getOpenAIApiKey } from "@/lib/env";
 
 const bodySchema = z.object({
   chunkId: z.string(),
@@ -41,41 +41,41 @@ export async function POST(request: Request) {
 
   let panels: Array<{ index: number; caption?: string; imageData: string }> = [];
   try {
-    // Step 1: Generate panel descriptions using Gemini
-    const { apiUrl, apiKey } = getGeminiConfig();
-    const endpoint = apiUrl.includes("?") ? `${apiUrl}&key=${apiKey}` : `${apiUrl}?key=${apiKey}`;
-    const geminiRes = await fetch(endpoint, {
+    const openaiApiKey = getOpenAIApiKey();
+
+    // Step 1: Generate panel descriptions using OpenAI GPT-4
+    const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        contents: [
+        model: "gpt-4",
+        messages: [
           {
-            parts: [
-              {
-                text: `${prompt}\n\nReturn ONLY valid JSON in this exact format:\n{"panels":[{"index":1,"caption":"日本語のキャプション","prompt":"Detailed English visual description for DALL-E"},{"index":2,"caption":"...","prompt":"..."},{"index":3,"caption":"...","prompt":"..."},{"index":4,"caption":"...","prompt":"..."}]}`
-              }
-            ]
+            role: "system",
+            content: "You are a creative director for 4-panel manga that explains psychology concepts. Return only valid JSON, no additional text."
+          },
+          {
+            role: "user",
+            content: `${prompt}\n\nReturn ONLY valid JSON in this exact format:\n{"panels":[{"index":1,"caption":"日本語のキャプション","prompt":"Detailed English visual description for DALL-E"},{"index":2,"caption":"...","prompt":"..."},{"index":3,"caption":"...","prompt":"..."},{"index":4,"caption":"...","prompt":"..."}]}`
           }
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048
-        }
+        temperature: 0.7,
+        max_tokens: 2048
       })
     });
 
-    if (!geminiRes.ok) {
-      const text = await geminiRes.text();
-      throw new Error(`Gemini API error: ${text}`);
+    if (!gptRes.ok) {
+      const text = await gptRes.text();
+      throw new Error(`OpenAI GPT API error: ${text}`);
     }
 
-    const geminiData = await geminiRes.json();
-    const candidates = geminiData?.candidates ?? [];
-    let panelsJsonText = candidates[0]?.content?.parts?.[0]?.text ?? "";
+    const gptData = await gptRes.json();
+    let panelsJsonText = gptData?.choices?.[0]?.message?.content ?? "";
     if (!panelsJsonText) {
-      throw new Error("Gemini response did not include panel descriptions");
+      throw new Error("GPT response did not include panel descriptions");
     }
 
     // Extract JSON from markdown code blocks if present
@@ -89,7 +89,6 @@ export async function POST(request: Request) {
     }
 
     // Step 2: Generate images using DALL-E 3
-    const openaiApiKey = getOpenAIApiKey();
     
     for (const panel of rawPanels) {
       const imagePrompt = panel.prompt || panel.description || "";
