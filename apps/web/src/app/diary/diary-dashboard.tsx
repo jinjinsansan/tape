@@ -48,7 +48,7 @@ const defaultForm = {
   content: "",
   visibility: "private" as DiaryVisibility,
   journalDate: today(),
-  shareAiComment: false,
+  shareAiComment: true,
   shareCounselorComment: false,
   shareToFeed: true
 };
@@ -853,10 +853,15 @@ export function DiaryDashboard() {
                       setForm((prev) => {
                         const nextVisibility = event.target.value as DiaryVisibility;
                         const isPublic = nextVisibility === "public";
+                        const wasPublic = prev.visibility === "public";
                         return {
                           ...prev,
                           visibility: nextVisibility,
-                          shareAiComment: isPublic ? prev.shareAiComment : false,
+                          shareAiComment: isPublic
+                            ? wasPublic
+                              ? prev.shareAiComment
+                              : true
+                            : false,
                           shareCounselorComment: isPublic ? prev.shareCounselorComment : false,
                           shareToFeed: isPublic ? prev.shareToFeed : false
                         };
