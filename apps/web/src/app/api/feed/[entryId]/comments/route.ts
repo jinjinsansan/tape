@@ -14,6 +14,7 @@ export async function GET(
   const adminSupabase = getSupabaseAdminClient();
 
   try {
+    // Limit to 100 most recent comments to prevent performance issues
     const { data: comments, error } = await adminSupabase
       .from("emotion_diary_comments")
       .select(
@@ -26,7 +27,8 @@ export async function GET(
       )
       .eq("entry_id", entryId)
       .eq("source", "user")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(100);
 
     if (error) {
       console.error("Failed to fetch comments", error);

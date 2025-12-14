@@ -63,10 +63,8 @@ export const getReferralSummary = async (userId: string) => {
         .from("profiles")
         .select("id, display_name")
         .in("id", inviteeIds),
-      supabase
-        .from("emotion_diary_entries")
-        .select("user_id")
-        .in("user_id", inviteeIds)
+      // Use RPC for efficient counting per user
+      supabase.rpc("count_diary_entries_by_users", { user_ids: inviteeIds })
     ]);
 
     if (inviteeProfilesRes.error) {
@@ -74,20 +72,27 @@ export const getReferralSummary = async (userId: string) => {
     }
 
     if (diaryCountsRes.error) {
-      throw diaryCountsRes.error;
+      // Fallback to manual counting if RPC doesn't exist
+      console.warn("RPC count_diary_entries_by_users not available, using fallback");
+      const { data: entries } = await supabase
+        .from("emotion_diary_entries")
+        .select("user_id")
+        .in("user_id", inviteeIds);
+      
+      (entries ?? []).forEach((entry) => {
+        const currentCount = inviteeDiaryCountMap.get(entry.user_id) ?? 0;
+        inviteeDiaryCountMap.set(entry.user_id, currentCount + 1);
+      });
+    } else {
+      // Use RPC result: [{user_id: string, count: number}]
+      (diaryCountsRes.data as Array<{ user_id: string; count: number }> ?? []).forEach((row) => {
+        inviteeDiaryCountMap.set(row.user_id, row.count);
+      });
     }
 
     (inviteeProfilesRes.data ?? []).forEach((profileRow) => {
       inviteeProfilesMap.set(profileRow.id, profileRow.display_name);
     });
-
-    // Count diary entries per user
-    if (diaryCountsRes.data) {
-      diaryCountsRes.data.forEach((entry) => {
-        const currentCount = inviteeDiaryCountMap.get(entry.user_id) ?? 0;
-        inviteeDiaryCountMap.set(entry.user_id, currentCount + 1);
-      });
-    }
   }
 
   return {

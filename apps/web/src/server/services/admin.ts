@@ -81,9 +81,23 @@ const findUserByEmail = async (authAdmin: ReturnType<typeof adminClient>["auth"]
     console.error("getUserByEmail failed", error);
   }
 
+  // Fallback: search through paginated results (up to 5000 users max)
   try {
-    const { data } = await authAdmin.listUsers({ page: 1, perPage: 1000 });
-    return data.users.find((user) => (user.email ?? "").toLowerCase() === normalized) ?? null;
+    const maxPages = 5;
+    const perPage = 1000;
+    
+    for (let page = 1; page <= maxPages; page++) {
+      const { data } = await authAdmin.listUsers({ page, perPage });
+      const found = data.users.find((user) => (user.email ?? "").toLowerCase() === normalized);
+      if (found) {
+        return found;
+      }
+      // If we got fewer than perPage, we've reached the end
+      if (data.users.length < perPage) {
+        break;
+      }
+    }
+    return null;
   } catch (error) {
     console.error("listUsers fallback failed", error);
     return null;

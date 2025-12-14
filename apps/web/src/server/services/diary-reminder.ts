@@ -100,12 +100,14 @@ export const sendDiaryReminders = async (): Promise<ReminderResult> => {
       (profiles ?? []).map((p) => [p.id, { displayName: p.display_name, enabled: p.diary_reminder_enabled }])
     );
 
-    const { data: todayEntries } = await client
-      .from("emotion_diary_entries")
-      .select("user_id")
-      .eq("journal_date", today);
+    // Use RPC for efficient checking if user has entry today
+    const { data: usersWithEntry } = await client.rpc("get_users_with_diary_today", { 
+      p_journal_date: today 
+    });
 
-    const usersWithEntryToday = new Set((todayEntries ?? []).map((e) => e.user_id));
+    const usersWithEntryToday = new Set(
+      (usersWithEntry as Array<{ user_id: string }> ?? []).map((e) => e.user_id)
+    );
 
     for (const user of allUsers) {
       if (!user.email) {
