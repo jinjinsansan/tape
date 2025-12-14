@@ -42,11 +42,11 @@ export async function POST(request: Request) {
   let panels: Array<{ index: number; caption?: string; imageData: string }> = [];
   try {
     const { apiUrl, apiKey } = getNanoBananaConfig();
-    const res = await fetch(apiUrl, {
+    const endpoint = apiUrl.includes("?") ? `${apiUrl}&key=${apiKey}` : `${apiUrl}?key=${apiKey}`;
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         prompt,
