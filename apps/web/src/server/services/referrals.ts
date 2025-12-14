@@ -73,6 +73,10 @@ export const getReferralSummary = async (userId: string) => {
       throw inviteeProfilesRes.error;
     }
 
+    if (diaryCountsRes.error) {
+      throw diaryCountsRes.error;
+    }
+
     (inviteeProfilesRes.data ?? []).forEach((profileRow) => {
       inviteeProfilesMap.set(profileRow.id, profileRow.display_name);
     });

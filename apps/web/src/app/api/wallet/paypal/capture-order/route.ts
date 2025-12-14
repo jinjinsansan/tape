@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       title: "ウォレットチャージ完了",
       body: `¥${(amountCents / 100).toLocaleString()}のチャージが完了しました。`,
       data: { transaction_id: transaction.id, amount_cents: amountCents },
-    });
+    }).catch(err => console.error("Failed to notify user", err));
 
     // Get user email for admin notification
     const { data: userData } = await supabase.auth.admin.getUserById(user.id);
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
         amount_cents: amountCents,
         paypal_order_id: orderId
       }
-    });
+    }).catch(err => console.error("Failed to notify admin", err));
 
     return NextResponse.json({
       success: true,
