@@ -1,7 +1,4 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
-const MICHELLE_KNOWLEDGE_BASE = path.join(process.cwd(), "apps/web/md/michelle");
+import knowledgeIndex from "@/server/data/michelle-knowledge.json";
 
 export type KnowledgeChunk = {
   id: string;
@@ -14,96 +11,10 @@ export type KnowledgeChunk = {
 
 export type KnowledgeChunkSummary = Omit<KnowledgeChunk, "content">;
 
-let chunkCache: KnowledgeChunk[] | null = null;
-
-const encodeId = (relativePath: string) =>
-  Buffer.from(relativePath).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-
-const decodeId = (id: string) => {
-  const normalized = id.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-  return Buffer.from(padded, "base64").toString("utf8");
-};
-
-const collectMarkdownFiles = async (dir: string): Promise<string[]> => {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await collectMarkdownFiles(fullPath)));
-    } else if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(fullPath);
-    }
-  }
-  return files;
-};
-
-const sanitizeText = (value: string) =>
-  value
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/[#>*`_]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const extractKeyPoints = (content: string): string[] => {
-  const bulletMatches = [...content.matchAll(/^[-*+]\s+(.+)$/gim)].map((m) => m[1].trim());
-  if (bulletMatches.length) {
-    return bulletMatches.slice(0, 4);
-  }
-  const sentences = sanitizeText(content)
-    .split(/[。.!?]/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-  return sentences.slice(0, 4);
-};
-
-const summarizeContent = (content: string) => {
-  const sanitized = sanitizeText(content);
-  return sanitized.slice(0, 420);
-};
-
-const loadChunks = async (): Promise<KnowledgeChunk[]> => {
-  const exists = await fs
-    .access(MICHELLE_KNOWLEDGE_BASE)
-    .then(() => true)
-    .catch(() => false);
-  if (!exists) {
-    return [];
-  }
-
-  const files = await collectMarkdownFiles(MICHELLE_KNOWLEDGE_BASE);
-  const chunks: KnowledgeChunk[] = [];
-  for (const absolutePath of files) {
-    const relativePath = path.relative(MICHELLE_KNOWLEDGE_BASE, absolutePath);
-    const content = await fs.readFile(absolutePath, "utf8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const title = titleMatch?.[1]?.trim() ?? relativePath.replace(/\.md$/, "");
-    const summary = summarizeContent(content);
-    const keyPoints = extractKeyPoints(content);
-    chunks.push({
-      id: encodeId(relativePath),
-      title,
-      relativePath,
-      summary,
-      keyPoints,
-      content
-    });
-  }
-  return chunks;
-};
-
-const ensureChunks = async () => {
-  if (!chunkCache) {
-    chunkCache = await loadChunks();
-  }
-  return chunkCache;
-};
+const chunkCache = knowledgeIndex as KnowledgeChunk[];
 
 export const invalidateKnowledgeCache = () => {
-  chunkCache = null;
+  // no-op when using static index, kept for API compatibility
 };
 
 export const searchKnowledgeChunks = async (
@@ -111,7 +22,7 @@ export const searchKnowledgeChunks = async (
   limit = 30,
   random = false
 ): Promise<KnowledgeChunkSummary[]> => {
-  const chunks = await ensureChunks();
+  const chunks = chunkCache;
   let list = chunks;
   if (query) {
     const lowered = query.toLowerCase();
@@ -131,7 +42,5 @@ export const searchKnowledgeChunks = async (
 };
 
 export const getKnowledgeChunkById = async (id: string): Promise<KnowledgeChunk | null> => {
-  const relativePath = decodeId(id);
-  const chunks = await ensureChunks();
-  return chunks.find((chunk) => chunk.relativePath === relativePath) ?? null;
+  return chunkCache.find((chunk) => chunk.id === id) ?? null;
 };
