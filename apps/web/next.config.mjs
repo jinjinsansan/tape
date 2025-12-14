@@ -6,6 +6,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "placehold.co"
+      },
+      {
+        protocol: "https",
+        hostname: "ozbajojjxylawffploch.supabase.co"
+      },
+      {
+        protocol: "https",
+        hostname: "oaidalleapiprodscus.blob.core.windows.net"
       }
     ]
   },
@@ -14,7 +22,9 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  }
+  },
+  // Exclude native modules from webpack bundling
+  serverExternalPackages: ["sharp", "@napi-rs/canvas"]
 };
 
 export default nextConfig;
