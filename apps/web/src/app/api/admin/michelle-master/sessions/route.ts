@@ -24,12 +24,7 @@ export async function GET() {
         urgency_updated_at,
         urgency_updated_by,
         created_at,
-        updated_at,
-        profiles:auth_user_id (
-          id,
-          display_name,
-          email
-        )
+        updated_at
       `)
       .eq("category", "life")
       .order("urgency_level", { ascending: false })
@@ -38,10 +33,32 @@ export async function GET() {
 
     if (error) {
       console.error("Failed to fetch sessions:", error);
-      return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to fetch sessions", details: error.message }, { status: 500 });
     }
 
-    // Count messages for each session
+    // Fetch profiles separately to avoid relation issues
+    const userIds = [...new Set((sessions || []).map(s => s.auth_user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+
+    // Get user emails from auth
+    const profilesWithEmail = await Promise.all(
+      userIds.map(async (userId) => {
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        const profile = profiles?.find(p => p.id === userId);
+        return {
+          id: userId,
+          display_name: profile?.display_name || null,
+          email: userData?.user?.email || null,
+        };
+      })
+    );
+
+    const profileMap = new Map(profilesWithEmail.map(p => [p.id, p]));
+
+    // Count messages for each session and attach profile data
     const sessionsWithCounts = await Promise.all(
       (sessions || []).map(async (session) => {
         const { count } = await supabase
@@ -52,6 +69,7 @@ export async function GET() {
         return {
           ...session,
           message_count: count || 0,
+          profiles: profileMap.get(session.auth_user_id) || null,
         };
       })
     );
@@ -59,6 +77,9 @@ export async function GET() {
     return NextResponse.json({ sessions: sessionsWithCounts });
   } catch (error) {
     console.error("Sessions fetch error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }
