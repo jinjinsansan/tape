@@ -6,12 +6,11 @@
  * npm run upload-michelle-knowledge
  */
 
-import { readFileSync, readdirSync, statSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
-import { chunkText } from "./chunk";
 
 // .env.localを読み込む
 config({ path: join(process.cwd(), ".env.local") });
@@ -21,7 +20,20 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ""
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() || "";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
-const MD_DIR = join(process.cwd(), "apps/web/md/michelle");
+const KNOWLEDGE_JSON = join(process.cwd(), "apps/web/src/server/data/michelle-knowledge.json");
+
+type KnowledgeChunk = {
+  id: string;
+  title: string;
+  sourceTitle?: string;
+  relativePath: string;
+  summary: string;
+  keyPoints: string[];
+  content: string;
+  chunkIndex?: number;
+  chunkCount?: number;
+  sectionHeading?: string | null;
+};
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error("❌ Supabase環境変数が設定されていません");
@@ -36,23 +48,15 @@ if (!OPENAI_API_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// マークダウンファイルを再帰的に取得
-function getMarkdownFiles(dir: string): string[] {
-  const files: string[] = [];
-  const items = readdirSync(dir);
-
-  for (const item of items) {
-    const fullPath = join(dir, item);
-    const stat = statSync(fullPath);
-
-    if (stat.isDirectory()) {
-      files.push(...getMarkdownFiles(fullPath));
-    } else if (item.endsWith(".md")) {
-      files.push(fullPath);
-    }
+function loadKnowledgeChunks(): KnowledgeChunk[] {
+  try {
+    const raw = readFileSync(KNOWLEDGE_JSON, "utf-8");
+    const data = JSON.parse(raw) as KnowledgeChunk[];
+    return data;
+  } catch (error) {
+    console.error("❌ 知識インデックスの読み込みに失敗しました", error);
+    process.exit(1);
   }
-
-  return files;
 }
 
 // Embedding生成
@@ -64,56 +68,46 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return response.data[0]?.embedding ?? [];
 }
 
-// ファイルをRAGデータベースに投入
-async function uploadFile(filePath: string) {
-  const content = readFileSync(filePath, "utf-8");
-  const relativePath = filePath.replace(MD_DIR, "").replace(/^\//, "");
-  
-  console.log(`📄 処理中: ${relativePath}`);
+async function uploadChunk(chunk: KnowledgeChunk, index: number, total: number) {
+  console.log(`[${index}/${total}] ${chunk.relativePath} #${(chunk.chunkIndex ?? 0) + 1}`);
+  try {
+    const embedding = await generateEmbedding(chunk.content);
+    const metadata = {
+      source: chunk.relativePath,
+      chunk_id: chunk.id,
+      chunk_index: chunk.chunkIndex ?? null,
+      chunk_count: chunk.chunkCount ?? null,
+      section_heading: chunk.sectionHeading ?? null,
+      source_title: chunk.sourceTitle ?? chunk.title
+    };
 
-  // ファイル全体をチャンク分割
-  const chunks = chunkText(content, { chunkSize: 1000, overlap: 200 });
+    const { error } = await supabase.from("michelle_knowledge").insert({
+      content: chunk.content,
+      embedding,
+      metadata
+    });
 
-  for (const chunk of chunks) {
-    try {
-      // Embedding生成
-      const embedding = await generateEmbedding(chunk.content);
-
-      // データベースに保存
-      const { error } = await supabase.from("michelle_knowledge").insert({
-        content: chunk.content,
-        embedding,
-        metadata: {
-          source: relativePath,
-          chunk_index: chunk.index,
-          total_chunks: chunks.length
-        }
-      });
-
-      if (error) {
-        console.error(`  ❌ チャンク ${chunk.index} エラー:`, error.message);
-      } else {
-        console.log(`  ✅ チャンク ${chunk.index}/${chunks.length - 1} 完了`);
-      }
-
-      // Rate limit対策
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-    } catch (error) {
-      console.error(`  ❌ チャンク ${chunk.index} エラー:`, error);
+    if (error) {
+      console.error(`  ❌ 追加に失敗: ${error.message}`);
+    } else {
+      console.log(`  ✅ 登録完了`);
     }
+  } catch (error) {
+    console.error("  ❌ Embedding/登録エラー", error);
   }
 
-  console.log(`✅ ${relativePath} 完了\n`);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
 // メイン処理
 async function main() {
   console.log("🚀 ミシェル知識ベースのアップロード開始\n");
-  console.log(`📁 ディレクトリ: ${MD_DIR}\n`);
+  console.log(`📄 インデックス: ${KNOWLEDGE_JSON}\n`);
+  const knowledgeChunks = loadKnowledgeChunks();
+  console.log(`📚 ${knowledgeChunks.length}チャンクを発見\n`);
+  const clearExisting = process.argv.includes("--clear");
 
   // 既存データをクリア（オプション）
-  const clearExisting = process.argv.includes("--clear");
   if (clearExisting) {
     console.log("🗑️  既存データをクリアしています...");
     const { error } = await supabase.from("michelle_knowledge").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -124,14 +118,10 @@ async function main() {
     }
   }
 
-  // マークダウンファイルを取得
-  const files = getMarkdownFiles(MD_DIR);
-  console.log(`📚 ${files.length}個のファイルを発見\n`);
-
-  // 各ファイルをアップロード
-  for (let i = 0; i < files.length; i++) {
-    console.log(`[${i + 1}/${files.length}]`);
-    await uploadFile(files[i]);
+  let processed = 0;
+  for (const chunk of knowledgeChunks) {
+    processed += 1;
+    await uploadChunk(chunk, processed, knowledgeChunks.length);
   }
 
   console.log("🎉 全てのアップロード完了！");

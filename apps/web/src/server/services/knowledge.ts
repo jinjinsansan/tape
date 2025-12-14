@@ -3,10 +3,14 @@ import knowledgeIndex from "@/server/data/michelle-knowledge.json";
 export type KnowledgeChunk = {
   id: string;
   title: string;
+  sourceTitle?: string;
   relativePath: string;
   summary: string;
   keyPoints: string[];
   content: string;
+  chunkIndex?: number;
+  chunkCount?: number;
+  sectionHeading?: string | null;
 };
 
 export type KnowledgeChunkSummary = Omit<KnowledgeChunk, "content">;

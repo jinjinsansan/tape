@@ -11,9 +11,13 @@ import { cn } from "@/lib/utils";
 type ChunkSummary = {
   id: string;
   title: string;
+  sourceTitle?: string;
   summary: string;
   keyPoints: string[];
   relativePath: string;
+  sectionHeading?: string | null;
+  chunkIndex?: number;
+  chunkCount?: number;
 };
 
 type ChunkDetail = ChunkSummary & {
@@ -97,6 +101,7 @@ export function ComicsGeneratorClient() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const totalChunkCount = alphabeticalChunks.length || chunks.length;
 
   const applyChunkList = useCallback((list: ChunkSummary[], isSearch = false) => {
     setChunks(list);
@@ -185,6 +190,35 @@ export function ComicsGeneratorClient() {
     }
   }, []);
 
+  const renderChunkCard = (chunk: ChunkSummary) => {
+    const [baseFromTitle, sectionFromTitle] = chunk.title.split("｜");
+    const baseTitle = (chunk.sourceTitle ?? baseFromTitle ?? chunk.title).trim();
+    const sectionLabel = (chunk.sectionHeading ?? sectionFromTitle ?? chunk.title).trim();
+    const hasPosition = typeof chunk.chunkIndex === "number" && typeof chunk.chunkCount === "number";
+    const chunkPosition = hasPosition ? `${(chunk.chunkIndex ?? 0) + 1}/${chunk.chunkCount}` : null;
+
+    return (
+      <button
+        key={chunk.id}
+        onClick={() => fetchChunkDetail(chunk.id)}
+        className={cn(
+          "w-full rounded-xl border px-3 py-2 text-left transition hover:border-pink-200",
+          selectedChunk?.id === chunk.id ? "border-pink-300 bg-pink-50" : "border-slate-200"
+        )}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{baseTitle}</p>
+        <p className="text-sm font-semibold text-slate-900">
+          {chunk.sectionHeading ? sectionLabel : chunk.title}
+        </p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
+          {chunkPosition && <span>チャンク {chunkPosition}</span>}
+          <span className="break-all">{chunk.relativePath}</span>
+        </div>
+        <p className="mt-1 line-clamp-2 text-xs text-slate-500">{chunk.summary}</p>
+      </button>
+    );
+  };
+
   const promptPreview = useMemo(() => {
     if (!selectedChunk) return "";
     return buildComicsPrompt({
@@ -257,7 +291,8 @@ export function ComicsGeneratorClient() {
           <p className="text-xs font-semibold tracking-[0.3em] text-pink-400">TAPE PSYCHOLOGY</p>
           <h1 className="text-3xl font-black text-slate-900">4コマ生成スタジオ</h1>
           <p className="text-sm text-slate-500">
-            1300チャンクからテーマを選び、Nano Bananaでミシェル式の4コマ漫画を生成します。公開前に必ず内容を確認してください。
+            {totalChunkCount > 0 ? `${totalChunkCount.toLocaleString("ja-JP")}チャンク` : "チャンク"}
+            からテーマを選び、Nano Bananaでミシェル式の4コマ漫画を生成します。公開前に必ず内容を確認してください。
           </p>
         </header>
 
@@ -327,10 +362,16 @@ export function ComicsGeneratorClient() {
             </div>
             <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
               {loadingChunks && <p className="text-xs text-slate-400">読み込み中...</p>}
-              {!loadingChunks && chunkGroups.length === 0 && (
+              {!loadingChunks && showingSearchResults && chunks.length === 0 && (
                 <p className="text-xs text-slate-400">該当するチャンクがありません。</p>
               )}
-              {!loadingChunks &&
+              {!loadingChunks && showingSearchResults && chunks.length > 0 && (
+                <div className="space-y-3">{chunks.map((chunk) => renderChunkCard(chunk))}</div>
+              )}
+              {!loadingChunks && !showingSearchResults && chunkGroups.length === 0 && (
+                <p className="text-xs text-slate-400">該当するチャンクがありません。</p>
+              )}
+              {!loadingChunks && !showingSearchResults &&
                 chunkGroups.map((group) => (
                   <div
                     key={`group-${group.heading}`}
@@ -341,21 +382,7 @@ export function ComicsGeneratorClient() {
                     }}
                   >
                     <p className="mb-1 text-xs font-semibold text-slate-500">{group.heading}</p>
-                    <div className="space-y-3">
-                      {group.items.map((chunk) => (
-                        <button
-                          key={chunk.id}
-                          onClick={() => fetchChunkDetail(chunk.id)}
-                          className={cn(
-                            "w-full rounded-xl border px-3 py-2 text-left transition hover:border-pink-200",
-                            selectedChunk?.id === chunk.id ? "border-pink-300 bg-pink-50" : "border-slate-200"
-                          )}
-                        >
-                          <p className="text-sm font-semibold text-slate-800">{chunk.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs text-slate-500">{chunk.summary}</p>
-                        </button>
-                      ))}
-                    </div>
+                    <div className="space-y-3">{group.items.map((chunk) => renderChunkCard(chunk))}</div>
                   </div>
                 ))}
             </div>
@@ -375,9 +402,21 @@ export function ComicsGeneratorClient() {
               {selectedChunk && (
                 <div className="mt-4 space-y-4">
                   <div>
-                    <p className="text-xs font-semibold text-slate-500">選択中のチャンク</p>
-                    <p className="text-lg font-bold text-slate-900">{selectedChunk.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{selectedChunk.summary}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      {selectedChunk.sourceTitle ?? selectedChunk.title}
+                    </p>
+                    <p className="text-lg font-bold text-slate-900">
+                      {selectedChunk.sectionHeading ?? selectedChunk.title}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {typeof selectedChunk.chunkIndex === "number" && typeof selectedChunk.chunkCount === "number" && (
+                        <span className="mr-2">
+                          チャンク {(selectedChunk.chunkIndex ?? 0) + 1}/{selectedChunk.chunkCount}
+                        </span>
+                      )}
+                      <span className="break-all">{selectedChunk.relativePath}</span>
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">{selectedChunk.summary}</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-500">
                       {selectedChunk.keyPoints.slice(0, 4).map((point, idx) => (
                         <li key={`${selectedChunk.id}-kp-${idx}`}>{point}</li>
