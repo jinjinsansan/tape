@@ -49,10 +49,19 @@ export async function POST(request: Request) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        prompt,
-        panels: 4,
-        aspect_ratio: "square",
-        language: "ja"
+        contents: [
+          {
+            parts: [
+              {
+                text: `${prompt}\n\nReturn JSON with 4 panel descriptions under key panels.`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 2048
+        }
       })
     });
 
@@ -62,16 +71,22 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
-    const rawPanels = data.panels ?? data.images ?? [];
+    const candidates = data?.candidates ?? [];
+    const panelsJsonText = candidates[0]?.content?.parts?.[0]?.text ?? "";
+    if (!panelsJsonText) {
+      throw new Error("Nano Banana response did not include panels description");
+    }
+    const parsed = JSON.parse(panelsJsonText);
+    const rawPanels = parsed.panels ?? [];
     panels = rawPanels.map((panel: any, index: number) => {
-      const imageData = panel.base64 ?? panel.image_base64 ?? panel.url ?? panel.imageUrl;
+      const imageData = panel.image ?? panel.imageData ?? panel.url;
       if (!imageData) {
-        throw new Error("Nano Banana response is missing image data");
+        throw new Error("Nano Banana panel is missing image data");
       }
       const isUrl = typeof imageData === "string" && imageData.startsWith("http");
       return {
         index: panel.index ?? index + 1,
-        caption: panel.caption ?? panel.text ?? panel.prompt ?? undefined,
+        caption: panel.caption ?? panel.text ?? undefined,
         imageData: isUrl ? imageData : `data:image/png;base64,${imageData}`
       };
     });
