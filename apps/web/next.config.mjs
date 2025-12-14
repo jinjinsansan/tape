@@ -23,8 +23,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Exclude native modules from webpack bundling
-  serverExternalPackages: ["sharp", "@napi-rs/canvas"]
+  // Exclude native modules from webpack bundling (Next.js 14 syntax)
+  experimental: {
+    serverComponentsExternalPackages: ["sharp", "@napi-rs/canvas"]
+  }
 };
 
 export default nextConfig;
