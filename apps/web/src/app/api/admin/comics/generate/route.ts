@@ -9,6 +9,177 @@ import { buildComicsPrompt } from "@/lib/comics-prompt";
 import { getOpenAIApiKey } from "@/lib/env";
 import { compose4KomaManga } from "@/server/services/comics-composer";
 
+const IMAGE_GENERATION_PIPELINE = [
+  { model: "dall-e-3" as const, attempts: 3 },
+  { model: "gpt-image-1" as const, attempts: 2 }
+];
+
+const PLACEHOLDER_COLOR = "FFF7ED/FF8FA3";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+class ImageGenerationError extends Error {
+  retryable: boolean;
+  status?: number;
+  bodySnippet?: string;
+  model: string;
+
+  constructor(message: string, options: { retryable?: boolean; status?: number; bodySnippet?: string; model: string }) {
+    super(message);
+    this.name = "ImageGenerationError";
+    this.retryable = options.retryable ?? false;
+    this.status = options.status;
+    this.bodySnippet = options.bodySnippet;
+    this.model = options.model;
+  }
+}
+
+type PanelImageResult = {
+  imageUrl: string;
+  generationSource: string;
+  warning?: string;
+};
+
+function parseJsonSafe(text: string | null) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function truncateBody(text: string | null, limit = 600) {
+  if (!text) return undefined;
+  return text.length > limit ? `${text.slice(0, limit)}…` : text;
+}
+
+function shouldRetry(status: number, payload: any) {
+  if (status >= 500) return true;
+  const type = payload?.error?.type;
+  return type === "server_error" || type === "rate_limit_exceeded";
+}
+
+function buildPlaceholderUrl(panelIndex: number) {
+  const label = encodeURIComponent(`Panel ${panelIndex} unavailable`);
+  return `https://placehold.co/1024x1024/${PLACEHOLDER_COLOR}?text=${label}`;
+}
+
+async function fetchImageFromModel({
+  model,
+  prompt,
+  apiKey
+}: {
+  model: string;
+  prompt: string;
+  apiKey: string;
+}) {
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+      style: "vivid"
+    })
+  });
+
+  const bodyText = await res.text();
+  const payload = parseJsonSafe(bodyText);
+
+  if (!res.ok) {
+    throw new ImageGenerationError(`Image API error (model ${model}, status ${res.status})`, {
+      retryable: shouldRetry(res.status, payload),
+      status: res.status,
+      bodySnippet: truncateBody(bodyText ?? JSON.stringify(payload ?? {})),
+      model
+    });
+  }
+
+  const imageUrl = payload?.data?.[0]?.url;
+  if (!imageUrl) {
+    throw new ImageGenerationError(`Image API did not return image URL (model ${model})`, {
+      retryable: false,
+      status: res.status,
+      bodySnippet: truncateBody(bodyText),
+      model
+    });
+  }
+
+  return imageUrl;
+}
+
+async function generatePanelImage({
+  prompt,
+  panelIndex,
+  apiKey
+}: {
+  prompt: string;
+  panelIndex: number;
+  apiKey: string;
+}): Promise<PanelImageResult> {
+  let lastError: ImageGenerationError | null = null;
+
+  for (const stage of IMAGE_GENERATION_PIPELINE) {
+    for (let attempt = 1; attempt <= stage.attempts; attempt++) {
+      try {
+        const imageUrl = await fetchImageFromModel({
+          model: stage.model,
+          prompt,
+          apiKey
+        });
+        const warning = stage.model !== IMAGE_GENERATION_PIPELINE[0].model
+          ? `Panel ${panelIndex} used fallback model ${stage.model}.`
+          : undefined;
+        if (warning) {
+          console.warn(warning);
+        }
+        return { imageUrl, generationSource: stage.model, warning };
+      } catch (error) {
+        const err = error instanceof ImageGenerationError
+          ? error
+          : new ImageGenerationError((error as Error)?.message ?? "Image generation failed", {
+              retryable: false,
+              model: stage.model
+            });
+        lastError = err;
+        console.warn(
+          `Panel ${panelIndex} attempt ${attempt}/${stage.attempts} failed for ${stage.model}`,
+          {
+            status: err.status,
+            retryable: err.retryable,
+            bodySnippet: err.bodySnippet
+          }
+        );
+        if (!err.retryable) break;
+        if (attempt < stage.attempts) {
+          const delayMs = Math.pow(2, attempt - 1) * 2000;
+          await sleep(delayMs);
+        }
+      }
+    }
+  }
+
+  const placeholderUrl = buildPlaceholderUrl(panelIndex);
+  if (lastError && !lastError.retryable) {
+    throw lastError;
+  }
+
+  const warning = `Panel ${panelIndex} fell back to placeholder after repeated image generation failures.`;
+  console.error(warning, lastError);
+  return {
+    imageUrl: placeholderUrl,
+    generationSource: "placeholder",
+    warning: lastError ? `${warning} Last error: ${lastError.message}` : warning
+  };
+}
+
 const bodySchema = z.object({
   chunkId: z.string(),
   customInstructions: z.string().max(1200).optional(),
@@ -40,7 +211,8 @@ export async function POST(request: Request) {
     stylePreset: parsed.data.stylePreset as any
   });
 
-  let panels: Array<{ index: number; caption?: string; imageData: string }> = [];
+  let panels: Array<{ index: number; caption?: string; imageData: string; generationSource: string; warning?: string }> = [];
+  const warnings: string[] = [];
   try {
     const openaiApiKey = getOpenAIApiKey();
 
@@ -94,44 +266,28 @@ export async function POST(request: Request) {
     
     for (const panel of rawPanels) {
       const imagePrompt = panel.prompt || panel.description || "";
+      const panelIndex = panel.index ?? panels.length + 1;
       if (!imagePrompt) {
-        throw new Error(`Panel ${panel.index} missing prompt/description`);
+        throw new Error(`Panel ${panelIndex} missing prompt/description`);
       }
 
       // Enhance prompt with manga style and character consistency (NO text/bubbles - we'll add them later)
       const enhancedPrompt = `Japanese 4-koma manga illustration style with clean black ink line art and subtle colors. NO speech bubbles, NO text, NO written words - just the illustration. ${characterConsistency} ${imagePrompt}`;
-
-      const dalleRes = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openaiApiKey}`
-        },
-        body: JSON.stringify({
-          model: "dall-e-3",
-          prompt: enhancedPrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-          style: "vivid"
-        })
+      const panelImage = await generatePanelImage({
+        prompt: enhancedPrompt,
+        panelIndex,
+        apiKey: openaiApiKey
       });
-
-      if (!dalleRes.ok) {
-        const text = await dalleRes.text();
-        throw new Error(`DALL-E API error for panel ${panel.index}: ${text}`);
-      }
-
-      const dalleData = await dalleRes.json();
-      const imageUrl = dalleData?.data?.[0]?.url;
-      if (!imageUrl) {
-        throw new Error(`DALL-E did not return image URL for panel ${panel.index}`);
+      if (panelImage.warning) {
+        warnings.push(panelImage.warning);
       }
 
       panels.push({
-        index: panel.index ?? panels.length + 1,
+        index: panelIndex,
         caption: panel.caption ?? undefined,
-        imageData: imageUrl
+        imageData: panelImage.imageUrl,
+        generationSource: panelImage.generationSource,
+        warning: panelImage.warning
       });
     }
 
@@ -150,6 +306,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       prompt, 
       panels,
+      warnings,
       composedImage: base64Image
     });
   } catch (error) {

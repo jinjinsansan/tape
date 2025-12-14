@@ -24,12 +24,15 @@ type PanelResult = {
   index: number;
   caption?: string;
   imageData: string;
+  generationSource?: string;
+  warning?: string;
 };
 
 type GenerateResponse = {
   prompt: string;
   panels: PanelResult[];
   composedImage?: string;
+  warnings?: string[];
 };
 
 export function ComicsGeneratorClient() {
@@ -49,6 +52,7 @@ export function ComicsGeneratorClient() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const loadChunks = useCallback(async (search?: string, random?: boolean) => {
     setLoadingChunks(true);
@@ -86,6 +90,7 @@ export function ComicsGeneratorClient() {
       const data = (await res.json()) as { chunk: ChunkDetail };
       setSelectedChunk(data.chunk);
       setPanels([]);
+      setWarnings([]);
       setComposedImage(null);
       setSuccessMessage(null);
     } catch (err) {
@@ -113,6 +118,7 @@ export function ComicsGeneratorClient() {
     setError(null);
     setSuccessMessage(null);
     try {
+      setWarnings([]);
       const res = await fetch("/api/admin/comics/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,10 +134,12 @@ export function ComicsGeneratorClient() {
       }
       setPanels(payload.panels ?? []);
       setComposedImage(payload.composedImage ?? null);
+      setWarnings(payload.warnings ?? []);
       setSuccessMessage("4コマ漫画を生成しました。合成画像をダウンロードできます。");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "生成に失敗しました");
+      setWarnings([]);
     } finally {
       setIsGenerating(false);
     }
@@ -284,6 +292,17 @@ export function ComicsGeneratorClient() {
             {error && <p className="text-sm text-rose-500">{error}</p>}
             {successMessage && <p className="text-sm text-emerald-600">{successMessage}</p>}
 
+            {warnings.length > 0 && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <p className="font-semibold">生成時の注意</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {warnings.map((warning, idx) => (
+                    <li key={`warning-${idx}`}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {composedImage && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center justify-between">
@@ -321,6 +340,12 @@ export function ComicsGeneratorClient() {
                         className="h-auto w-full rounded-lg border border-slate-100 object-cover"
                       />
                       {panel.caption && <p className="text-xs text-slate-500">{panel.caption}</p>}
+                      {panel.warning && (
+                        <p className="text-[11px] text-amber-500">{panel.warning}</p>
+                      )}
+                      {panel.generationSource && (
+                        <p className="text-[11px] text-slate-400">Source: {panel.generationSource}</p>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
