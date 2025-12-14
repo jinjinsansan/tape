@@ -44,3 +44,11 @@ export const searchKnowledgeChunks = async (
 export const getKnowledgeChunkById = async (id: string): Promise<KnowledgeChunk | null> => {
   return chunkCache.find((chunk) => chunk.id === id) ?? null;
 };
+
+export const listAllKnowledgeChunks = ({ sort }: { sort?: "title" | "id" } = {}): KnowledgeChunkSummary[] => {
+  const summaries = chunkCache.map(({ content, ...rest }) => rest);
+  if (sort === "title") {
+    return [...summaries].sort((a, b) => a.title.localeCompare(b.title, "ja"));
+  }
+  return summaries;
+};

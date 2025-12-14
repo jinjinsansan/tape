@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Image as ImageIcon, RefreshCcw, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,11 +35,54 @@ type GenerateResponse = {
   warnings?: string[];
 };
 
+type ChunkGroup = {
+  heading: string;
+  items: ChunkSummary[];
+};
+
+const OTHER_HEADING = "その他";
+
+const getHeadingFromTitle = (title: string): string => {
+  const trimmed = title?.trim();
+  if (!trimmed) return OTHER_HEADING;
+  const normalized = trimmed[0]?.normalize("NFKC") ?? "";
+  if (!normalized) return OTHER_HEADING;
+  const code = normalized.charCodeAt(0);
+  if (code >= 0x30a1 && code <= 0x30f6) {
+    const hiragana = String.fromCharCode(code - 0x60);
+    return hiragana;
+  }
+  if (code >= 0x3041 && code <= 0x3096) {
+    return normalized;
+  }
+  if (/[a-zA-Z]/.test(normalized)) {
+    return normalized.toUpperCase();
+  }
+  return OTHER_HEADING;
+};
+
+const buildChunkGroups = (list: ChunkSummary[]): ChunkGroup[] => {
+  const groups: ChunkGroup[] = [];
+  list.forEach((chunk) => {
+    const heading = getHeadingFromTitle(chunk.title);
+    const lastGroup = groups[groups.length - 1];
+    if (!lastGroup || lastGroup.heading !== heading) {
+      groups.push({ heading, items: [chunk] });
+    } else {
+      lastGroup.items.push(chunk);
+    }
+  });
+  return groups;
+};
+
 export function ComicsGeneratorClient() {
   type StyleKey = StyleOption["value"];
   const defaultStyle = (comicStyleOptions[0]?.value ?? "gentle") as StyleKey;
   const [query, setQuery] = useState("");
   const [chunks, setChunks] = useState<ChunkSummary[]>([]);
+  const [alphabeticalChunks, setAlphabeticalChunks] = useState<ChunkSummary[]>([]);
+  const [chunkGroups, setChunkGroups] = useState<ChunkGroup[]>([]);
+  const [showingSearchResults, setShowingSearchResults] = useState(false);
   const [loadingChunks, setLoadingChunks] = useState(false);
   const [selectedChunk, setSelectedChunk] = useState<ChunkDetail | null>(null);
   const [chunkLoading, setChunkLoading] = useState(false);
@@ -53,8 +96,36 @@ export function ComicsGeneratorClient() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const loadChunks = useCallback(async (search?: string, random?: boolean) => {
+  const applyChunkList = useCallback((list: ChunkSummary[], isSearch = false) => {
+    setChunks(list);
+    setChunkGroups(buildChunkGroups(list));
+    groupRefs.current = {};
+    setShowingSearchResults(isSearch);
+  }, []);
+
+  const fetchAllChunks = useCallback(async () => {
+    setLoadingChunks(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/comics/chunks?view=all`);
+      if (!res.ok) {
+        throw new Error("チャンクの取得に失敗しました");
+      }
+      const data = (await res.json()) as { chunks: ChunkSummary[] };
+      const list = data.chunks ?? [];
+      setAlphabeticalChunks(list);
+      applyChunkList(list, false);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "チャンクの取得に失敗しました");
+    } finally {
+      setLoadingChunks(false);
+    }
+  }, [applyChunkList]);
+
+  const searchChunks = useCallback(async (search?: string, random?: boolean) => {
     setLoadingChunks(true);
     setError(null);
     try {
@@ -66,18 +137,31 @@ export function ComicsGeneratorClient() {
         throw new Error("チャンクの取得に失敗しました");
       }
       const data = (await res.json()) as { chunks: ChunkSummary[] };
-      setChunks(data.chunks ?? []);
+      applyChunkList(data.chunks ?? [], Boolean(search) || Boolean(random));
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "チャンクの取得に失敗しました");
     } finally {
       setLoadingChunks(false);
     }
+  }, [applyChunkList]);
+
+  const handleResetView = useCallback(() => {
+    if (alphabeticalChunks.length === 0) return;
+    applyChunkList(alphabeticalChunks, false);
+    setQuery("");
+  }, [alphabeticalChunks, applyChunkList]);
+
+  const scrollToHeading = useCallback((heading: string) => {
+    const target = groupRefs.current[heading];
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }, []);
 
   useEffect(() => {
-    loadChunks();
-  }, [loadChunks]);
+    fetchAllChunks();
+  }, [fetchAllChunks]);
 
   const fetchChunkDetail = useCallback(async (chunkId: string) => {
     setChunkLoading(true);
@@ -184,7 +268,7 @@ export function ComicsGeneratorClient() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loadChunks(undefined, true)}
+                onClick={() => searchChunks(undefined, true)}
                 disabled={loadingChunks}
               >
                 <RefreshCcw className="mr-1 h-3.5 w-3.5" /> ランダム
@@ -197,28 +281,83 @@ export function ComicsGeneratorClient() {
                 placeholder="例: ガムテープ, 無価値感"
                 className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
               />
-              <Button size="sm" onClick={() => loadChunks(query)} disabled={loadingChunks}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (query.trim()) {
+                    searchChunks(query.trim());
+                  } else {
+                    handleResetView();
+                  }
+                }}
+                disabled={loadingChunks}
+              >
                 検索
               </Button>
             </div>
+            <div className="space-y-2">
+              {showingSearchResults ? (
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <p>検索結果: {chunks.length}件</p>
+                  <button
+                    type="button"
+                    onClick={handleResetView}
+                    className="text-pink-500 underline-offset-2 hover:underline"
+                  >
+                    全件表示に戻る
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400">全チャンクを五十音順で表示しています。</p>
+              )}
+              {chunkGroups.length > 0 && (
+                <div className="flex flex-wrap gap-1 text-[11px] text-slate-500">
+                  {chunkGroups.map((group) => (
+                    <button
+                      key={`anchor-${group.heading}`}
+                      type="button"
+                      onClick={() => scrollToHeading(group.heading)}
+                      className="rounded-full border border-slate-200 px-2 py-0.5 transition hover:border-pink-300 hover:text-pink-500"
+                    >
+                      {group.heading}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
               {loadingChunks && <p className="text-xs text-slate-400">読み込み中...</p>}
-              {!loadingChunks && chunks.length === 0 && (
+              {!loadingChunks && chunkGroups.length === 0 && (
                 <p className="text-xs text-slate-400">該当するチャンクがありません。</p>
               )}
-              {chunks.map((chunk) => (
-                <button
-                  key={chunk.id}
-                  onClick={() => fetchChunkDetail(chunk.id)}
-                  className={cn(
-                    "w-full rounded-xl border px-3 py-2 text-left transition hover:border-pink-200",
-                    selectedChunk?.id === chunk.id ? "border-pink-300 bg-pink-50" : "border-slate-200"
-                  )}
-                >
-                  <p className="text-sm font-semibold text-slate-800">{chunk.title}</p>
-                  <p className="mt-1 line-clamp-2 text-xs text-slate-500">{chunk.summary}</p>
-                </button>
-              ))}
+              {!loadingChunks &&
+                chunkGroups.map((group) => (
+                  <div
+                    key={`group-${group.heading}`}
+                    ref={(node) => {
+                      if (node) {
+                        groupRefs.current[group.heading] = node;
+                      }
+                    }}
+                  >
+                    <p className="mb-1 text-xs font-semibold text-slate-500">{group.heading}</p>
+                    <div className="space-y-3">
+                      {group.items.map((chunk) => (
+                        <button
+                          key={chunk.id}
+                          onClick={() => fetchChunkDetail(chunk.id)}
+                          className={cn(
+                            "w-full rounded-xl border px-3 py-2 text-left transition hover:border-pink-200",
+                            selectedChunk?.id === chunk.id ? "border-pink-300 bg-pink-50" : "border-slate-200"
+                          )}
+                        >
+                          <p className="text-sm font-semibold text-slate-800">{chunk.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-500">{chunk.summary}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
 
