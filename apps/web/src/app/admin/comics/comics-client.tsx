@@ -100,7 +100,7 @@ export function ComicsGeneratorClient() {
 
   const applyChunkList = useCallback((list: ChunkSummary[], isSearch = false) => {
     setChunks(list);
-    setChunkGroups(buildChunkGroups(list));
+    setChunkGroups(isSearch ? [] : buildChunkGroups(list));
     groupRefs.current = {};
     setShowingSearchResults(isSearch);
   }, []);
