@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/server/auth";
 import { OrdersController, Environment, LogLevel, Client as PayPalClient } from "@paypal/paypal-server-sdk";
+import { createNotification, notifyAdmin } from "@/server/services/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -173,6 +174,44 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
       // Payment was successful but recording failed - this needs manual intervention
       throw new Error("Payment succeeded but failed to record purchase");
     }
+
+    // Get user email
+    const { data: userData } = await supabase.auth.admin.getUserById(user.id);
+    const userEmail = userData?.user?.email ?? "不明";
+
+    // Send notification to user
+    await createNotification({
+      userId: user.id,
+      channel: "in_app",
+      type: "course.purchased",
+      category: "other",
+      title: "🎓 コース購入完了",
+      body: `「${courseData.title}」の購入が完了しました。\n金額: ${capturedAmount.currencyCode} ${capturedAmount.value}`,
+      data: {
+        course_id: courseData.id,
+        course_title: courseData.title,
+        amount: capturedAmount.value,
+        currency: capturedAmount.currencyCode
+      }
+    }).catch(err => console.error("Failed to notify user", err));
+
+    // Send notification to admin
+    await notifyAdmin({
+      type: "course.purchased.admin",
+      category: "other",
+      title: "🎓 コース購入通知",
+      body: `ユーザー: ${userEmail}\nコース: ${courseData.title}\n金額: ${capturedAmount.currencyCode} ${capturedAmount.value}\nPayPal Order ID: ${orderId}`,
+      data: {
+        user_id: user.id,
+        user_email: userEmail,
+        course_id: courseData.id,
+        course_title: courseData.title,
+        course_slug: slug,
+        amount: capturedAmount.value,
+        currency: capturedAmount.currencyCode,
+        paypal_order_id: orderId
+      }
+    }).catch(err => console.error("Failed to notify admin", err));
 
     return NextResponse.json({
       success: true,

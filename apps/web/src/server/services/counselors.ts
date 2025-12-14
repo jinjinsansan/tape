@@ -10,6 +10,7 @@ import type {
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getOrCreateWallet, consumeWallet, topUpWallet } from "@/server/services/wallet";
 import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
+import { createNotification, notifyAdmin } from "@/server/services/notifications";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -314,6 +315,61 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
     `)
     .eq("id", booking.id)
     .single();
+
+  // Send notifications
+  if (confirmedBooking) {
+    const clientName = (confirmedBooking.client as any)?.display_name ?? "ユーザー";
+    const counselorName = (confirmedBooking.counselor as any)?.display_name ?? "カウンセラー";
+    const counselorAuthUserId = (confirmedBooking.counselor as any)?.auth_user_id;
+    const slotTime = (confirmedBooking.slot as any)?.start_time 
+      ? new Date((confirmedBooking.slot as any).start_time).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+      : "未定";
+    const planLabel = confirmedBooking.plan_type === "single_session" ? "単発セッション" : "月額コース";
+
+    // Get client email
+    const { data: clientUser } = await supabase.auth.admin.getUserById(confirmedBooking.client_user_id);
+    const clientEmail = clientUser?.user?.email ?? "不明";
+
+    // Notify client
+    await createNotification({
+      userId: confirmedBooking.client_user_id,
+      channel: "in_app",
+      type: "booking.confirmed",
+      category: "booking",
+      title: "📅 カウンセリング予約確定",
+      body: `${counselorName}先生とのカウンセリングが確定しました。\nプラン: ${planLabel}\n日時: ${slotTime}`,
+      data: { booking_id: confirmedBooking.id, counselor_id: confirmedBooking.counselor_id }
+    }).catch(err => console.error("Failed to notify client", err));
+
+    // Notify counselor
+    if (counselorAuthUserId) {
+      await createNotification({
+        userId: counselorAuthUserId,
+        channel: "in_app",
+        type: "booking.new_client",
+        category: "booking",
+        title: "🎉 新規予約受付",
+        body: `${clientName}さんから予約が入りました。\nプラン: ${planLabel}\n日時: ${slotTime}`,
+        data: { booking_id: confirmedBooking.id, client_user_id: confirmedBooking.client_user_id }
+      }).catch(err => console.error("Failed to notify counselor", err));
+    }
+
+    // Notify admin
+    await notifyAdmin({
+      type: "booking.confirmed.admin",
+      category: "booking",
+      title: "📅 カウンセリング予約通知",
+      body: `クライアント: ${clientName} (${clientEmail})\nカウンセラー: ${counselorName}\nプラン: ${planLabel}\n日時: ${slotTime}\n金額: ¥${(confirmedBooking.price_cents / 100).toLocaleString()}`,
+      data: {
+        booking_id: confirmedBooking.id,
+        client_user_id: confirmedBooking.client_user_id,
+        client_email: clientEmail,
+        counselor_id: confirmedBooking.counselor_id,
+        plan_type: confirmedBooking.plan_type,
+        price_cents: confirmedBooking.price_cents
+      }
+    }).catch(err => console.error("Failed to notify admin", err));
+  }
 
   return confirmedBooking;
 };

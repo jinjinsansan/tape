@@ -161,3 +161,36 @@ export const createNotification = async (params: CreateNotificationParams) => {
 
   return notification;
 };
+
+type AdminNotificationParams = {
+  type: string;
+  title: string;
+  body: string;
+  data?: Json;
+  category?: NotificationCategory;
+};
+
+export const notifyAdmin = async (params: AdminNotificationParams) => {
+  const { getAdminNotificationUserId } = await import("@/lib/env");
+  const adminUserId = getAdminNotificationUserId();
+  
+  if (!adminUserId) {
+    console.warn("Admin notification skipped: ADMIN_NOTIFICATION_USER_ID not configured");
+    return null;
+  }
+
+  try {
+    return await createNotification({
+      userId: adminUserId,
+      channel: "in_app",
+      type: params.type,
+      title: params.title,
+      body: params.body,
+      data: params.data ?? null,
+      category: params.category ?? "other"
+    });
+  } catch (error) {
+    console.error("Failed to send admin notification", error);
+    return null;
+  }
+};

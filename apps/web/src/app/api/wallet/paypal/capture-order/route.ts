@@ -5,7 +5,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { ordersController } from "@/lib/paypal";
 import { topUpWallet } from "@/server/services/wallet";
-import { createNotification } from "@/server/services/notifications";
+import { createNotification, notifyAdmin } from "@/server/services/notifications";
 
 export async function POST(request: Request) {
   const cookieStore = cookies();
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       payment_method: "paypal",
     });
 
-    // Send notification
+    // Send notification to user
     await createNotification({
       userId: user.id,
       channel: "in_app",
@@ -99,6 +99,25 @@ export async function POST(request: Request) {
       title: "ウォレットチャージ完了",
       body: `¥${(amountCents / 100).toLocaleString()}のチャージが完了しました。`,
       data: { transaction_id: transaction.id, amount_cents: amountCents },
+    });
+
+    // Get user email for admin notification
+    const { data: userData } = await supabase.auth.admin.getUserById(user.id);
+    const userEmail = userData?.user?.email ?? "不明";
+
+    // Send notification to admin
+    await notifyAdmin({
+      type: "wallet.topup.admin",
+      category: "wallet",
+      title: "💰 ウォレットチャージ通知",
+      body: `ユーザー: ${userEmail}\n金額: ¥${(amountCents / 100).toLocaleString()}\nPayPal Order ID: ${orderId}`,
+      data: { 
+        user_id: user.id,
+        user_email: userEmail,
+        transaction_id: transaction.id, 
+        amount_cents: amountCents,
+        paypal_order_id: orderId
+      }
     });
 
     return NextResponse.json({
