@@ -189,8 +189,8 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   }, [twitterUpdatedAt, canUpdateTwitter]);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">PROFILE</p>
         <h2 className="text-2xl font-bold text-tape-brown">マイページ</h2>
         <p className="text-sm text-tape-light-brown">
@@ -270,7 +270,7 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
             </div>
           </div>
         </div>
-      </section>
+      </form>
 
       <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">X (TWITTER) ACCOUNT</p>
@@ -347,6 +347,6 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
           <li>変更内容の反映には数秒かかる場合があります。表示が更新されない場合はページの再読み込みをお試しください。</li>
         </ul>
       </section>
-    </form>
+    </div>
   );
 }
