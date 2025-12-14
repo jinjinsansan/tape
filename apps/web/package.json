@@ -24,6 +24,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.446.0",
+    "lodash": "^4.17.21",
     "next": "14.2.11",
     "openai": "^4.78.1",
     "styled-jsx": "^5.1.3",
