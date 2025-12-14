@@ -9,7 +9,7 @@ type AdminBroadcastRow = {
   subject: string;
   body: string;
   created_at: string;
-  sent_count: number;
+  target_count: number;
 };
 
 type AdminUserRow = {
@@ -107,7 +107,7 @@ export function BroadcastsManagementClient() {
           subject,
           body,
           audience,
-          recipientIds: audience === "selected" ? selectedRecipients.map((u) => u.id) : undefined
+          recipients: audience === "selected" ? selectedRecipients.map((u) => u.id) : undefined
         })
       });
       alert("配信を開始しました");
@@ -262,7 +262,7 @@ export function BroadcastsManagementClient() {
                     <p className="mt-1 text-xs text-slate-600 line-clamp-2">{broadcast.body}</p>
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                       <span>{new Date(broadcast.created_at).toLocaleString("ja-JP", { hour12: false })}</span>
-                      <span>{broadcast.sent_count}人に配信</span>
+                      <span>{broadcast.target_count}人に配信</span>
                     </div>
                   </div>
                 ))}

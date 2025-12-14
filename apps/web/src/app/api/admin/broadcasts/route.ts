@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       subject: parsed.data.subject,
       body: parsed.data.body,
       audience: parsed.data.audience,
-      recipientIds: parsed.data.recipients
+      recipientIds: parsed.data.recipients ?? []
     });
 
     return NextResponse.json({ broadcast: result.broadcast, stats: result.stats });
