@@ -72,7 +72,18 @@ export async function PATCH(
         .eq("auth_user_id", userId)
         .maybeSingle();
 
-      if (!existingCounselor) {
+      if (existingCounselor) {
+        // 既存のカウンセラーを再有効化
+        const { error: reactivateError } = await adminSupabase
+          .from("counselors")
+          .update({ is_active: true })
+          .eq("auth_user_id", userId);
+
+        if (reactivateError) {
+          console.error("Failed to reactivate counselor", reactivateError);
+          throw reactivateError;
+        }
+      } else {
         // counselors テーブルに登録
         const { error: counselorError } = await adminSupabase
           .from("counselors")
@@ -88,6 +99,17 @@ export async function PATCH(
           console.error("Failed to create counselor", counselorError);
           throw counselorError;
         }
+      }
+    } else {
+      // role が counselor 以外に変更された場合、counselors.is_active を false にする
+      const { error: deactivateError } = await adminSupabase
+        .from("counselors")
+        .update({ is_active: false })
+        .eq("auth_user_id", userId);
+
+      if (deactivateError) {
+        console.error("Failed to deactivate counselor", deactivateError);
+        // これは致命的エラーではないのでログのみ
       }
     }
 
