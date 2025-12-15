@@ -222,6 +222,22 @@ export function UsersManagementClient() {
     }
   };
 
+  const handleRemoveCounselor = async (userId: string) => {
+    if (!confirm("このユーザーのカウンセラー権限を解除しますか？\n\n注意: counselorsテーブルのデータは残りますが、通常ユーザーに戻ります。")) return;
+    try {
+      await fetchJson(`/api/admin/users/${userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "user" })
+      });
+      alert("カウンセラー権限を解除しました");
+      loadUsers(userSearch);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "権限解除に失敗しました");
+    }
+  };
+
   const handlePointAward = async (userId: string) => {
     const pointsStr = prompt("付与するポイント数を入力してください", "100");
     if (!pointsStr) return;
@@ -399,13 +415,23 @@ export function UsersManagementClient() {
                           <UserCheck className="h-3.5 w-3.5" />
                           Admin化
                         </button>
-                        <button
-                          onClick={() => handleMakeCounselor(user.id)}
-                          className="flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-600 transition-colors hover:bg-purple-100"
-                        >
-                          <UserCheck className="h-3.5 w-3.5" />
-                          カウンセラー化
-                        </button>
+                        {user.role === "counselor" ? (
+                          <button
+                            onClick={() => handleRemoveCounselor(user.id)}
+                            className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            カウンセラー解除
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleMakeCounselor(user.id)}
+                            className="flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-600 transition-colors hover:bg-purple-100"
+                          >
+                            <UserCheck className="h-3.5 w-3.5" />
+                            カウンセラー化
+                          </button>
+                        )}
                       </>
                     )}
                     <button
