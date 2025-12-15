@@ -369,7 +369,7 @@ export function UsersManagementClient() {
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
                       <span className="text-slate-600">
-                        💰 {user.wallet?.balanceCents ?? 0} JPY
+                        💰 {formatYen(user.wallet?.balanceCents)}
                       </span>
                       <span
                         className={`${
