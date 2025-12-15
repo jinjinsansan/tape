@@ -6,6 +6,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { getKnowledgeChunkById } from "@/server/services/knowledge";
 import { buildComicsPrompt } from "@/lib/comics-prompt";
+import { buildTweetPrompt, type TweetVariation } from "@/lib/tweet-prompt";
 import { getOpenAIApiKey } from "@/lib/env";
 import { compose4KomaManga } from "@/server/services/comics-composer";
 
@@ -214,6 +215,8 @@ export async function POST(request: Request) {
 
   let panels: Array<{ index: number; caption?: string; imageData: string; generationSource: string; warning?: string }> = [];
   const warnings: string[] = [];
+  let tweets: TweetVariation[] = [];
+  
   try {
     const openaiApiKey = getOpenAIApiKey();
 
@@ -273,6 +276,54 @@ Your response must be pure JSON in this exact format:
       throw new Error(`Expected 4 panels, got ${rawPanels.length}`);
     }
 
+    // Step 1.5: Generate tweet text in parallel (don't wait for image generation)
+    const tweetPrompt = buildTweetPrompt({
+      title: chunk.title,
+      summary: chunk.summary,
+      content: chunk.content
+    });
+
+    const tweetPromise = fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert X (Twitter) content creator specializing in psychology education. Return only valid JSON, no markdown formatting."
+          },
+          {
+            role: "user",
+            content: tweetPrompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 1500
+      })
+    }).then(async (res) => {
+      if (!res.ok) {
+        console.error("Tweet generation failed:", await res.text());
+        return null;
+      }
+      const data = await res.json();
+      let tweetJsonText = data?.choices?.[0]?.message?.content ?? "";
+      if (!tweetJsonText) {
+        console.error("GPT response did not include tweet text");
+        return null;
+      }
+      // Extract JSON from markdown code blocks if present
+      tweetJsonText = tweetJsonText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const tweetData = JSON.parse(tweetJsonText);
+      return tweetData.tweets as TweetVariation[];
+    }).catch((err) => {
+      console.error("Tweet generation error:", err);
+      return null;
+    });
+
     // Step 2: Generate images using DALL-E 3
     // Get style directives from the selected style preset
     const stylePreset = parsed.data.stylePreset || "gentle";
@@ -323,11 +374,20 @@ CRITICAL: Absolutely NO speech bubbles, NO text, NO written words, NO Japanese c
     // Convert to base64 for response
     const base64Image = `data:image/png;base64,${composedImageBuffer.toString("base64")}`;
 
+    // Wait for tweet generation to complete
+    const generatedTweets = await tweetPromise;
+    if (generatedTweets) {
+      tweets = generatedTweets;
+    } else {
+      warnings.push("Tweet generation failed. You can manually create the tweet text.");
+    }
+
     return NextResponse.json({ 
       prompt, 
       panels,
       warnings,
-      composedImage: base64Image
+      composedImage: base64Image,
+      tweets
     });
   } catch (error) {
     console.error("Comics generation failed", error);

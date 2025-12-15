@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Image as ImageIcon, RefreshCcw, Download } from "lucide-react";
+import { Sparkles, Image as ImageIcon, RefreshCcw, Download, Copy, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { comicStyleOptions, buildComicsPrompt } from "@/lib/comics-prompt";
 import type { StyleOption } from "@/lib/comics-prompt";
+import { getTweetTypeLabel, getTweetTypeDescription, type TweetVariation } from "@/lib/tweet-prompt";
 import { cn } from "@/lib/utils";
 
 type ChunkSummary = {
@@ -37,6 +38,7 @@ type GenerateResponse = {
   panels: PanelResult[];
   composedImage?: string;
   warnings?: string[];
+  tweets?: TweetVariation[];
 };
 
 type ChunkGroup = {
@@ -96,6 +98,9 @@ export function ComicsGeneratorClient() {
   const [stylePreset, setStylePreset] = useState<StyleKey>(defaultStyle);
   const [panels, setPanels] = useState<PanelResult[]>([]);
   const [composedImage, setComposedImage] = useState<string | null>(null);
+  const [tweets, setTweets] = useState<TweetVariation[]>([]);
+  const [selectedTweetIndex, setSelectedTweetIndex] = useState(0);
+  const [copiedTweetIndex, setCopiedTweetIndex] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -253,8 +258,10 @@ export function ComicsGeneratorClient() {
       }
       setPanels(payload.panels ?? []);
       setComposedImage(payload.composedImage ?? null);
+      setTweets(payload.tweets ?? []);
+      setSelectedTweetIndex(0);
       setWarnings(payload.warnings ?? []);
-      setSuccessMessage("4コマ漫画を生成しました。合成画像をダウンロードできます。");
+      setSuccessMessage("4コマ漫画とX投稿文を生成しました。");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "生成に失敗しました");
@@ -284,6 +291,18 @@ export function ComicsGeneratorClient() {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleCopyTweet = useCallback((index: number) => {
+    const tweet = tweets[index];
+    if (!tweet) return;
+    
+    navigator.clipboard.writeText(tweet.text).then(() => {
+      setCopiedTweetIndex(index);
+      setTimeout(() => setCopiedTweetIndex(null), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy tweet:", err);
+    });
+  }, [tweets]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 md:px-10">
@@ -482,28 +501,106 @@ export function ComicsGeneratorClient() {
               </div>
             )}
 
-            {composedImage && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-pink-400" />
-                    <h3 className="text-sm font-semibold text-slate-800">完成した4コマ漫画</h3>
+            {(composedImage || tweets.length > 0) && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                {composedImage && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-pink-400" />
+                        <h3 className="text-sm font-semibold text-slate-800">完成した4コマ漫画</h3>
+                      </div>
+                      <Button onClick={handleDownloadComposed} size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        ダウンロード
+                      </Button>
+                    </div>
+                    <div className="overflow-hidden rounded-lg border border-slate-100">
+                      <img
+                        src={composedImage}
+                        alt="4コマ漫画"
+                        className="w-full"
+                      />
+                    </div>
+                    <p className="mt-3 text-xs text-slate-500">
+                      2×2グリッドで合成され、各パネルの下にキャプションが表示されています。
+                    </p>
                   </div>
-                  <Button onClick={handleDownloadComposed} className="gap-2">
-                    <Download className="h-4 w-4" />
-                    ダウンロード
-                  </Button>
-                </div>
-                <div className="overflow-hidden rounded-lg border border-slate-100">
-                  <img
-                    src={composedImage}
-                    alt="4コマ漫画"
-                    className="w-full"
-                  />
-                </div>
-                <p className="mt-3 text-xs text-slate-500">
-                  2×2グリッドで合成され、各パネルの下にキャプションが表示されています。SNSに投稿する前に内容を確認してください。
-                </p>
+                )}
+
+                {tweets.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-400" />
+                      <h3 className="text-sm font-semibold text-slate-800">📱 X投稿文</h3>
+                    </div>
+
+                    {/* Tab buttons */}
+                    <div className="mb-4 flex gap-2">
+                      {tweets.map((tweet, index) => (
+                        <button
+                          key={`tab-${index}`}
+                          onClick={() => setSelectedTweetIndex(index)}
+                          className={cn(
+                            "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition",
+                            selectedTweetIndex === index
+                              ? "border-blue-300 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          )}
+                        >
+                          <div className="font-semibold">{getTweetTypeLabel(tweet.type)}</div>
+                          <div className="mt-0.5 text-[10px] text-slate-500">
+                            {getTweetTypeDescription(tweet.type)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tweet text display */}
+                    {tweets[selectedTweetIndex] && (
+                      <div className="space-y-3">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-900">
+                            {tweets[selectedTweetIndex].text}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <div className="flex gap-3">
+                            <span>文字数: {tweets[selectedTweetIndex].charCount}文字</span>
+                            {tweets[selectedTweetIndex].hashtags.length > 0 && (
+                              <span className="text-blue-500">
+                                {tweets[selectedTweetIndex].hashtags.join(" ")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => handleCopyTweet(selectedTweetIndex)}
+                          className="w-full gap-2"
+                          variant={copiedTweetIndex === selectedTweetIndex ? "secondary" : "default"}
+                        >
+                          {copiedTweetIndex === selectedTweetIndex ? (
+                            <>
+                              <Check className="h-4 w-4" />
+                              コピーしました！
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              投稿文をコピー
+                            </>
+                          )}
+                        </Button>
+
+                        <p className="text-[11px] text-slate-400">
+                          💡 この投稿文は2024年末のXアルゴリズムに最適化されています。画像を添付して投稿すると効果的です。
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
