@@ -116,6 +116,19 @@ async function fetchImageFromModel({
   return imageUrl;
 }
 
+// Convert temporary image URL to base64 to avoid expiration issues
+async function downloadImageAsBase64(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.status}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64 = buffer.toString('base64');
+  const mimeType = response.headers.get('content-type') || 'image/png';
+  return `data:${mimeType};base64,${base64}`;
+}
+
 async function generatePanelImage({
   prompt,
   panelIndex,
@@ -135,13 +148,17 @@ async function generatePanelImage({
           prompt,
           apiKey
         });
+        
+        // Download image immediately and convert to base64 to avoid URL expiration
+        const base64Image = await downloadImageAsBase64(imageUrl);
+        
         const warning = stage.model !== IMAGE_GENERATION_PIPELINE[0].model
           ? `Panel ${panelIndex} used fallback model ${stage.model}.`
           : undefined;
         if (warning) {
           console.warn(warning);
         }
-        return { imageUrl, generationSource: stage.model, warning };
+        return { imageUrl: base64Image, generationSource: stage.model, warning };
       } catch (error) {
         const err = error instanceof ImageGenerationError
           ? error
@@ -172,10 +189,19 @@ async function generatePanelImage({
     throw lastError;
   }
 
+  // Convert placeholder to base64 as well for consistency
+  let placeholderBase64: string;
+  try {
+    placeholderBase64 = await downloadImageAsBase64(placeholderUrl);
+  } catch (err) {
+    console.error("Failed to download placeholder, using URL directly", err);
+    placeholderBase64 = placeholderUrl;
+  }
+
   const warning = `Panel ${panelIndex} fell back to placeholder after repeated image generation failures.`;
   console.error(warning, lastError);
   return {
-    imageUrl: placeholderUrl,
+    imageUrl: placeholderBase64,
     generationSource: "placeholder",
     warning: lastError ? `${warning} Last error: ${lastError.message}` : warning
   };
