@@ -30,7 +30,7 @@ export const COMIC_STYLE_PRESETS: Record<StylePresetKey, { label: string; descri
 export type ComicsPromptInput = {
   title: string;
   summary: string;
-  content: string;  // CRITICAL: Full chunk content for accurate storytelling
+  content?: string;  // Full chunk content for accurate storytelling (optional for preview)
   keyPoints?: string[];
   customInstructions?: string;
   stylePreset?: StylePresetKey;
@@ -94,7 +94,7 @@ const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
 export const buildComicsPrompt = ({
   title,
   summary,
-  content,
+  content = "",
   keyPoints = [],
   customInstructions,
   stylePreset = "gentle"
@@ -107,7 +107,7 @@ export const buildComicsPrompt = ({
   const extra = customInstructions?.trim() ? `\n# Additional director notes\n${customInstructions.trim()}` : "";
 
   // Truncate content if too long (keep first 2000 chars for token efficiency)
-  const contentSection = content.length > 2000 
+  const contentSection = content && content.length > 2000 
     ? content.slice(0, 2000) + "..."
     : content;
 
@@ -117,10 +117,10 @@ CRITICAL MISSION: Read the full psychology content below and create a 4-panel ma
 
 # Theme
 ${title}
-
+${contentSection ? `
 # Full Content (READ THIS CAREFULLY - This is what you must visualize)
 ${contentSection}
-
+` : ""}
 # Concept summary
 ${summary}
 

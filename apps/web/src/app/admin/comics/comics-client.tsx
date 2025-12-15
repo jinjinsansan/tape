@@ -224,6 +224,7 @@ export function ComicsGeneratorClient() {
     return buildComicsPrompt({
       title: selectedChunk.title,
       summary: selectedChunk.summary,
+      content: selectedChunk.content,  // Use full content if available (ChunkDetail has it)
       keyPoints: selectedChunk.keyPoints,
       customInstructions,
       stylePreset
