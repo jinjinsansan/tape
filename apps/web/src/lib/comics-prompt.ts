@@ -1,11 +1,17 @@
-type StylePresetKey = "gentle" | "dramatic" | "comic";
+type StylePresetKey = "gentle" | "ghibli" | "dramatic" | "comic";
 
 export const COMIC_STYLE_PRESETS: Record<StylePresetKey, { label: string; description: string; directives: string }> = {
   gentle: {
     label: "やさしい共感",
     description: "柔らかい線と淡い色、安心感のある表情",
     directives:
-      "Japanese manga illustration style with soft line art, gentle shading, warm facial expressions, simple backgrounds. NO text. Keep the tone comforting and hopeful."
+      "Soft illustration style inspired by Japanese animation, gentle watercolor shading, warm natural lighting, expressive eyes, peaceful atmosphere, clean simple background with natural elements. Absolutely NO speech bubbles, NO text of any kind. Focus on facial expressions and body language to tell the story. Wholesome and therapeutic art style."
+  },
+  ghibli: {
+    label: "ジブリ風",
+    description: "スタジオジブリのような優しくて温かいアニメーション風",
+    directives:
+      "Studio Ghibli inspired illustration style, soft watercolor painting aesthetic, gentle character design with expressive eyes, warm natural lighting like Miyazaki films, simple peaceful backgrounds with nature elements (sky, plants, soft indoor spaces), wholesome and comforting atmosphere, hand-drawn feeling with organic shapes. Absolutely NO speech bubbles, NO text, NO written words of any kind. Character emotions shown through facial expressions and gentle gestures only."
   },
   dramatic: {
     label: "ドラマティック",
@@ -38,21 +44,34 @@ For each panel, provide:
 - "caption": Short Japanese caption/dialogue for the panel
 - "prompt": Detailed English visual description for DALL-E image generation (include character appearance, setting, mood, composition, style)`;
 
-// Define consistent protagonist
-const PROTAGONIST_DESIGN = `The protagonist is a young Japanese woman in her late 20s:
-- Shoulder-length black hair with slight waves
-- Wearing a simple casual outfit (light sweater and jeans)
-- Expressive eyes and gentle facial features
-- Medium build, average height
-She appears in ALL FOUR PANELS with the exact same appearance.`;
+// Define consistent protagonist (Ghibli-inspired design)
+const PROTAGONIST_DESIGN = `The protagonist is a young Japanese woman in her late 20s with Studio Ghibli style character design:
+- Shoulder-length dark brown hair with natural gentle waves
+- Large expressive eyes with warm gentle gaze (Ghibli animation style)
+- Wearing a simple cozy outfit: soft cream or beige sweater and comfortable pants
+- Natural gentle facial features, kind and approachable expression
+- Medium build with soft rounded shapes (Ghibli character proportions)
+- Warm and wholesome appearance like Ghibli film heroines (Kiki, Sophie, Chihiro style)
+CRITICAL: She appears in ALL FOUR PANELS with the exact same appearance, same outfit, same hairstyle.`;
 
 const MANGA_STYLE_RULES = `CRITICAL STYLE REQUIREMENTS:
-- Japanese manga/comic illustration style (NOT photorealistic, NOT 3D render)
-- Black ink line art with subtle colors or grayscale
-- NO speech bubbles, NO text, NO written words - just clean illustrations
-- Simple, clean backgrounds that don't distract from the character
-- Typical 4-koma manga panel composition
-- Clear body language and facial expressions to convey emotion`;
+- Illustration style inspired by Studio Ghibli animation and Japanese storybook art
+- Soft watercolor or gentle hand-painted aesthetic (NOT photorealistic, NOT 3D render, NOT CGI)
+- Warm natural colors with soft shading and gentle lighting
+- Absolutely NO speech bubbles, NO text, NO written words, NO Japanese characters - only pure visual storytelling
+- Simple peaceful backgrounds: soft indoor spaces, glimpses of nature, gentle sky, minimal furniture
+- Clear emotional storytelling through facial expressions, body language, and gentle gestures
+- Wholesome and therapeutic atmosphere throughout all panels
+- Hand-drawn organic feeling with soft rounded shapes`;
+
+const AVOID_THESE = `CRITICAL - COMPLETELY AVOID:
+- NO photorealistic style or realistic rendering
+- NO 3D CGI or digital art style
+- NO complex cluttered backgrounds
+- NO multiple characters in one panel (only the protagonist)
+- NO speech bubbles or text of any kind (not even sound effects or Japanese text)
+- NO dark heavy atmosphere or harsh lighting
+- NO sharp angular styles or aggressive expressions`;
 
 const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
 - 4 panels only. Each panel shows the SAME protagonist (see character design above).
@@ -76,8 +95,8 @@ export const buildComicsPrompt = ({
 
   const extra = customInstructions?.trim() ? `\n# Additional director notes\n${customInstructions.trim()}` : "";
 
-  return `You are an award-winning Japanese four-panel manga (4-koma) artist specialized in therapy education.
-Create a cohesive story that explains Tape-style Psychology concepts through manga-style illustration and dialogue.
+  return `You are an award-winning Japanese four-panel manga (4-koma) artist specialized in therapy education, with a visual style inspired by Studio Ghibli's warmth and gentleness.
+Create a cohesive story that explains Tape-style Psychology concepts through illustration with a wholesome, therapeutic atmosphere.
 
 # Character design (USE IN ALL PANELS)
 ${PROTAGONIST_DESIGN}
@@ -93,6 +112,8 @@ ${keyPointSection}
 
 # Manga style requirements
 ${MANGA_STYLE_RULES}
+
+${AVOID_THESE}
 
 # Visual style directives
 ${style.directives}
