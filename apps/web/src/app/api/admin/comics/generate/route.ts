@@ -12,7 +12,7 @@ import { compose4KomaManga } from "@/server/services/comics-composer";
 
 const IMAGE_GENERATION_PIPELINE = [
   { model: "dall-e-3" as const, attempts: 3 },
-  { model: "gpt-image-1" as const, attempts: 2 }
+  { model: "dall-e-2" as const, attempts: 2 }
 ];
 
 const PLACEHOLDER_COLOR = "FFF7ED/FF8FA3";
