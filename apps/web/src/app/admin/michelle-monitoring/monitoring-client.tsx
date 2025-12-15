@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle, User, Clock, LogOut, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import isEqual from "lodash/isEqual";
 
 type UrgencyLevel = "normal" | "attention" | "urgent" | "critical";
 
@@ -31,6 +32,10 @@ type Message = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+};
+
+type LoadOptions = {
+  showSpinner?: boolean;
 };
 
 const URGENCY_COLORS: Record<UrgencyLevel, { bg: string; border: string; text: string; label: string }> = {
@@ -91,53 +96,120 @@ export function MonitoringClient() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyLevel | "all">("all");
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const sessionsLoadedRef = useRef(false);
+  const lastLoadedSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    loadSessions();
-    
-    // Refresh sessions every 30 seconds
-    const interval = setInterval(loadSessions, 30000);
-    return () => clearInterval(interval);
+    const handleVisibility = () => setIsPageVisible(!document.hidden);
+    handleVisibility();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
-  useEffect(() => {
-    if (selectedSession) {
-      loadMessages(selectedSession.id);
-      
-      // Refresh messages every 10 seconds for selected session
-      const interval = setInterval(() => loadMessages(selectedSession.id), 10000);
-      return () => clearInterval(interval);
+  const loadSessions = useCallback(async ({ showSpinner = false }: LoadOptions = {}) => {
+    if (showSpinner) {
+      setIsLoadingSessions(true);
     }
-  }, [selectedSession]);
 
-  const loadSessions = async () => {
     try {
-      const res = await fetch("/api/admin/michelle-master/sessions");
+      const res = await fetch("/api/admin/michelle-master/sessions", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load sessions");
-      
+
       const data = await res.json();
-      setSessions(data.sessions || []);
+      const nextSessions: Session[] = data.sessions || [];
+
+      setSessions((prev) => (isEqual(prev, nextSessions) ? prev : nextSessions));
+      setSelectedSession((prev) => {
+        if (!prev) return prev;
+        const latest = nextSessions.find((session) => session.id === prev.id);
+        if (!latest) return null;
+        return isEqual(prev, latest) ? prev : latest;
+      });
+      setError(null);
+      sessionsLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "セッション読み込みエラー");
     } finally {
-      setIsLoadingSessions(false);
+      if (showSpinner) {
+        setIsLoadingSessions(false);
+      }
     }
-  };
+  }, []);
 
-  const loadMessages = async (sessionId: string) => {
-    setIsLoadingMessages(true);
-    try {
-      const res = await fetch(`/api/admin/michelle-master/sessions/${sessionId}/messages`);
-      if (!res.ok) throw new Error("Failed to load messages");
-      
-      const data = await res.json();
-      setMessages(data.messages || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "メッセージ読み込みエラー");
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  };
+  const loadMessages = useCallback(
+    async (sessionId: string, { showSpinner = false }: LoadOptions = {}) => {
+      if (showSpinner) {
+        setIsLoadingMessages(true);
+      }
+
+      try {
+        const res = await fetch(`/api/admin/michelle-master/sessions/${sessionId}/messages`, {
+          cache: "no-store"
+        });
+        if (!res.ok) throw new Error("Failed to load messages");
+
+        const data = await res.json();
+        const nextMessages: Message[] = data.messages || [];
+        setMessages((prev) => (isEqual(prev, nextMessages) ? prev : nextMessages));
+        setError(null);
+        lastLoadedSessionIdRef.current = sessionId;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "メッセージ読み込みエラー");
+      } finally {
+        if (showSpinner) {
+          setIsLoadingMessages(false);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isPageVisible) return;
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async (initial: boolean) => {
+      await loadSessions({ showSpinner: initial });
+      if (cancelled) return;
+      timeoutId = setTimeout(() => poll(false), 30000);
+    };
+
+    poll(!sessionsLoadedRef.current);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isPageVisible, loadSessions]);
+
+  useEffect(() => {
+    const activeSessionId = selectedSession?.id;
+    if (!activeSessionId || !isPageVisible) return;
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const needsSpinner = lastLoadedSessionIdRef.current !== activeSessionId;
+
+    const poll = async (initial: boolean) => {
+      await loadMessages(activeSessionId, { showSpinner: initial });
+      if (cancelled) return;
+      timeoutId = setTimeout(() => poll(false), 10000);
+    };
+
+    poll(needsSpinner);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [selectedSession?.id, isPageVisible, loadMessages]);
 
   const updateUrgency = async (sessionId: string, level: UrgencyLevel, notes?: string) => {
     try {
