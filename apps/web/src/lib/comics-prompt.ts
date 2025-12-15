@@ -30,6 +30,7 @@ export const COMIC_STYLE_PRESETS: Record<StylePresetKey, { label: string; descri
 export type ComicsPromptInput = {
   title: string;
   summary: string;
+  content: string;  // CRITICAL: Full chunk content for accurate storytelling
   keyPoints?: string[];
   customInstructions?: string;
   stylePreset?: StylePresetKey;
@@ -44,15 +45,24 @@ For each panel, provide:
 - "caption": Short Japanese caption/dialogue for the panel
 - "prompt": Detailed English visual description for DALL-E image generation (include character appearance, setting, mood, composition, style)`;
 
-// Define consistent protagonist (Ghibli-inspired design)
-const PROTAGONIST_DESIGN = `The protagonist is a young Japanese woman in her late 20s with Studio Ghibli style character design:
-- Shoulder-length dark brown hair with natural gentle waves
-- Large expressive eyes with warm gentle gaze (Ghibli animation style)
-- Wearing a simple cozy outfit: soft cream or beige sweater and comfortable pants
-- Natural gentle facial features, kind and approachable expression
-- Medium build with soft rounded shapes (Ghibli character proportions)
-- Warm and wholesome appearance like Ghibli film heroines (Kiki, Sophie, Chihiro style)
-CRITICAL: She appears in ALL FOUR PANELS with the exact same appearance, same outfit, same hairstyle.`;
+// Character design guidelines (flexible based on content)
+const CHARACTER_DESIGN_GUIDELINES = `Character design requirements:
+- Design characters that fit the psychological concept being explained
+- Can be male, female, child, teen, adult, or elderly depending on what best illustrates the concept
+- Use Studio Ghibli style character design: expressive eyes, gentle features, soft rounded shapes
+- Character should wear appropriate clothing for the scenario (work clothes, casual, school uniform, etc.)
+- Same character must appear consistently across ALL FOUR PANELS with same appearance
+- Multiple characters allowed if the concept requires showing relationships or interactions
+- Character design should match the emotional tone of the psychological concept
+
+Examples:
+- For workplace stress → office worker in business casual
+- For childhood trauma → child or teen character  
+- For elderly care → older adult character
+- For parenting issues → parent with child
+- For general self-help → young adult (20s-30s)
+
+CRITICAL: Choose characters that authentically represent the people who experience this psychological issue.`;
 
 const MANGA_STYLE_RULES = `CRITICAL STYLE REQUIREMENTS:
 - Illustration style inspired by Studio Ghibli animation and Japanese storybook art
@@ -84,6 +94,7 @@ const BASE_RULES = `- Output in Japanese, no romaji, no translation notes.
 export const buildComicsPrompt = ({
   title,
   summary,
+  content,
   keyPoints = [],
   customInstructions,
   stylePreset = "gentle"
@@ -95,14 +106,20 @@ export const buildComicsPrompt = ({
 
   const extra = customInstructions?.trim() ? `\n# Additional director notes\n${customInstructions.trim()}` : "";
 
-  return `You are an award-winning Japanese four-panel manga (4-koma) artist specialized in therapy education, with a visual style inspired by Studio Ghibli's warmth and gentleness.
-Create a cohesive story that explains Tape-style Psychology concepts through illustration with a wholesome, therapeutic atmosphere.
+  // Truncate content if too long (keep first 2000 chars for token efficiency)
+  const contentSection = content.length > 2000 
+    ? content.slice(0, 2000) + "..."
+    : content;
 
-# Character design (USE IN ALL PANELS)
-${PROTAGONIST_DESIGN}
+  return `You are an award-winning Japanese four-panel manga (4-koma) artist specialized in therapy education, with a visual style inspired by Studio Ghibli's warmth and gentleness.
+
+CRITICAL MISSION: Read the full psychology content below and create a 4-panel manga that accurately teaches this specific concept. Do NOT create a generic story - use the actual details, examples, and insights from the content.
 
 # Theme
 ${title}
+
+# Full Content (READ THIS CAREFULLY - This is what you must visualize)
+${contentSection}
 
 # Concept summary
 ${summary}
@@ -110,16 +127,27 @@ ${summary}
 # Key takeaways to visualize
 ${keyPointSection}
 
+# Character design guidelines
+${CHARACTER_DESIGN_GUIDELINES}
+
 # Manga style requirements
 ${MANGA_STYLE_RULES}
 
 ${AVOID_THESE}
 
-# Visual style directives
+# Visual style directives (${style.label})
 ${style.directives}
 
 # Panel directions
 ${PANEL_GUIDE}
+
+IMPORTANT INSTRUCTIONS:
+1. READ THE FULL CONTENT ABOVE - This contains the specific psychology concepts, examples, and explanations you must visualize
+2. Create a story that directly reflects the content, not a generic interpretation
+3. Use specific details from the content (e.g., if it mentions "workplace", show a workplace; if it mentions "childhood", show a child)
+4. Choose character age/gender/occupation that matches who experiences this psychological issue
+5. Each panel must teach a specific insight from the content
+6. Make the psychological mechanism visible through visual metaphors (e.g., tape, masks, inner child, shadows)
 
 # Production rules
 ${BASE_RULES}${extra}`;

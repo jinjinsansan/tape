@@ -206,6 +206,7 @@ export async function POST(request: Request) {
   const prompt = buildComicsPrompt({
     title: chunk.title,
     summary: chunk.summary,
+    content: chunk.content,  // CRITICAL: Pass full content for accurate storytelling
     keyPoints: chunk.keyPoints,
     customInstructions: parsed.data.customInstructions,
     stylePreset: parsed.data.stylePreset as any
@@ -228,15 +229,26 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: "You are a creative director for 4-panel manga that explains psychology concepts. Return only valid JSON, no additional text."
+            content: `You are a creative director for 4-panel manga (4-koma) that explains psychology concepts through Studio Ghibli-inspired illustration style.
+
+CRITICAL REQUIREMENTS:
+1. READ the full psychology content carefully and create a story that accurately reflects it
+2. Do NOT create generic motivational stories - use specific details from the content
+3. Choose characters (age, gender, occupation) that match who experiences this psychological issue
+4. Each panel must teach a specific insight from the content
+5. Use visual metaphors to show psychological mechanisms (e.g., tape covering mouth, inner child, masks, shadows)
+6. Return ONLY valid JSON with no additional text or markdown formatting
+
+Your response must be pure JSON in this exact format:
+{"panels":[{"index":1,"caption":"日本語のキャプション","prompt":"Detailed English visual description"},{"index":2,"caption":"...","prompt":"..."},{"index":3,"caption":"...","prompt":"..."},{"index":4,"caption":"...","prompt":"..."}]}`
           },
           {
             role: "user",
-            content: `${prompt}\n\nReturn ONLY valid JSON in this exact format:\n{"panels":[{"index":1,"caption":"日本語のキャプション","prompt":"Detailed English visual description for DALL-E"},{"index":2,"caption":"...","prompt":"..."},{"index":3,"caption":"...","prompt":"..."},{"index":4,"caption":"...","prompt":"..."}]}`
+            content: prompt
           }
         ],
         temperature: 0.7,
-        max_tokens: 2048
+        max_tokens: 3000
       })
     });
 
@@ -262,7 +274,10 @@ export async function POST(request: Request) {
     }
 
     // Step 2: Generate images using DALL-E 3
-    const characterConsistency = `The main character is a young Japanese woman in her late 20s with shoulder-length black wavy hair, wearing a light sweater and jeans. She has expressive eyes and gentle facial features.`;
+    // Get style directives from the selected style preset
+    const stylePreset = parsed.data.stylePreset || "gentle";
+    const { COMIC_STYLE_PRESETS } = await import("@/lib/comics-prompt");
+    const selectedStyle = COMIC_STYLE_PRESETS[stylePreset as keyof typeof COMIC_STYLE_PRESETS] || COMIC_STYLE_PRESETS.gentle;
     
     for (const panel of rawPanels) {
       const imagePrompt = panel.prompt || panel.description || "";
@@ -271,8 +286,13 @@ export async function POST(request: Request) {
         throw new Error(`Panel ${panelIndex} missing prompt/description`);
       }
 
-      // Enhance prompt with manga style and character consistency (NO text/bubbles - we'll add them later)
-      const enhancedPrompt = `Japanese 4-koma manga illustration style with clean black ink line art and subtle colors. NO speech bubbles, NO text, NO written words - just the illustration. ${characterConsistency} ${imagePrompt}`;
+      // Enhance prompt with selected style directives and NO text requirement
+      const enhancedPrompt = `${selectedStyle.directives}
+
+${imagePrompt}
+
+CRITICAL: Absolutely NO speech bubbles, NO text, NO written words, NO Japanese characters - only pure illustration.`;
+      
       const panelImage = await generatePanelImage({
         prompt: enhancedPrompt,
         panelIndex,
