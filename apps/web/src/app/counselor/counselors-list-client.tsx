@@ -23,7 +23,7 @@ export function CounselorsListClient() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/api/counselors");
+        const res = await fetch("/api/counselors", { cache: "no-store" });
         if (!res.ok) throw new Error("ロードに失敗しました");
         const data = await res.json();
         setCounselors(data.counselors ?? []);

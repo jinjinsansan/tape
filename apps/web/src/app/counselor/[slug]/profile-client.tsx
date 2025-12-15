@@ -62,7 +62,7 @@ export function CounselorPage({ slug }: { slug: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/counselors/${slug}`);
+      const res = await fetch(`/api/counselors/${slug}`, { cache: "no-store" });
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error("カウンセラーが見つかりませんでした。");

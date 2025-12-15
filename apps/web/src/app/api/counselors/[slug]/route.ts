@@ -6,6 +6,10 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
 import { getCounselor, CounselorNotFoundError } from "@/server/services/counselors";
 
+// Disable caching for this route to always fetch fresh data
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const paramsSchema = z.object({ slug: z.string().min(1) });
 
 export async function GET(_: Request, context: { params: { slug: string } }) {
