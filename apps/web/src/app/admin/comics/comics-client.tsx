@@ -34,6 +34,21 @@ type PanelResult = {
   warning?: string;
 };
 
+type GeminiPanel = {
+  index: number;
+  title: string;
+  story: string;
+  nano_banana_prompt: string;
+};
+
+type GeminiPromptResult = {
+  heroProfile: string;
+  styleNotes: string[];
+  panels: GeminiPanel[];
+  finalPrompt: string;
+  negativePrompts: string[];
+};
+
 type GenerateResponse = {
   prompt: string;
   panels: PanelResult[];
@@ -108,6 +123,13 @@ export function ComicsGeneratorClient() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const totalChunkCount = alphabeticalChunks.length || chunks.length;
+  const [geminiIdea, setGeminiIdea] = useState("テープ式心理学の●●をわかりやすく伝える4コマ漫画を作りたい");
+  const [geminiTone, setGeminiTone] = useState("やさしい共感");
+  const [geminiStylePreset, setGeminiStylePreset] = useState("Studio Ghibli watercolor");
+  const [geminiResult, setGeminiResult] = useState<GeminiPromptResult | null>(null);
+  const [geminiGenerating, setGeminiGenerating] = useState(false);
+  const [geminiError, setGeminiError] = useState<string | null>(null);
+  const [geminiCopied, setGeminiCopied] = useState(false);
 
   const applyChunkList = useCallback((list: ChunkSummary[], isSearch = false) => {
     setChunks(list);
@@ -305,6 +327,48 @@ export function ComicsGeneratorClient() {
     });
   }, [tweets]);
 
+  const handleGenerateGeminiPrompt = useCallback(async () => {
+    if (!geminiIdea.trim()) {
+      setGeminiError("アイデアを入力してください");
+      return;
+    }
+    setGeminiGenerating(true);
+    setGeminiError(null);
+    setGeminiCopied(false);
+    try {
+      const res = await fetch("/api/admin/comics/gemini-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea: geminiIdea.trim(),
+          tone: geminiTone.trim() || undefined,
+          stylePreset: geminiStylePreset.trim() || undefined
+        })
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error ?? "プロンプト生成に失敗しました");
+      }
+      setGeminiResult(payload as GeminiPromptResult);
+    } catch (err) {
+      console.error(err);
+      setGeminiResult(null);
+      setGeminiError(err instanceof Error ? err.message : "プロンプト生成に失敗しました");
+    } finally {
+      setGeminiGenerating(false);
+    }
+  }, [geminiIdea, geminiTone, geminiStylePreset]);
+
+  const handleCopyGeminiPrompt = useCallback(() => {
+    if (!geminiResult?.finalPrompt) return;
+    navigator.clipboard.writeText(geminiResult.finalPrompt).then(() => {
+      setGeminiCopied(true);
+      setTimeout(() => setGeminiCopied(false), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy gemini prompt", err);
+    });
+  }, [geminiResult]);
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 md:px-10">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -316,6 +380,99 @@ export function ComicsGeneratorClient() {
             からテーマを選び、Nano Bananaでミシェル式の4コマ漫画を生成します。公開前に必ず内容を確認してください。
           </p>
         </header>
+
+        <section className="space-y-4 rounded-3xl border border-pink-100 bg-white/90 p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.4em] text-pink-400">GEMINI PROMPT LAB</p>
+              <h2 className="text-2xl font-bold text-tape-brown">Gemini用プロンプトジェネレーター</h2>
+              <p className="text-sm text-tape-light-brown">
+                自然言語のアイデアを入力すると、Nano Banana Pro向けの4コマ特化プロンプトとパネル指示をAIが組み立てます。
+              </p>
+            </div>
+            <Button onClick={handleGenerateGeminiPrompt} disabled={geminiGenerating} className="bg-pink-500 text-white hover:bg-pink-500/90">
+              <Sparkles className="mr-2 h-4 w-4" /> {geminiGenerating ? "生成中..." : "プロンプト生成"}
+            </Button>
+          </div>
+          <textarea
+            value={geminiIdea}
+            onChange={(event) => setGeminiIdea(event.target.value)}
+            rows={4}
+            className="w-full rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm text-tape-brown focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+            placeholder="例: 夜になると不安が高まる学生が、ガムテープ理論で自分を受け止める4コマ"
+          />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1 text-sm">
+              <label className="text-xs font-semibold text-tape-light-brown">トーン / 感情温度</label>
+              <input
+                type="text"
+                value={geminiTone}
+                onChange={(event) => setGeminiTone(event.target.value)}
+                className="w-full rounded-2xl border border-pink-100 bg-white px-4 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                placeholder="やさしい共感、ドラマティック、等"
+              />
+            </div>
+            <div className="space-y-1 text-sm">
+              <label className="text-xs font-semibold text-tape-light-brown">ビジュアルプリセット</label>
+              <input
+                type="text"
+                value={geminiStylePreset}
+                onChange={(event) => setGeminiStylePreset(event.target.value)}
+                className="w-full rounded-2xl border border-pink-100 bg-white px-4 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                placeholder="Studio Ghibli watercolor / mellow pastel"
+              />
+            </div>
+          </div>
+          {geminiError && <p className="text-sm text-pink-600">{geminiError}</p>}
+
+          {geminiResult && (
+            <div className="space-y-4 rounded-2xl border border-pink-100 bg-white/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-tape-light-brown">主人公プロファイル</p>
+                  <p className="text-sm text-tape-brown whitespace-pre-wrap">{geminiResult.heroProfile}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCopyGeminiPrompt} disabled={geminiCopied}>
+                  <Copy className="mr-2 h-4 w-4" /> {geminiCopied ? "コピー済み" : "プロンプトをコピー"}
+                </Button>
+              </div>
+              {geminiResult.styleNotes?.length > 0 && (
+                <div className="text-xs text-tape-light-brown">
+                  <p className="font-semibold text-tape-brown">スタイル指示</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-4">
+                    {geminiResult.styleNotes.map((note, index) => (
+                      <li key={`style-note-${index}`}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-tape-light-brown">パネル構成</p>
+                <div className="space-y-2">
+                  {geminiResult.panels.map((panel) => (
+                    <div key={`panel-${panel.index}`} className="rounded-2xl border border-pink-50 bg-white/80 p-3 text-xs text-tape-brown">
+                      <p className="text-[11px] font-semibold text-pink-500">Panel {panel.index}: {panel.title}</p>
+                      <p className="mt-1 text-tape-brown/80">{panel.story}</p>
+                      <p className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-slate-600">{panel.nano_banana_prompt}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {geminiResult.negativePrompts?.length > 0 && (
+                <div className="text-xs text-tape-light-brown">
+                  <p className="font-semibold text-tape-brown">Negative prompts</p>
+                  <p className="mt-1 text-slate-600">{geminiResult.negativePrompts.join(", ")}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-tape-light-brown">Nano Banana Pro最終プロンプト</p>
+                <pre className="mt-2 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-800">
+{geminiResult.finalPrompt}
+                </pre>
+              </div>
+            </div>
+          )}
+        </section>
 
         <section className="grid gap-6 lg:grid-cols-[320px,1fr]">
           <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
