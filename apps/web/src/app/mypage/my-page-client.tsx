@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +20,7 @@ const DEFAULT_AVATAR = "https://placehold.co/120x120/F5F2EA/5C554F?text=User";
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 export function MyPageClient({ initialProfile }: MyPageClientProps) {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState(initialProfile.displayName ?? "");
   const [avatarPreview, setAvatarPreview] = useState(initialProfile.avatarUrl);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -35,6 +37,8 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   const [reminderLoading, setReminderLoading] = useState(false);
   const [onboardingEmailEnabled, setOnboardingEmailEnabled] = useState(true);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
 
   const initials = useMemo(() => {
     if (displayName) {
@@ -268,6 +272,32 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
     }
   }, [onboardingEmailEnabled]);
 
+  const handleAccountDelete = useCallback(async () => {
+    if (deletingAccount) {
+      return;
+    }
+    const confirmed = window.confirm("本当にアカウントを削除しますか？全てのデータが失われます。");
+    if (!confirmed) {
+      return;
+    }
+    setDeletingAccount(true);
+    setDeleteAccountError(null);
+    try {
+      const response = await fetch("/api/profile", { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "アカウントの削除に失敗しました");
+      }
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setDeleteAccountError(err instanceof Error ? err.message : "アカウントの削除に失敗しました");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }, [deletingAccount, router]);
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
@@ -494,6 +524,25 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
           <li>アイコンは「みんなの日記」やコメント欄で表示されます。2MB以下の画像をご利用ください。</li>
           <li>変更内容の反映には数秒かかる場合があります。表示が更新されない場合はページの再読み込みをお試しください。</li>
         </ul>
+      </section>
+
+      <section className="space-y-3 rounded-3xl border border-red-100 bg-red-50/40 p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-red-400">ACCOUNT RESET</p>
+        <h2 className="text-2xl font-bold text-tape-brown">アカウントを削除する</h2>
+        <p className="text-sm text-tape-light-brown">
+          全ての日記、ポイント、X連携などが完全に削除されます。削除後は復元できません。心をリセットしたいと感じたときだけご利用ください。
+        </p>
+        {deleteAccountError && <p className="text-sm text-tape-pink">{deleteAccountError}</p>}
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-red-200 text-red-600 hover:bg-red-50"
+          onClick={handleAccountDelete}
+          disabled={deletingAccount}
+        >
+          {deletingAccount ? "削除中..." : "全てのデータを削除する"}
+        </Button>
+        <p className="text-xs text-tape-light-brown">※ 一度削除すると、アカウントや日記を元に戻すことはできません。</p>
       </section>
     </div>
   );

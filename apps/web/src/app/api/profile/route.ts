@@ -182,3 +182,50 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ profile: formatProfileResponse(updatedProfile, user) }, { status: 200 });
 }
+
+export async function DELETE() {
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore);
+  let user;
+
+  try {
+    user = await getRouteUser(supabase, "Profile delete");
+  } catch (error) {
+    if (error instanceof SupabaseAuthUnavailableError) {
+      return NextResponse.json({ error: "Auth unavailable" }, { status: 503 });
+    }
+    throw error;
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const admin = getSupabaseAdminClient();
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const avatarPath = getStoragePathFromPublicUrl(profile?.avatar_url ?? null);
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
+  if (deleteError) {
+    console.error("Failed to delete account", deleteError);
+    return NextResponse.json({ error: "アカウントの削除に失敗しました" }, { status: 500 });
+  }
+
+  if (avatarPath) {
+    await admin.storage.from("profile-avatars").remove([avatarPath]).catch((error) => {
+      console.warn("Failed to remove avatar during account deletion", error?.message ?? error);
+    });
+  }
+
+  await supabase.auth.signOut().catch((error) => {
+    console.warn("Failed to sign out after account deletion", error?.message ?? error);
+  });
+
+  return NextResponse.json({ success: true }, { status: 200 });
+}
