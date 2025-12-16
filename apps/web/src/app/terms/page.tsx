@@ -1,8 +1,10 @@
+import { SITE_NAME_JP } from "@/lib/branding";
+
 export default function TermsPage() {
   const sections = [
     {
       title: "第1条（適用）",
-      body: "本規約は、テープ式心理学サービス（以下「本サービス」）の利用条件を定めるものです。利用者は本規約に同意のうえ、本サービスを利用するものとします。"
+      body: `本規約は、${SITE_NAME_JP}サービス（以下「本サービス」）の利用条件を定めるものです。利用者は本規約に同意のうえ、本サービスを利用するものとします。`
     },
     {
       title: "第2条（アカウント管理）",

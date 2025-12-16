@@ -60,6 +60,10 @@ export default async function FeedEntryDetailPage({ params }: FeedEntryPageProps
               entryId={entry.id}
               contentPreview={entry.content}
               shareCount={entry.shareCount}
+              title={entry.title}
+              moodLabel={entry.moodLabel}
+              feelings={entry.feelings.map((feeling) => feeling.label)}
+              journalDate={entry.journalDate}
             />
           )}
         </div>

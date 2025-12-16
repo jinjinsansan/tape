@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
 import { SignOutButton } from "@/components/signout-button";
 import { SiteFooter } from "@/components/site-footer";
+import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
 import { BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings } from "lucide-react";
 
 export default function Home() {
@@ -68,10 +69,10 @@ function HomePage() {
         {/* Hero Section */}
         <div className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-widest text-tape-light-brown">
-            TAPE PSYCHOLOGY
+            {SITE_NAME_EN}
           </p>
           <h1 className="font-sans text-4xl font-bold tracking-tight text-tape-brown md:text-5xl">
-            テープ式心理学
+            {SITE_NAME_JP}
           </h1>
           <p className="mx-auto max-w-md text-lg text-tape-light-brown">
             あなたの心にそっと寄り添う、<br className="md:hidden" />

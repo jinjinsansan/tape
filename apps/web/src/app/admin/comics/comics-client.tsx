@@ -8,6 +8,7 @@ import { comicStyleOptions, buildComicsPrompt } from "@/lib/comics-prompt";
 import type { StyleOption } from "@/lib/comics-prompt";
 import { getTweetTypeLabel, getTweetTypeDescription, type TweetVariation } from "@/lib/tweet-prompt";
 import { cn } from "@/lib/utils";
+import { SITE_NAME_EN } from "@/lib/branding";
 
 type ChunkSummary = {
   id: string;
@@ -308,7 +309,7 @@ export function ComicsGeneratorClient() {
     <div className="min-h-screen bg-slate-50 px-4 py-10 md:px-10">
       <div className="mx-auto max-w-6xl space-y-8">
         <header className="space-y-2">
-          <p className="text-xs font-semibold tracking-[0.3em] text-pink-400">TAPE PSYCHOLOGY</p>
+          <p className="text-xs font-semibold tracking-[0.3em] text-pink-400">{SITE_NAME_EN}</p>
           <h1 className="text-3xl font-black text-slate-900">4コマ生成スタジオ</h1>
           <p className="text-sm text-slate-500">
             {totalChunkCount > 0 ? `${totalChunkCount.toLocaleString("ja-JP")}チャンク` : "チャンク"}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Youtube, Twitter, ExternalLink } from "lucide-react";
+import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
 
 const footerLinks = [
   { label: "利用規約", href: "/terms" },
@@ -19,8 +20,8 @@ export function SiteFooter() {
     <footer className="mt-16 border-t border-tape-beige bg-white/70">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 text-tape-brown md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">TAPE PSYCHOLOGY</p>
-          <p className="mt-2 text-lg font-bold text-tape-brown">テープ式心理学</p>
+          <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">{SITE_NAME_EN}</p>
+          <p className="mt-2 text-lg font-bold text-tape-brown">{SITE_NAME_JP}</p>
           <p className="mt-1 text-xs text-tape-light-brown">心に寄り添うケアをすべての人へ。</p>
         </div>
 

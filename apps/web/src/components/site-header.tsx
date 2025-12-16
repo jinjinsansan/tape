@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle } from "lucide-react";
+import { SITE_NAME_JP } from "@/lib/branding";
 
 const navItems = [
   { href: "/", label: "ホーム", icon: Home },
@@ -62,7 +63,7 @@ export function SiteHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-lg font-bold tracking-tight text-tape-brown">テープ式心理学</span>
+          <span className="text-lg font-bold tracking-tight text-tape-brown">{SITE_NAME_JP}</span>
         </Link>
 
         <div className="flex items-center gap-4">

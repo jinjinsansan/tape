@@ -3,6 +3,7 @@ import { Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
+import { SITE_NAME_JP } from "@/lib/branding";
 
 const zenMaru = Zen_Maru_Gothic({
   weight: ["300", "400", "500", "700"],
@@ -12,7 +13,7 @@ const zenMaru = Zen_Maru_Gothic({
 });
 
 export const metadata: Metadata = {
-  title: "テープ式心理学",
+  title: SITE_NAME_JP,
   description: "心に寄り添う、やさしい場所",
 };
 

@@ -427,6 +427,10 @@ export function FeedPageClient() {
                         entryId={entry.id}
                         contentPreview={entry.content}
                         shareCount={entry.shareCount}
+                        title={entry.title}
+                        moodLabel={entry.moodLabel}
+                        feelings={entry.feelings.map((feeling) => feeling.label)}
+                        journalDate={entry.journalDate}
                       />
                     )}
                     <button
