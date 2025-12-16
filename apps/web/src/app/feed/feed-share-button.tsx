@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Copy, Download, Image as ImageIcon, Link as LinkIcon, Share2, X as XIcon } from "lucide-react";
+import { Check, Copy, Link as LinkIcon, Share2, X as XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,20 +35,19 @@ export function FeedShareButton({
   className
 }: FeedShareButtonProps) {
   const [open, setOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState(() => `${fallbackOrigin}/feed/${entryId}`.replace("//feed", "/feed"));
+  const sharePath = `/feed/${entryId}/share`;
+  const [shareUrl, setShareUrl] = useState(() => `${fallbackOrigin}${sharePath}`.replace("//feed", "/feed"));
   const [count, setCount] = useState(shareCount);
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterUsername, setTwitterUsername] = useState<string | null>(null);
-  const [checkingTwitter, setCheckingTwitter] = useState(true);
   const [copiedTemplate, setCopiedTemplate] = useState(false);
-  const [downloadingCard, setDownloadingCard] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    setShareUrl(`${window.location.origin}/feed/${entryId}`);
-  }, [entryId]);
+    setShareUrl(`${window.location.origin}${sharePath}`);
+  }, [entryId, sharePath]);
 
   useEffect(() => {
     const loadTwitterProfile = async () => {
@@ -60,8 +59,6 @@ export function FeedShareButton({
         }
       } catch (err) {
         console.error("Failed to load Twitter profile", err);
-      } finally {
-        setCheckingTwitter(false);
       }
     };
     loadTwitterProfile();
@@ -157,31 +154,6 @@ export function FeedShareButton({
     }
   }, [shareTemplate, shareUrl]);
 
-  const handleDownloadShareCard = useCallback(async () => {
-    setShareError(null);
-    setDownloadingCard(true);
-    try {
-      const res = await fetch(`/api/feed/${entryId}/share-card`);
-      if (!res.ok) {
-        throw new Error("Failed to generate share card");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `kanjou-diary-${entryId}.png`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Share card download failed", error);
-      setShareError("シェアカードの生成に失敗しました。時間をおいて再度お試しください。");
-    } finally {
-      setDownloadingCard(false);
-    }
-  }, [entryId]);
-
   if (disabled) {
     return null;
   }
@@ -217,26 +189,8 @@ export function FeedShareButton({
               {shareTemplate}
             </pre>
             <p className="mt-2 text-[10px] text-tape-light-brown">
-              テンプレを貼り付けたあと、下の公開リンクとシェアカード画像を添付するとOGP風に見えます。
+              テンプレを貼り付けたあと、下の公開リンクを添付すると自動的にOGPカードが表示されます。
             </p>
-            <button
-              type="button"
-              onClick={handleDownloadShareCard}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-tape-beige bg-white px-3 py-2 text-[11px] text-tape-brown hover:bg-tape-cream"
-              disabled={downloadingCard}
-            >
-              {downloadingCard ? (
-                <>
-                  <ImageIcon className="h-3.5 w-3.5 animate-pulse" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Download className="h-3.5 w-3.5" />
-                  シェアカード画像を保存
-                </>
-              )}
-            </button>
           </div>
           <p className="mt-1 text-[11px] text-tape-light-brown">
             公開リンク: <span className="font-mono text-xs text-tape-brown">{shareUrl}</span>
@@ -277,7 +231,7 @@ export function FeedShareButton({
           {shareError && <p className="mt-2 text-[11px] text-tape-pink">{shareError}</p>}
           <p className="mt-3 text-[11px] text-tape-light-brown">
             {twitterUsername 
-              ? `クリップボードやSNSに共有すると、シェア回数にカウントされます。Xに投稿する際はテンプレ＋シェアカード画像＋公開リンクを一緒に載せてください。`
+              ? `クリップボードやSNSに共有すると、シェア回数にカウントされます。Xに投稿する際はテンプレ＋公開リンクをあわせて載せてください。`
               : "Xでシェアしてポイントを獲得するには、マイページでXアカウントを登録してください"}
           </p>
         </div>
