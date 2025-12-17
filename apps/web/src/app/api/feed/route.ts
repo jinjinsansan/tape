@@ -7,7 +7,11 @@ import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-
 import { listPublicFeed } from "@/server/services/feed";
 
 const querySchema = z.object({
-  cursor: z.string().datetime().optional(),
+  cursor: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length > 0, "Cursor must not be empty")
+    .optional(),
   limit: z.coerce.number().int().min(1).max(20).optional()
 });
 

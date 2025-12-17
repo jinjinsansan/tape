@@ -22,7 +22,7 @@ export default function InviteLanding({ params }: { params: { code: string } }) 
         </div>
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <Link
-            href="/login"
+            href="/"
             className="rounded-full bg-tape-pink px-6 py-3 text-sm font-bold text-white shadow hover:bg-tape-pink/90"
           >
             ログイン / 新規登録
