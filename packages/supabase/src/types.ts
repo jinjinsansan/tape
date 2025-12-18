@@ -36,6 +36,7 @@ export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 export type SlotStatus = "available" | "held" | "booked" | "unavailable";
 export type IntroChatStatus = "open" | "resolved" | "closed";
 export type CounselorPlanType = "single_session" | "monthly_course";
+export type CounselorReviewStatus = "pending" | "approved" | "rejected";
 
 export interface Database {
   public: {
@@ -1550,6 +1551,43 @@ export interface Database {
           created_at?: string;
         };
       };
+      counselor_reviews: {
+        Row: {
+          id: string;
+          counselor_id: string;
+          reviewer_user_id: string;
+          booking_id: string | null;
+          rating: number;
+          comment: string;
+          status: CounselorReviewStatus;
+          is_anonymous: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          counselor_id: string;
+          reviewer_user_id: string;
+          booking_id?: string | null;
+          rating: number;
+          comment: string;
+          status?: CounselorReviewStatus;
+          is_anonymous?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          counselor_id?: string;
+          reviewer_user_id?: string;
+          booking_id?: string | null;
+          rating?: number;
+          comment?: string;
+          status?: CounselorReviewStatus;
+          is_anonymous?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       emotion_diary_feed_reactions: {
         Row: {
           entry_id: string;
@@ -1736,6 +1774,7 @@ export interface Database {
       point_action: PointAction;
       point_redemption_status: PointRedemptionStatus;
       counselor_plan_type: CounselorPlanType;
+      counselor_review_status: CounselorReviewStatus;
     };
   };
 }

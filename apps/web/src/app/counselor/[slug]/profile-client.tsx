@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CounselorReviewStatus } from "@tape/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Video, Clock, MessageCircle, ExternalLink } from "lucide-react";
+import { CalendarDays, Video, Clock, MessageCircle, ExternalLink, Star } from "lucide-react";
 import {
   COUNSELOR_PLAN_CONFIGS,
   normalizePlanSelection,
@@ -12,6 +13,8 @@ import {
 } from "@/constants/counselor-plans";
 import { normalizeYouTubeEmbedUrl } from "@/lib/youtube";
 import { extractCounselorSocialLinks } from "@/lib/counselor-metadata";
+
+const REVIEW_PAGE_SIZE = 5;
 
 type Counselor = {
   id: string;
@@ -45,6 +48,25 @@ type ChatMessage = {
   } | null;
 };
 
+type CounselorReview = {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  status: CounselorReviewStatus;
+  isViewerReview: boolean;
+  reviewer: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+type ReviewSummary = {
+  average: number;
+  totalCount: number;
+  breakdown: Record<string, number>;
+};
+
 export function CounselorPage({ slug }: { slug: string }) {
   const [counselor, setCounselor] = useState<Counselor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +79,16 @@ export function CounselorPage({ slug }: { slug: string }) {
   const [chatId, setChatId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingAction, setPendingAction] = useState(false);
+  const [reviews, setReviews] = useState<CounselorReview[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+  const [reviewCursor, setReviewCursor] = useState<string | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -83,6 +115,43 @@ export function CounselorPage({ slug }: { slug: string }) {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  const loadReviews = useCallback(
+    async (mode: "initial" | "append" = "initial", cursorValue: string | null = null) => {
+      if (!slug) return;
+      if (mode === "append" && !cursorValue) return;
+
+      if (mode === "initial") {
+        setReviewsLoading(true);
+        setReviewsError(null);
+      }
+
+      try {
+        const params = new URLSearchParams({ limit: String(REVIEW_PAGE_SIZE) });
+        if (mode === "append" && cursorValue) params.set("cursor", cursorValue);
+        const res = await fetch(`/api/counselors/${slug}/reviews?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error("口コミの読み込みに失敗しました");
+        }
+        const data = await res.json();
+        setReviewSummary(data.summary ?? null);
+        setCanReview(Boolean(data.canReview));
+        setReviewCursor(data.nextCursor ?? null);
+        setHasMoreReviews(Boolean(data.nextCursor));
+        setReviews((prev) => (mode === "append" ? [...prev, ...(data.reviews ?? [])] : data.reviews ?? []));
+      } catch (err) {
+        console.error(err);
+        setReviewsError(err instanceof Error ? err.message : "口コミの読み込みに失敗しました");
+      } finally {
+        setReviewsLoading(false);
+      }
+    },
+    [slug]
+  );
+
+  useEffect(() => {
+    loadReviews("initial");
+  }, [loadReviews]);
 
   const planSelection = useMemo(() => normalizePlanSelection(counselor?.profile_metadata), [counselor]);
   const socialLinks = useMemo(() => extractCounselorSocialLinks(counselor?.profile_metadata), [counselor?.profile_metadata]);
@@ -210,6 +279,58 @@ export function CounselorPage({ slug }: { slug: string }) {
       setError(err instanceof Error ? err.message : "メッセージ送信に失敗しました");
     } finally {
       setPendingAction(false);
+    }
+  };
+
+  const handleReviewSubmit = useCallback(async () => {
+    if (!canReview) return;
+    if (!reviewForm.comment.trim()) {
+      setReviewMessage("口コミの内容を入力してください");
+      return;
+    }
+    setSubmittingReview(true);
+    setReviewMessage(null);
+    try {
+      const res = await fetch(`/api/counselors/${slug}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: reviewForm.rating, comment: reviewForm.comment.trim() })
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error ?? "レビューの投稿に失敗しました");
+      }
+      setReviewForm({ rating: 5, comment: "" });
+      setReviewMessage("レビューを投稿しました（審査中です）");
+      await loadReviews("initial");
+    } catch (err) {
+      setReviewMessage(err instanceof Error ? err.message : "レビューの投稿に失敗しました");
+    } finally {
+      setSubmittingReview(false);
+    }
+  }, [canReview, reviewForm, slug, loadReviews]);
+
+  const handleDeleteReview = useCallback(
+    async (reviewId: string) => {
+      if (!confirm("このレビューを削除しますか？")) return;
+      try {
+        const res = await fetch(`/api/counselors/${slug}/reviews/${reviewId}`, { method: "DELETE" });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload?.error ?? "レビューの削除に失敗しました");
+        }
+        setReviewMessage("レビューを削除しました");
+        await loadReviews("initial");
+      } catch (err) {
+        setReviewMessage(err instanceof Error ? err.message : "レビューの削除に失敗しました");
+      }
+    },
+    [slug, loadReviews]
+  );
+
+  const handleLoadMoreReviews = () => {
+    if (hasMoreReviews) {
+      loadReviews("append", reviewCursor);
     }
   };
 
@@ -503,11 +624,167 @@ export function CounselorPage({ slug }: { slug: string }) {
         </Card>
       )}
 
+      <Card className="border-tape-beige shadow-sm">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-tape-orange mb-1">REVIEWS</p>
+              <h2 className="text-xl font-bold text-tape-brown">口コミ</h2>
+              <div className="mt-3 flex items-center gap-3">
+                <span className="text-4xl font-black text-tape-brown">
+                  {reviewSummary ? reviewSummary.average.toFixed(1) : "-"}
+                </span>
+                <RatingStars value={reviewSummary?.average ?? 0} />
+              </div>
+              <p className="text-xs text-tape-light-brown mt-1">
+                {reviewSummary?.totalCount ?? 0}件のレビュー
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-tape-light-brown">
+              {reviewSummary &&
+                [5, 4, 3, 2, 1].map((score) => (
+                  <div key={score} className="flex items-center gap-2 rounded-full bg-tape-cream/60 px-3 py-1">
+                    <span className="font-semibold text-tape-brown">{score}★</span>
+                    <span>{reviewSummary.breakdown[String(score)] ?? 0}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {reviewMessage && (
+            <p className="text-xs text-center text-tape-pink">{reviewMessage}</p>
+          )}
+
+          {isAuthenticated ? (
+            canReview ? (
+              <div className="rounded-3xl border border-tape-beige bg-tape-cream/40 p-4 space-y-4">
+                <p className="text-sm font-bold text-tape-brown">レビューを投稿する</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-tape-light-brown">評価</p>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setReviewForm((prev) => ({ ...prev, rating: value }))}
+                        className={cn(
+                          "p-1",
+                          value <= reviewForm.rating ? "text-tape-pink" : "text-tape-beige"
+                        )}
+                        aria-label={`星${value}`}
+                      >
+                        <Star
+                          className={cn(
+                            "h-5 w-5",
+                            value <= reviewForm.rating ? "fill-tape-pink text-tape-pink" : "text-tape-beige"
+                          )}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(event) => setReviewForm((prev) => ({ ...prev, comment: event.target.value }))}
+                  placeholder="感想やおすすめポイントを教えてください"
+                  className="w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                  rows={4}
+                />
+                <Button
+                  onClick={handleReviewSubmit}
+                  disabled={submittingReview}
+                  className="w-full bg-tape-pink text-white hover:bg-tape-pink/90"
+                >
+                  {submittingReview ? "送信中..." : "レビューを投稿"}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-center text-tape-light-brown">
+                予約を完了した後にレビューを投稿できます。
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-center text-tape-pink">ログインするとレビューを投稿できます。</p>
+          )}
+
+          <div className="space-y-4">
+            {reviewsLoading ? (
+              <p className="text-sm text-tape-light-brown text-center">口コミを読み込み中...</p>
+            ) : reviewsError ? (
+              <p className="text-sm text-tape-pink text-center">{reviewsError}</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-sm text-tape-light-brown text-center">まだ口コミがありません。</p>
+            ) : (
+              reviews.map((review) => (
+                <div key={review.id} className="rounded-3xl border border-tape-beige bg-white/90 p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={review.reviewer?.avatar_url ?? "https://placehold.co/40x40/F5F2EA/5C554F?text=User"}
+                      alt={review.reviewer?.display_name ?? "匿名"}
+                      className="h-10 w-10 rounded-full object-cover border border-tape-beige"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-tape-brown">
+                        {review.reviewer?.display_name ?? "匿名ユーザー"}
+                      </p>
+                      <div className="flex items-center gap-2 text-[11px] text-tape-light-brown">
+                        <span>{new Date(review.createdAt).toLocaleDateString("ja-JP")}</span>
+                        {review.status !== "approved" && (
+                          <span className="rounded-full bg-tape-orange/10 px-2 py-0.5 text-[10px] text-tape-orange">
+                            審査中
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <RatingStars value={review.rating} />
+                    {review.isViewerReview && (
+                      <button
+                        onClick={() => handleDeleteReview(review.id)}
+                        className="text-[11px] text-tape-pink hover:underline"
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-3 text-sm text-tape-brown whitespace-pre-wrap">{review.comment}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {hasMoreReviews && (
+            <Button
+              variant="outline"
+              onClick={handleLoadMoreReviews}
+              className="w-full border-tape-beige text-tape-light-brown"
+            >
+              もっと見る
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="rounded-3xl border border-tape-beige bg-white/50 p-6 text-xs text-tape-light-brown text-center">
         <p>※ TapeチャットやSNSで日程を調整した後、ウォレット決済で確定となります。</p>
         <p className="mt-1">※ 確定後24時間以内のキャンセルは50%のキャンセル料が発生します。</p>
         <p className="mt-1">※ カウンセラー都合でキャンセルになった場合は自動的に全額返金されます。</p>
       </div>
     </main>
+  );
+}
+
+function RatingStars({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`rating-${value}`}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          key={index}
+          className={cn(
+            "h-4 w-4",
+            index + 1 <= Math.round(value) ? "fill-tape-pink text-tape-pink" : "text-tape-beige"
+          )}
+        />
+      ))}
+    </div>
   );
 }
