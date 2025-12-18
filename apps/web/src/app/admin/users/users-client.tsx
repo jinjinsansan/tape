@@ -15,9 +15,17 @@ type AdminUser = {
   displayName: string | null;
   email: string | null;
   role: string;
+  roles?: string[];
   wallet: UserWallet | null;
   twitterUsername: string | null;
   xShareCount: number | null;
+};
+
+const resolveRoles = (user: AdminUser) => {
+  if (user.roles && user.roles.length > 0) {
+    return user.roles;
+  }
+  return user.role ? [user.role] : [];
 };
 
 type UserInsights = {
@@ -192,12 +200,16 @@ export function UsersManagementClient() {
     { key: "diary", label: "かんじょうにっき" }
   ];
 
-  const handleRoleChange = async (userId: string, role: string) => {
+  const handleRoleChange = async (
+    userId: string,
+    role: string,
+    options?: { counselorActive?: boolean }
+  ) => {
     try {
       await fetchJson(`/api/admin/users/${userId}/role`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role })
+        body: JSON.stringify({ role, ...options })
       });
       loadUsers(userSearch);
     } catch (err) {
@@ -206,13 +218,16 @@ export function UsersManagementClient() {
     }
   };
 
-  const handleMakeCounselor = async (userId: string) => {
+  const handleMakeCounselor = async (user: AdminUser) => {
     if (!confirm("このユーザーをカウンセラーにしますか？")) return;
     try {
-      await fetchJson(`/api/admin/users/${userId}/role`, {
+      const roles = resolveRoles(user);
+      const hasAdmin = roles.includes("admin");
+      const targetRole = hasAdmin ? "admin" : "counselor";
+      await fetchJson(`/api/admin/users/${user.id}/role`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "counselor" })
+        body: JSON.stringify({ role: targetRole, counselorActive: true })
       });
       alert("カウンセラー権限を付与しました");
       loadUsers(userSearch);
@@ -222,19 +237,41 @@ export function UsersManagementClient() {
     }
   };
 
-  const handleRemoveCounselor = async (userId: string) => {
+  const handleRemoveCounselor = async (user: AdminUser) => {
     if (!confirm("このユーザーのカウンセラー権限を解除しますか？\n\n注意: counselorsテーブルのデータは残りますが、通常ユーザーに戻ります。")) return;
     try {
-      await fetchJson(`/api/admin/users/${userId}/role`, {
+      const roles = resolveRoles(user);
+      const hasAdmin = roles.includes("admin");
+      const targetRole = hasAdmin ? "admin" : "user";
+      await fetchJson(`/api/admin/users/${user.id}/role`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "user" })
+        body: JSON.stringify({ role: targetRole, counselorActive: false })
       });
       alert("カウンセラー権限を解除しました");
       loadUsers(userSearch);
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "権限解除に失敗しました");
+    }
+  };
+
+  const handleRemoveAdmin = async (user: AdminUser) => {
+    if (!confirm("このユーザーのAdmin権限を解除しますか？")) return;
+    const roles = resolveRoles(user);
+    const hasCounselor = roles.includes("counselor");
+    const fallbackRole = hasCounselor ? "counselor" : "user";
+    try {
+      await fetchJson(`/api/admin/users/${user.id}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: fallbackRole, counselorActive: hasCounselor })
+      });
+      alert("Admin権限を解除しました");
+      loadUsers(userSearch);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Admin権限の解除に失敗しました");
     }
   };
 
@@ -341,137 +378,160 @@ export function UsersManagementClient() {
             <p className="py-8 text-center text-sm text-slate-500">ユーザーが見つかりません</p>
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-slate-200 hover:bg-white hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-slate-900 truncate">
-                        {user.displayName ?? "No Name"}
+              {users.map((user) => {
+                const roles = resolveRoles(user);
+                const hasAdmin = roles.includes("admin");
+                const hasCounselor = roles.includes("counselor");
+                const badgeList = roles.length > 0 ? roles : [user.role];
+                return (
+                  <div
+                    key={user.id}
+                    className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-slate-200 hover:bg-white hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-slate-900 truncate">
+                          {user.displayName ?? "No Name"}
+                        </p>
+                        {badgeList.filter(Boolean).map((badge) => {
+                          const isAdminBadge = badge === "admin";
+                          const isCounselorBadge = badge === "counselor";
+                          return (
+                            <span
+                              key={`${user.id}-${badge}`}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                isAdminBadge
+                                  ? "bg-blue-100 text-blue-700"
+                                  : isCounselorBadge
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {badge}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400 truncate">{user.id}</p>
+                      <p className="mt-0.5 text-xs text-slate-500 truncate">
+                        {user.email ?? "メール未登録"}
                       </p>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          user.role === "admin"
-                            ? "bg-blue-100 text-blue-700"
-                            : user.role === "counselor"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {user.role}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400 truncate">{user.id}</p>
-                    <p className="mt-0.5 text-xs text-slate-500 truncate">
-                      {user.email ?? "メール未登録"}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                      <span className="text-slate-600">
-                        💰 {formatYen(user.wallet?.balanceCents)}
-                      </span>
-                      <span
-                        className={`${
-                          user.wallet?.status === "active"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {user.wallet?.status === "active" ? "🔓 アクティブ" : "🔒 凍結"}
-                      </span>
-                      {user.twitterUsername && (
-                        <>
-                          <span className="text-blue-600">
-                            🐦 @{user.twitterUsername}
-                          </span>
-                          <a
-                            href={`https://x.com/search?q=%23かんじょうにっき%20OR%20%23テープ式心理学%20from%3A${user.twitterUsername}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                          >
-                            投稿確認 ({user.xShareCount ?? 0}回)
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => openDetail(user)}
-                      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100"
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                      詳細
-                    </button>
-                    {userRole === "admin" && (
-                      <>
-                        <button
-                          onClick={() => handleRoleChange(user.id, "admin")}
-                          className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                        <span className="text-slate-600">
+                          💰 {formatYen(user.wallet?.balanceCents)}
+                        </span>
+                        <span
+                          className={`${
+                            user.wallet?.status === "active"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
                         >
-                          <UserCheck className="h-3.5 w-3.5" />
-                          Admin化
-                        </button>
-                        {user.role === "counselor" ? (
-                          <button
-                            onClick={() => handleRemoveCounselor(user.id)}
-                            className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                            カウンセラー解除
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleMakeCounselor(user.id)}
-                            className="flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-600 transition-colors hover:bg-purple-100"
-                          >
-                            <UserCheck className="h-3.5 w-3.5" />
-                            カウンセラー化
-                          </button>
+                          {user.wallet?.status === "active" ? "🔓 アクティブ" : "🔒 凍結"}
+                        </span>
+                        {user.twitterUsername && (
+                          <>
+                            <span className="text-blue-600">
+                              🐦 @{user.twitterUsername}
+                            </span>
+                            <a
+                              href={`https://x.com/search?q=%23かんじょうにっき%20OR%20%23テープ式心理学%20from%3A${user.twitterUsername}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                            >
+                              投稿確認 ({user.xShareCount ?? 0}回)
+                            </a>
+                          </>
                         )}
-                      </>
-                    )}
-                    <button
-                      onClick={() => handlePointAward(user.id)}
-                      className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-600 transition-colors hover:bg-amber-100"
-                    >
-                      <Coins className="h-3.5 w-3.5" />
-                      ポイント付与
-                    </button>
-                    <button
-                      onClick={() => handleWalletAdjust(user.id, "credit")}
-                      className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-xs text-green-600 transition-colors hover:bg-green-100"
-                    >
-                      <CreditCard className="h-3.5 w-3.5" />
-                      残高付与
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleWalletStatus(
-                          user.id,
-                          user.wallet?.status === "active" ? "locked" : "active"
-                        )
-                      }
-                      className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
-                    >
-                      {user.wallet?.status === "active" ? (
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => openDetail(user)}
+                        className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                        詳細
+                      </button>
+                      {userRole === "admin" && (
                         <>
-                          <Lock className="h-3.5 w-3.5" />
-                          凍結
-                        </>
-                      ) : (
-                        <>
-                          <Unlock className="h-3.5 w-3.5" />
-                          解除
+                          {!hasAdmin ? (
+                            <button
+                              onClick={() => handleRoleChange(user.id, "admin", { counselorActive: hasCounselor })}
+                              className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                            >
+                              <UserCheck className="h-3.5 w-3.5" />
+                              Admin化
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleRemoveAdmin(user)}
+                              className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Admin解除
+                            </button>
+                          )}
+                          {hasCounselor ? (
+                            <button
+                              onClick={() => handleRemoveCounselor(user)}
+                              className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              カウンセラー解除
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleMakeCounselor(user)}
+                              className="flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-600 transition-colors hover:bg-purple-100"
+                            >
+                              <UserCheck className="h-3.5 w-3.5" />
+                              カウンセラー化
+                            </button>
+                          )}
                         </>
                       )}
-                    </button>
+                      <button
+                        onClick={() => handlePointAward(user.id)}
+                        className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-600 transition-colors hover:bg-amber-100"
+                      >
+                        <Coins className="h-3.5 w-3.5" />
+                        ポイント付与
+                      </button>
+                      <button
+                        onClick={() => handleWalletAdjust(user.id, "credit")}
+                        className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-xs text-green-600 transition-colors hover:bg-green-100"
+                      >
+                        <CreditCard className="h-3.5 w-3.5" />
+                        残高付与
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleWalletStatus(
+                            user.id,
+                            user.wallet?.status === "active" ? "locked" : "active"
+                          )
+                        }
+                        className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
+                      >
+                        {user.wallet?.status === "active" ? (
+                          <>
+                            <Lock className="h-3.5 w-3.5" />
+                            凍結
+                          </>
+                        ) : (
+                          <>
+                            <Unlock className="h-3.5 w-3.5" />
+                            解除
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

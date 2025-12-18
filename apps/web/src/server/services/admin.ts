@@ -10,6 +10,7 @@ export type AdminUser = {
   id: string;
   displayName: string | null;
   role: string;
+  roles: string[];
   createdAt: string;
   email: string | null;
   wallet: {
@@ -18,6 +19,17 @@ export type AdminUser = {
   } | null;
   twitterUsername?: string | null;
   xShareCount?: number;
+};
+
+const buildRoleList = (primaryRole: string | null | undefined, counselorActive: boolean): string[] => {
+  const roleSet = new Set<string>();
+  if (primaryRole) {
+    roleSet.add(primaryRole);
+  }
+  if (counselorActive) {
+    roleSet.add("counselor");
+  }
+  return Array.from(roleSet);
 };
 
 type PointEventRow = Database["public"]["Tables"]["point_events"]["Row"];
@@ -114,7 +126,7 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
       return [];
     }
 
-    const [{ data: profileData }, { data: walletData }, { count: xShareCount }] = await Promise.all([
+    const [{ data: profileData }, { data: walletData }, { count: xShareCount }, { data: counselorData }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, role, created_at, twitter_username")
@@ -129,14 +141,23 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
         .from("feed_share_log")
         .select("*", { count: "exact", head: true })
         .eq("user_id", targetUser.id)
-        .eq("platform", "x")
+        .eq("platform", "x"),
+      supabase
+        .from("counselors")
+        .select("auth_user_id, is_active")
+        .eq("auth_user_id", targetUser.id)
+        .maybeSingle()
     ]);
+
+    const counselorActive = Boolean(counselorData?.is_active);
+    const roles = buildRoleList(profileData?.role ?? null, counselorActive);
 
     return [
       {
         id: targetUser.id,
         displayName: profileData?.display_name ?? targetUser.email ?? "",
         role: profileData?.role ?? "user",
+        roles,
         createdAt: profileData?.created_at ?? targetUser.created_at ?? new Date().toISOString(),
         email: targetUser.email,
         wallet: walletData
@@ -168,8 +189,9 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
 
   let walletMap = new Map<string, { balance_cents: number; status: string }>();
   let xShareMap = new Map<string, number>();
+  let counselorMap = new Map<string, boolean>();
   if (userIds.length > 0) {
-    const [{ data: wallets }, { data: shareLogs }] = await Promise.all([
+    const [{ data: wallets }, { data: shareLogs }, { data: counselorRows }] = await Promise.all([
       supabase
         .from("wallets")
         .select("user_id, balance_cents, status")
@@ -178,7 +200,11 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
         .from("feed_share_log")
         .select("user_id")
         .eq("platform", "x")
-        .in("user_id", userIds)
+        .in("user_id", userIds),
+      supabase
+        .from("counselors")
+        .select("auth_user_id, is_active")
+        .in("auth_user_id", userIds)
     ]);
     walletMap = new Map((wallets ?? []).map((wallet) => [wallet.user_id, wallet]));
     
@@ -188,6 +214,7 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
       shareCountMap.set(log.user_id, (shareCountMap.get(log.user_id) ?? 0) + 1);
     });
     xShareMap = shareCountMap;
+    counselorMap = new Map((counselorRows ?? []).map((row) => [row.auth_user_id, Boolean(row.is_active)]));
   }
 
   const emailMap = new Map<string, string | null>();
@@ -203,21 +230,25 @@ export const listUsersForAdmin = async (query?: string, limit = 20) => {
     })
   );
 
-  return users.map((user) => ({
-    id: user.id,
-    displayName: user.display_name,
-    role: user.role,
-    createdAt: user.created_at,
-    email: emailMap.get(user.id) ?? null,
-    wallet: walletMap.has(user.id)
-      ? {
-          balanceCents: walletMap.get(user.id)!.balance_cents,
-          status: walletMap.get(user.id)!.status
-        }
-      : null,
-    twitterUsername: (user as any).twitter_username ?? null,
-    xShareCount: xShareMap.get(user.id) ?? 0
-  }));
+  return users.map((user) => {
+    const counselorActive = counselorMap.get(user.id) ?? false;
+    return {
+      id: user.id,
+      displayName: user.display_name,
+      role: user.role,
+      roles: buildRoleList(user.role, counselorActive),
+      createdAt: user.created_at,
+      email: emailMap.get(user.id) ?? null,
+      wallet: walletMap.has(user.id)
+        ? {
+            balanceCents: walletMap.get(user.id)!.balance_cents,
+            status: walletMap.get(user.id)!.status
+          }
+        : null,
+      twitterUsername: (user as any).twitter_username ?? null,
+      xShareCount: xShareMap.get(user.id) ?? 0
+    };
+  });
 };
 
 export const updateUserRole = async (userId: string, role: string) => {

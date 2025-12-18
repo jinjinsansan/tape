@@ -17,7 +17,7 @@ export async function PATCH(
 
   const { userId } = params;
   const body = await request.json();
-  const { role } = body;
+  const { role, counselorActive } = body as { role?: string; counselorActive?: boolean };
 
   if (!role || !['admin', 'counselor', 'member', 'user'].includes(role)) {
     return NextResponse.json(
@@ -28,8 +28,77 @@ export async function PATCH(
 
   const adminSupabase = getSupabaseAdminClient();
 
+  const ensureCounselorActive = async () => {
+    // プロフィール情報を取得
+    const { data: profile, error: fetchError } = await adminSupabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch profile", fetchError);
+      throw fetchError;
+    }
+
+    // auth.users から email を取得
+    const { data: authUser, error: authError } = await adminSupabase.auth.admin.getUserById(userId);
+
+    if (authError) {
+      console.error("Failed to fetch auth user", authError);
+      throw authError;
+    }
+
+    const displayName = profile?.display_name || authUser.user.email?.split("@")[0] || "カウンセラー";
+    const slug = `counselor-${userId.substring(0, 8)}`;
+
+    const { data: existingCounselor } = await adminSupabase
+      .from("counselors")
+      .select("id")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (existingCounselor) {
+      const { error: reactivateError } = await adminSupabase
+        .from("counselors")
+        .update({ is_active: true })
+        .eq("auth_user_id", userId);
+
+      if (reactivateError) {
+        console.error("Failed to reactivate counselor", reactivateError);
+        throw reactivateError;
+      }
+    } else {
+      const { error: counselorError } = await adminSupabase
+        .from("counselors")
+        .insert({
+          auth_user_id: userId,
+          slug,
+          display_name: displayName,
+          is_active: true,
+          hourly_rate_cents: 12000
+        });
+
+      if (counselorError) {
+        console.error("Failed to create counselor", counselorError);
+        throw counselorError;
+      }
+    }
+  };
+
+  const deactivateCounselor = async () => {
+    const { error: deactivateError } = await adminSupabase
+      .from("counselors")
+      .update({ is_active: false })
+      .eq("auth_user_id", userId);
+
+    if (deactivateError) {
+      console.error("Failed to deactivate counselor", deactivateError);
+      // これは致命的エラーではないのでログのみ
+    }
+  };
+
   try {
-    // profiles.role を更新
     const { error: profileError } = await adminSupabase
       .from("profiles")
       .update({ role })
@@ -40,77 +109,16 @@ export async function PATCH(
       throw profileError;
     }
 
-    // role が counselor の場合、counselors テーブルにも登録
-    if (role === "counselor") {
-      // プロフィール情報を取得
-      const { data: profile, error: fetchError } = await adminSupabase
-        .from("profiles")
-        .select("display_name")
-        .eq("id", userId)
-        .single();
-
-      if (fetchError) {
-        console.error("Failed to fetch profile", fetchError);
-        throw fetchError;
-      }
-
-      // auth.users から email を取得
-      const { data: authUser, error: authError } = await adminSupabase.auth.admin.getUserById(userId);
-
-      if (authError) {
-        console.error("Failed to fetch auth user", authError);
-        throw authError;
-      }
-
-      const displayName = profile?.display_name || authUser.user.email?.split("@")[0] || "カウンセラー";
-      const slug = `counselor-${userId.substring(0, 8)}`;
-
-      // counselors テーブルに存在するか確認
-      const { data: existingCounselor } = await adminSupabase
-        .from("counselors")
-        .select("id")
-        .eq("auth_user_id", userId)
-        .maybeSingle();
-
-      if (existingCounselor) {
-        // 既存のカウンセラーを再有効化
-        const { error: reactivateError } = await adminSupabase
-          .from("counselors")
-          .update({ is_active: true })
-          .eq("auth_user_id", userId);
-
-        if (reactivateError) {
-          console.error("Failed to reactivate counselor", reactivateError);
-          throw reactivateError;
-        }
+    if (typeof counselorActive === "boolean") {
+      if (counselorActive) {
+        await ensureCounselorActive();
       } else {
-        // counselors テーブルに登録
-        const { error: counselorError } = await adminSupabase
-          .from("counselors")
-          .insert({
-            auth_user_id: userId,
-            slug,
-            display_name: displayName,
-            is_active: true,
-            hourly_rate_cents: 12000
-          });
-
-        if (counselorError) {
-          console.error("Failed to create counselor", counselorError);
-          throw counselorError;
-        }
+        await deactivateCounselor();
       }
-    } else {
-      // role が counselor 以外に変更された場合、counselors.is_active を false にする
-      const { error: deactivateError } = await adminSupabase
-        .from("counselors")
-        .update({ is_active: false })
-        .eq("auth_user_id", userId);
-
-      if (deactivateError) {
-        console.error("Failed to deactivate counselor", deactivateError);
-        // これは致命的エラーではないのでログのみ
-      }
+    } else if (role === "counselor") {
+      await ensureCounselorActive();
+    } else if (role === "user" || role === "member") {
+      await deactivateCounselor();
     }
 
     return NextResponse.json({ success: true, role });
