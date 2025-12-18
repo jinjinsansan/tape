@@ -451,6 +451,28 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
       </section>
 
       <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">PASSWORD</p>
+        <h2 className="text-2xl font-bold text-tape-brown">パスワード設定</h2>
+        <p className="text-sm text-tape-light-brown">
+          パスワードを変更すると、PC やスマートフォンなど全ての端末で新しいパスワードが必要になります。
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-tape-beige bg-tape-cream/30 p-4 text-sm text-tape-light-brown md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-semibold text-tape-brown">🔒 パスワードの再設定</p>
+            <p className="text-xs text-tape-light-brown">
+              安全のため、定期的な変更をおすすめします。メールアドレスは変更できません。
+            </p>
+          </div>
+          <Link href="/update-password" className="inline-flex justify-end">
+            <Button className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90">
+              パスワードを変更する
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">X (TWITTER) ACCOUNT</p>
         <h2 className="text-2xl font-bold text-tape-brown">Xアカウント連携</h2>
         <p className="text-sm text-tape-light-brown">
