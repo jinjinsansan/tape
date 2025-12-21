@@ -45,7 +45,8 @@ export default function MichelleLandingPage() {
   const availableTabs = tabs.filter((tab) => tab.available);
 
   return (
-    <section className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16">
+    <div className="bg-[#f9f7f3]">
+      <section className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16">
       <header className="space-y-4 text-center">
         <p className="text-xs font-semibold tracking-[0.3em] text-tape-green">テープ式心理学</p>
         <h1 className="text-4xl font-bold text-tape-brown">あなたの課題に合わせてAIコンシェルジュを選択</h1>
@@ -66,9 +67,9 @@ export default function MichelleLandingPage() {
               "rounded-full border px-6 py-3 text-sm font-semibold transition-all",
               tab.available
                 ? selected === tab.id
-                  ? "bg-tape-brown text-white shadow-lg"
-                  : "bg-white text-tape-brown hover:bg-tape-beige"
-                : "bg-tape-beige text-tape-light-brown cursor-not-allowed"
+                  ? "bg-[#d9cec4] text-[#3f3530] shadow-md"
+                  : "bg-white text-[#5c4c45] hover:bg-[#f7f4f0]"
+                : "bg-[#f1ece6] text-[#a1958d] cursor-not-allowed"
             )}
           >
             {tab.label}
@@ -84,9 +85,9 @@ export default function MichelleLandingPage() {
       )}
 
       {availableTabs.length > 1 && (
-        <section className="grid gap-6 rounded-3xl bg-white p-8 shadow-sm md:grid-cols-3">
+        <section className="grid gap-6 rounded-3xl bg-white/90 p-8 shadow-sm md:grid-cols-3">
           {["出来事・感情・身体感覚を分ける", "思い込み仮説を立てる", "セルフワークと行動計画を伴走"].map((desc, index) => (
-            <Card key={desc} className="bg-tape-beige/30 border-none shadow-none">
+            <Card key={desc} className="border border-[#efe7de] bg-white shadow-none">
               <CardContent className="p-5 text-left">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-tape-light-brown">PHASE 0{index + 1}</p>
                 <p className="mt-3 text-sm text-tape-brown">{desc}</p>
@@ -95,7 +96,8 @@ export default function MichelleLandingPage() {
           ))}
         </section>
       )}
-    </section>
+      </section>
+    </div>
   );
 }
 

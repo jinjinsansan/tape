@@ -26,15 +26,15 @@ const flow = [
 export default function PsychologyLanding({ disabled }: Props) {
   return (
     <div className="space-y-16">
-      <section className="rounded-[40px] border border-[#fcd9e9] bg-[#fff7fa] px-6 py-12 shadow-sm">
+      <section className="rounded-[40px] border border-[#f0e8df] bg-gradient-to-br from-[#fffdf9] via-[#fbf7f2] to-[#f5f2ff] px-6 py-12 shadow-sm">
         <div className="flex flex-col gap-10 lg:flex-row">
           <div className="space-y-6 lg:w-1/2">
             <div>
-              <p className="text-xs font-bold tracking-[0.3em] text-tape-pink uppercase">Psychology</p>
-              <h2 className="mt-3 text-4xl font-bold text-tape-brown leading-tight">
+              <p className="text-xs font-bold tracking-[0.3em] text-[#c68e9b] uppercase">Psychology</p>
+              <h2 className="mt-3 text-4xl font-bold text-[#4b3f3a] leading-tight">
                 テープ式心理学<br />× AIカウンセリング
               </h2>
-              <p className="mt-4 text-sm text-tape-brown/80 leading-relaxed">
+              <p className="mt-4 text-sm text-[#6d5c55] leading-relaxed">
                 テープ式心理学で培った「ガムテープ（思い込み）」分析の問いかけをAIに移植。耳ざわりの良い言葉ではなく、
                 事実・感情・思考を切り分けながら本質的な気づきを促します。
               </p>
@@ -45,7 +45,7 @@ export default function PsychologyLanding({ disabled }: Props) {
                 asChild
                 size="lg"
                 disabled={disabled}
-                className="h-14 flex-1 rounded-full bg-tape-pink text-white shadow-lg shadow-tape-pink/40 hover:bg-tape-pink/90"
+                className="h-14 flex-1 rounded-full bg-[#c68e9b] text-white shadow-lg shadow-[#c68e9b]/25 transition hover:bg-[#bd8491]"
               >
                 <Link href="/michelle/chat" className="flex w-full items-center justify-center gap-2">
                   カウンセリングを始める
@@ -55,7 +55,7 @@ export default function PsychologyLanding({ disabled }: Props) {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 flex-1 rounded-full border-2 border-tape-pink/30 bg-white text-tape-brown hover:bg-[#fff0f5]"
+                className="h-14 flex-1 rounded-full border border-[#dccfc8] bg-white/80 text-[#5c4c45] hover:bg-white"
               >
                 <Link href="#psychology-features">特徴を読む</Link>
               </Button>
@@ -63,51 +63,51 @@ export default function PsychologyLanding({ disabled }: Props) {
 
             <div className="grid gap-3 sm:grid-cols-2">
               {bulletPoints.map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 text-left">
-                  <CheckCircle2 className="h-5 w-5 text-tape-pink" />
-                  <span className="text-sm font-semibold text-tape-brown">{item}</span>
+                <div key={item} className="flex items-center gap-3 rounded-2xl border border-[#f0e8df] bg-white/70 p-3 text-left">
+                  <CheckCircle2 className="h-5 w-5 text-[#c68e9b]" />
+                  <span className="text-sm font-semibold text-[#4b3f3a]">{item}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="relative lg:w-1/2">
-            <div className="relative z-10 rounded-3xl border border-white/60 bg-white p-8 shadow-2xl shadow-tape-pink/10">
-              <div className="mb-6 flex items-center justify-between border-b border-tape-beige pb-4">
-                <span className="text-xs font-bold tracking-[0.3em] text-tape-light-brown">MICHELLE AI</span>
-                <span className="rounded-full bg-[#ffe0ec] px-3 py-1 text-xs font-bold text-tape-pink">BETA</span>
+            <div className="relative z-10 rounded-3xl border border-white/80 bg-white/95 p-8 shadow-2xl shadow-[#d8cfd3]/80">
+              <div className="mb-6 flex items-center justify-between border-b border-[#f0e8df] pb-4">
+                <span className="text-xs font-bold tracking-[0.3em] text-[#9b8d85]">MICHELLE AI</span>
+                <span className="rounded-full bg-[#fdf1f4] px-3 py-1 text-xs font-bold text-[#c68e9b]">BETA</span>
               </div>
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-bold text-tape-brown">「そのモヤモヤ、どこから来ていますか？」</h3>
-                  <p className="mt-2 text-sm text-tape-brown/80">
+                  <h3 className="text-xl font-bold text-[#4b3f3a]">「そのモヤモヤ、どこから来ていますか？」</h3>
+                  <p className="mt-2 text-sm text-[#6d5c55]">
                     対話のたびに整理メモとセルフワーク案を残してくれるので、自分だけのカウンセリングノートが育っていきます。
                   </p>
                 </div>
-                <div className="rounded-2xl border border-tape-beige bg-[#fff8fb] p-6">
-                  <p className="mb-4 flex items-center gap-2 text-sm font-bold text-tape-pink">
-                    <span className="block h-4 w-1 rounded-full bg-tape-pink" /> カウンセリングフロー
+                <div className="rounded-2xl border border-[#f0e8df] bg-[#fdf7f1] p-6">
+                  <p className="mb-4 flex items-center gap-2 text-sm font-bold text-[#c68e9b]">
+                    <span className="block h-4 w-1 rounded-full bg-[#c68e9b]" /> カウンセリングフロー
                   </p>
                   <div className="space-y-3">
                     {flow.map((item) => (
                       <div key={item.step} className="flex items-center gap-4">
-                        <span className="text-xs font-mono font-bold text-tape-light-brown">{item.step}</span>
-                        <span className="text-sm font-semibold text-tape-brown">{item.text}</span>
+                        <span className="text-xs font-mono font-bold text-[#a3958e]">{item.step}</span>
+                        <span className="text-sm font-semibold text-[#4b3f3a]">{item.text}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="absolute -top-8 -right-6 h-48 w-48 rounded-full bg-tape-pink/10 blur-3xl" />
-            <div className="absolute -bottom-8 -left-6 h-48 w-48 rounded-full bg-tape-orange/10 blur-3xl" />
+            <div className="absolute -top-8 -right-6 h-48 w-48 rounded-full bg-[#f4e7e2]/70 blur-3xl" />
+            <div className="absolute -bottom-8 -left-6 h-48 w-48 rounded-full bg-[#efeaf5]/70 blur-3xl" />
           </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-tape-beige bg-white p-8 text-center shadow-inner" id="psychology-features">
-        <h3 className="text-2xl font-bold text-tape-brown">一般的なAIとの決定的な違い</h3>
-        <p className="mt-4 text-sm text-tape-brown/80">
+      <section className="rounded-3xl border border-[#f0e8df] bg-white/90 p-8 text-center shadow-inner" id="psychology-features">
+        <h3 className="text-2xl font-bold text-[#4b3f3a]">一般的なAIとの決定的な違い</h3>
+        <p className="mt-4 text-sm text-[#6d5c55]">
           chatGPTのような汎用AIはユーザーに寄り添う言葉を返すことは得意ですが、 論理的に思い込みへアプローチする訓練はされていません。テープ式心理学版ミシェルは、
           仁カウンセラーの講義原稿やQ&AをRAGで参照しながら「なぜその感情が発生したのか」を最後まで追いかけます。
         </p>
@@ -119,10 +119,10 @@ export default function PsychologyLanding({ disabled }: Props) {
           { title: "感情を受け止める", desc: "根っこにある思い込みを仮説として提示し、新しい視点を提案。" },
           { title: "行動につなげる", desc: "試せるセルフワークと行動案を提示し、次の一歩を伴走。" }
         ].map((feature, index) => (
-          <div key={feature.title} className="rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
-            <p className="text-xs font-semibold text-tape-light-brown">PHASE 0{index + 1}</p>
-            <h4 className="mt-3 text-xl font-bold text-tape-brown">{feature.title}</h4>
-            <p className="mt-2 text-sm text-tape-brown/80">{feature.desc}</p>
+          <div key={feature.title} className="rounded-3xl border border-[#f0e8df] bg-white/90 p-6 shadow-sm">
+            <p className="text-xs font-semibold text-[#a3958e]">PHASE 0{index + 1}</p>
+            <h4 className="mt-3 text-xl font-bold text-[#4b3f3a]">{feature.title}</h4>
+            <p className="mt-2 text-sm text-[#6d5c55]">{feature.desc}</p>
           </div>
         ))}
       </section>
