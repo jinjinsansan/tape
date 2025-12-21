@@ -59,7 +59,7 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#ede5dc] bg-white/80 backdrop-blur-2xl shadow-[0_10px_30px_rgba(75,63,58,0.08)]">
+    <header className="sticky top-0 z-50 w-full border-b border-[#f0e4d8] bg-white/90 backdrop-blur-2xl shadow-[0_10px_30px_rgba(81,67,60,0.06)]">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -76,8 +76,8 @@ export function SiteHeader() {
                 className={cn(
                   "text-sm font-medium transition-colors",
                   pathname === item.href
-                    ? "text-[#c68e9b]"
-                    : "text-[#5c4c45] hover:text-[#c68e9b]"
+                    ? "text-[#d59da9]"
+                    : "text-[#5a4a42] hover:text-[#d59da9]"
                 )}
               >
                 {item.label}
@@ -87,12 +87,12 @@ export function SiteHeader() {
               href="https://lin.ee/hwaj6UP"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-[#e7ded5] px-4 py-1 text-sm font-semibold text-[#06C755] hover:bg-[#06C755]/10"
+              className="inline-flex items-center gap-2 rounded-full border border-[#f0e4d8] px-4 py-1 text-sm font-semibold text-[#06C755] hover:bg-[#06C755]/10"
             >
               <MessageCircle className="h-4 w-4" /> お問い合わせ
             </a>
             <Link href="/admin">
-              <Button variant="ghost" size="icon" className="text-[#988a83] hover:text-[#4b3f3a]">
+              <Button variant="ghost" size="icon" className="text-[#a1928b] hover:text-[#51433c]">
                 <Settings className="h-5 w-5" />
               </Button>
             </Link>
@@ -102,7 +102,7 @@ export function SiteHeader() {
             {profileName && (
               <Link
                 href="/mypage"
-                className="hidden md:inline-flex max-w-[180px] items-center rounded-full border border-[#e7ded5] bg-white/80 px-4 py-1 text-sm font-semibold text-[#4b3f3a] shadow-sm"
+                className="hidden md:inline-flex max-w-[180px] items-center rounded-full border border-[#f0e4d8] bg-white px-4 py-1 text-sm font-semibold text-[#51433c] shadow-sm"
                 title="マイページへ"
               >
                 <UserCircle className="mr-2 h-4 w-4" />
@@ -114,14 +114,14 @@ export function SiteHeader() {
               {profileName && (
                 <Link
                   href="/mypage"
-                  className="max-w-[120px] truncate text-sm font-semibold text-[#4b3f3a]"
+                  className="max-w-[120px] truncate text-sm font-semibold text-[#51433c]"
                   title="マイページへ"
                 >
                   {profileName}
                 </Link>
               )}
               <button
-                className="p-2 text-[#4b3f3a] focus:outline-none md:hidden"
+                className="p-2 text-[#51433c] focus:outline-none md:hidden"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle menu"
               >
@@ -134,10 +134,10 @@ export function SiteHeader() {
 
       {/* Mobile Nav Drawer */}
       {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-white/90 border-b border-[#ede5dc] shadow-xl backdrop-blur-xl overflow-y-auto pb-10">
+        <div className="md:hidden absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-white/95 border-b border-[#f0e4d8] shadow-xl backdrop-blur-xl overflow-y-auto pb-10">
           <nav className="flex flex-col p-4 space-y-2">
             {profileName && (
-              <div className="flex items-center gap-3 rounded-2xl border border-[#e7ded5] bg-white/90 px-4 py-3 text-sm font-semibold text-[#4b3f3a]">
+              <div className="flex items-center gap-3 rounded-2xl border border-[#f0e4d8] bg-white px-4 py-3 text-sm font-semibold text-[#51433c]">
                 <UserCircle className="h-5 w-5" />
                 {profileName}
               </div>
@@ -149,15 +149,15 @@ export function SiteHeader() {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-colors",
                   pathname === item.href
-                    ? "bg-[#f4e7e2] text-[#c68e9b]"
-                    : "text-[#4b3f3a] hover:bg-[#f4ede6]"
+                    ? "bg-[#fdeef1] text-[#d59da9]"
+                    : "text-[#51433c] hover:bg-[#f7efe6]"
                 )}
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
               </Link>
             ))}
-            <hr className="my-2 border-[#e7ded5]" />
+            <hr className="my-2 border-[#f0e4d8]" />
             <a
               href="https://lin.ee/hwaj6UP"
               target="_blank"
@@ -169,7 +169,7 @@ export function SiteHeader() {
             </a>
             <Link
               href="/admin"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-[#9d8f88] hover:bg-[#f4ede6] hover:text-[#4b3f3a]"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-[#a3928a] hover:bg-[#f7efe6] hover:text-[#51433c]"
             >
               <Settings className="h-5 w-5" />
               管理者メニュー

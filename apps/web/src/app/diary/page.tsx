@@ -81,8 +81,8 @@ export default function DiaryPage() {
             ホームに戻る
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-[#4b3f3a]">かんじょうにっき</h1>
-        <p className="text-[#7a6a63]">
+        <h1 className="text-3xl font-bold text-[#51433c]">かんじょうにっき</h1>
+        <p className="text-[#8b7a71]">
           今の気持ちをそのまま書き出してみましょう。<br />
           書くことで、少しだけ心が軽くなるかもしれません。
         </p>
@@ -93,20 +93,20 @@ export default function DiaryPage() {
           {resourceLinks.map((item) => {
             const isHowTo = item.href === "/diary/how-to";
             const cardClasses = cn(
-              "border border-[#efe7de] bg-white/85 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg",
-              isHowTo && highlightHowTo && "ring-2 ring-[#c68e9b] shadow-lg animate-pulse"
+              "border border-[#f0e4d8] bg-white/95 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg",
+              isHowTo && highlightHowTo && "ring-2 ring-[#d59da9] shadow-lg animate-pulse"
             );
 
             return (
               <Link key={item.href} href={item.href}>
                 <Card className={cardClasses}>
                 <CardContent className="flex items-start gap-4 p-6">
-                  <div className="rounded-2xl bg-[#f4ede6] p-3 text-[#4b3f3a]">
+                  <div className="rounded-2xl bg-[#fff3eb] p-3 text-[#51433c]">
                     <item.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[#4b3f3a]">{item.title}</h3>
-                    <p className="mt-1 text-sm text-[#7a6a63]">{item.description}</p>
+                    <h3 className="text-lg font-bold text-[#51433c]">{item.title}</h3>
+                    <p className="mt-1 text-sm text-[#8b7a71]">{item.description}</p>
                   </div>
                 </CardContent>
               </Card>

@@ -5,10 +5,11 @@
 @layer base {
   body {
     @apply min-h-screen text-tape-brown antialiased;
-    background-color: #f9f7f3;
+    background-color: #fffaf4;
     background-image:
-      radial-gradient(circle at 20% 20%, rgba(198, 142, 155, 0.12), transparent 55%),
-      radial-gradient(circle at 80% 10%, rgba(138, 169, 200, 0.12), transparent 50%),
-      radial-gradient(circle at 50% 80%, rgba(216, 227, 219, 0.18), transparent 45%);
+      radial-gradient(circle at 15% 20%, rgba(213, 157, 169, 0.16), transparent 55%),
+      radial-gradient(circle at 75% 15%, rgba(146, 180, 214, 0.18), transparent 45%),
+      radial-gradient(circle at 50% 80%, rgba(244, 196, 169, 0.12), transparent 50%),
+      radial-gradient(circle at 85% 75%, rgba(228, 240, 232, 0.2), transparent 40%);
   }
 }
