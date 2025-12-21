@@ -78,18 +78,18 @@ const formatDateTime = (value: string | null) => {
 
 // かんじょうにっきエリアと同じ感情の色マッピング
 const emotionToneMap: Record<string, string> = {
-  恐怖: "bg-purple-100 text-purple-800 border-purple-200",
-  悲しみ: "bg-blue-100 text-blue-800 border-blue-200",
-  怒り: "bg-red-100 text-red-800 border-red-200",
-  寂しさ: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  無価値感: "bg-gray-100 text-gray-800 border-gray-300",
-  罪悪感: "bg-orange-100 text-orange-800 border-orange-200",
-  悔しさ: "bg-green-100 text-green-800 border-green-200",
-  恥ずかしさ: "bg-pink-100 text-pink-800 border-pink-200",
-  嬉しい: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  感謝: "bg-teal-100 text-teal-800 border-teal-200",
-  達成感: "bg-lime-100 text-lime-800 border-lime-200",
-  幸せ: "bg-amber-100 text-amber-800 border-amber-200"
+  恐怖: "bg-[#efe9ff] text-[#5c4f89] border-[#e0d3ff]",
+  悲しみ: "bg-[#e6f0ff] text-[#3f5379] border-[#d4e4ff]",
+  怒り: "bg-[#ffe7e2] text-[#8a4f3f] border-[#ffd5cc]",
+  寂しさ: "bg-[#f0ecff] text-[#57507f] border-[#e0d9ff]",
+  無価値感: "bg-[#f4efe9] text-[#6b5c53] border-[#e8dbd1]",
+  罪悪感: "bg-[#fff3e5] text-[#8d5c36] border-[#ffe3c9]",
+  悔しさ: "bg-[#e6f7ed] text-[#3f6654] border-[#d4ecd9]",
+  恥ずかしさ: "bg-[#ffe9f2] text-[#8a4f6b] border-[#ffd6e6]",
+  嬉しい: "bg-[#fff6d9] text-[#826522] border-[#ffeab0]",
+  感謝: "bg-[#e4faf4] text-[#2f6c5d] border-[#c9f1e6]",
+  達成感: "bg-[#ecffe9] text-[#4c6f3f] border-[#dafad2]",
+  幸せ: "bg-[#fff3e6] text-[#8a5b2b] border-[#ffe0c5]"
 };
 
 export function FeedPageClient() {
@@ -308,38 +308,38 @@ export function FeedPageClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="border-tape-beige bg-blue-50/50 shadow-sm">
+      <Card className="border-[#dfe8f5] bg-white/90 shadow-[0_12px_30px_rgba(81,67,60,0.08)]">
         <CardContent className="p-6">
-          <p className="text-sm font-bold text-tape-brown mb-2">📖 みんなの日記について</p>
-          <p className="text-xs text-tape-brown/80 leading-relaxed">
+          <p className="text-sm font-bold text-[#51433c] mb-2">📖 みんなの日記について</p>
+          <p className="text-xs text-[#8b7a71] leading-relaxed">
             ここでは、他のユーザーが「かんじょうにっき」で書いて公開した日記を閲覧できます。<br />
-            新しい日記を書くには、<a href="/diary" className="text-tape-pink underline">かんじょうにっき</a>のページから投稿してください。
+            新しい日記を書くには、<a href="/diary" className="text-[#d59da9] underline">かんじょうにっき</a>のページから投稿してください。
           </p>
         </CardContent>
       </Card>
 
       {loading ? (
-        <Card className="border-tape-beige bg-white/80">
-          <CardContent className="p-10 text-center text-sm text-tape-light-brown">読み込み中...</CardContent>
+        <Card className="border-[#f0e4d8] bg-white">
+          <CardContent className="p-10 text-center text-sm text-[#a4938a]">読み込み中...</CardContent>
         </Card>
       ) : error ? (
-        <Card className="border-tape-pink/20 bg-tape-pink/5">
-          <CardContent className="p-10 text-center text-sm text-tape-pink">{error}</CardContent>
+        <Card className="border-[#f5ccd8] bg-[#fff2f6]">
+          <CardContent className="p-10 text-center text-sm text-[#c86c88]">{error}</CardContent>
         </Card>
       ) : timeline.length === 0 ? (
-        <Card className="border-tape-beige bg-white/80">
-          <CardContent className="p-10 text-center text-sm text-tape-light-brown">まだ「みんなの日記」への投稿がありません。</CardContent>
+        <Card className="border-[#f0e4d8] bg-white">
+          <CardContent className="p-10 text-center text-sm text-[#a4938a]">まだ「みんなの日記」への投稿がありません。</CardContent>
         </Card>
       ) : (
         <div className="space-y-5">
           {timeline.map((entry) => (
-            <Card key={entry.id} className="border-tape-beige bg-white shadow-sm">
+            <Card key={entry.id} className="border-[#f0e4d8] bg-white/95 shadow-[0_18px_38px_rgba(81,67,60,0.07)]">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3">
-                  <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"} alt={entry.author.displayName ?? "匿名"} className="h-10 w-10 rounded-full object-cover border border-tape-beige" />
+                  <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"} alt={entry.author.displayName ?? "匿名"} className="h-10 w-10 rounded-full object-cover border-2 border-[#f0e4d8] bg-[#fff8f2]" />
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-tape-brown">{entry.author.displayName ?? "匿名ユーザー"}</p>
-                    <p className="text-xs text-tape-light-brown">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
+                    <p className="text-sm font-bold text-[#51433c]">{entry.author.displayName ?? "匿名ユーザー"}</p>
+                    <p className="text-xs text-[#a4938a]">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
                   </div>
                   {entry.moodLabel && (
                     <span
@@ -354,47 +354,47 @@ export function FeedPageClient() {
                 </div>
                 {entry.title && <h3 className="mt-4 text-lg font-semibold text-tape-brown">{entry.title}</h3>}
                 {entry.eventSummary && (
-                  <div className="mt-3 rounded-2xl border border-tape-beige bg-white/60 p-3 text-sm text-tape-brown">
-                    <p className="text-xs font-semibold text-tape-light-brown">出来事のメモ</p>
+                  <div className="mt-3 rounded-2xl border border-[#f0e4d8] bg-[#fff8f2] p-3 text-sm text-[#51433c]">
+                    <p className="text-xs font-semibold text-[#a4938a]">出来事のメモ</p>
                     <p className="mt-1 whitespace-pre-wrap leading-relaxed">{entry.eventSummary}</p>
                   </div>
                 )}
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-tape-brown/90">{entry.content}</p>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[#5b4a43]">{entry.content}</p>
                 {entry.realization && (
-                  <div className="mt-3 rounded-2xl border border-dashed border-tape-beige p-3 text-sm text-tape-brown">
-                    <p className="text-xs font-semibold text-tape-light-brown">気づき・意味づけ</p>
+                  <div className="mt-3 rounded-2xl border border-dashed border-[#f0e4d8] bg-white/70 p-3 text-sm text-[#51433c]">
+                    <p className="text-xs font-semibold text-[#a4938a]">気づき・意味づけ</p>
                     <p className="mt-1 whitespace-pre-wrap leading-relaxed">{entry.realization}</p>
                   </div>
                 )}
                 {entry.feelings.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">
                     {entry.feelings.map((feeling) => (
-                      <span key={`${entry.id}-${feeling.label}`} className="rounded-full bg-tape-pink/10 px-3 py-1 text-tape-brown">
+                      <span key={`${entry.id}-${feeling.label}`} className="rounded-full bg-[#fdeef1] px-3 py-1 text-[#51433c]">
                         {feeling.label}
                       </span>
                     ))}
                   </div>
                 )}
                 {entry.aiComment && (
-                  <div className="mt-4 rounded-2xl border border-tape-pink/30 bg-[#fff6f8] p-4 text-sm text-tape-brown">
-                    <p className="text-xs font-bold text-tape-pink flex items-center gap-2">
+                  <div className="mt-4 rounded-2xl border border-[#f5ccd8] bg-[#fff4f7] p-4 text-sm text-[#51433c]">
+                    <p className="text-xs font-bold text-[#d59da9] flex items-center gap-2">
                       <Sparkles className="h-4 w-4" /> ミシェルAIからのコメント
                     </p>
                     <p className="mt-2 whitespace-pre-wrap leading-relaxed">{entry.aiComment.content}</p>
                     {entry.aiComment.generatedAt && (
-                      <p className="mt-2 text-[11px] text-tape-pink">生成日時: {formatDateTime(entry.aiComment.generatedAt)}</p>
+                      <p className="mt-2 text-[11px] text-[#d59da9]">生成日時: {formatDateTime(entry.aiComment.generatedAt)}</p>
                     )}
                   </div>
                 )}
                 {entry.counselorComment && (
-                  <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
-                    <p className="text-xs font-bold flex items-center gap-2">
+                  <div className="mt-4 rounded-2xl border border-[#ffe0c5] bg-[#fff5e9] p-4 text-sm text-[#8a5b2b]">
+                    <p className="text-xs font-bold flex items-center gap-2 text-[#a26835]">
                       <span role="img" aria-label="counselor">💬</span> カウンセラーからのコメント
                     </p>
-                    <p className="mt-2 whitespace-pre-wrap leading-relaxed text-yellow-900">
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed">
                       {entry.counselorComment.content}
                     </p>
-                    <p className="mt-2 text-[11px] text-yellow-800">— {entry.counselorComment.author}</p>
+                    <p className="mt-2 text-[11px] text-[#a26835]">— {entry.counselorComment.author}</p>
                   </div>
                 )}
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">

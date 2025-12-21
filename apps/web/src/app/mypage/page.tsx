@@ -43,44 +43,40 @@ export default async function MyPage() {
     email: user.email ?? null
   };
 
+  const sections = [
+    { title: "お知らせ受信箱", content: <NotificationsClient /> },
+    { title: "ウォレット", content: <WalletClient /> },
+    { title: "カウンセリング予約", content: <MyBookingsClient /> }
+  ];
+
   return (
-    <main className="min-h-screen bg-tape-cream px-4 py-12 md:px-8">
-      <div className="mx-auto flex max-w-4xl flex-col gap-8">
-        <header className="space-y-3 text-center">
-          <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">MY PAGE</p>
-          <h1 className="text-3xl font-bold text-tape-brown">プロフィール設定</h1>
-          <p className="text-sm text-tape-light-brown">
-            「みんなの日記」や各種サービスで表示される情報をここで変更できます。
-          </p>
-        </header>
+    <div className="bg-gradient-to-b from-[#fff8f2] via-[#f9f3ff] to-[#f2fbff]">
+      <main className="min-h-screen px-4 py-12 md:px-8">
+        <div className="mx-auto flex max-w-4xl flex-col gap-8">
+          <header className="space-y-3 text-center">
+            <p className="text-xs font-semibold tracking-[0.4em] text-[#92b4d6]">MY PAGE</p>
+            <h1 className="text-3xl font-bold text-[#51433c]">プロフィール設定</h1>
+            <p className="text-sm text-[#8b7a71]">
+              「みんなの日記」や各種サービスで表示される情報をここで変更できます。
+            </p>
+          </header>
 
-        <Card className="border-tape-beige bg-white/90 shadow-sm">
-          <CardContent className="p-6">
-            <h2 className="mb-6 text-xl font-bold text-tape-brown">お知らせ受信箱</h2>
-            <NotificationsClient />
-          </CardContent>
-        </Card>
+          {sections.map((section) => (
+            <Card key={section.title} className="border-[#f0e4d8] bg-white/95 shadow-[0_18px_38px_rgba(81,67,60,0.07)]">
+              <CardContent className="p-6">
+                <h2 className="mb-6 text-xl font-bold text-[#51433c]">{section.title}</h2>
+                {section.content}
+              </CardContent>
+            </Card>
+          ))}
 
-        <Card className="border-tape-beige bg-white/90 shadow-sm">
-          <CardContent className="p-6">
-            <h2 className="mb-6 text-xl font-bold text-tape-brown">ウォレット</h2>
-            <WalletClient />
-          </CardContent>
-        </Card>
-
-        <Card className="border-tape-beige bg-white/90 shadow-sm">
-          <CardContent className="p-6">
-            <h2 className="mb-6 text-xl font-bold text-tape-brown">カウンセリング予約</h2>
-            <MyBookingsClient />
-          </CardContent>
-        </Card>
-
-        <Card className="border-tape-beige bg-white/90 shadow-sm">
-          <CardContent className="p-6">
-            <MyPageClient initialProfile={initialProfile} />
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+          <Card className="border-[#f0e4d8] bg-white/95 shadow-[0_18px_38px_rgba(81,67,60,0.07)]">
+            <CardContent className="p-6">
+              <MyPageClient initialProfile={initialProfile} />
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
   );
 }
