@@ -60,8 +60,7 @@ function HomePage() {
     },
   ];
 
-    <div className="flex min-h-screen flex-col">
-    <div className="flex min-h-screen flex-col">
+  return (
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-10 p-4 text-center md:p-8">
         <div className="flex justify-end">
           <SignOutButton />
