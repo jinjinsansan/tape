@@ -25,6 +25,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getOpenAIApiKey } from "@/lib/env";
 import type { Database } from "@tape/supabase";
 import { trackApi } from "@/server/monitoring";
+import { resolveAttractionPromoAppendix } from "@/server/services/michelle-sales";
 
 type StreamEventMap = {
   textDelta: { value?: string };
@@ -181,7 +182,8 @@ export async function POST(request: Request) {
     const { sessionId: incomingSessionId, message, category } = parsed.data;
     const prefersBufferedResponse = request.headers.get("x-buffered-response") === "1";
     const cookieStore = cookies();
-    const supabase = createSupabaseRouteClient<Database>(cookieStore) as unknown as AttractionSupabase;
+    const supabaseBase = createSupabaseRouteClient<Database>(cookieStore);
+    const supabase = supabaseBase as unknown as AttractionSupabase;
 
     let user;
     try {
@@ -208,6 +210,7 @@ export async function POST(request: Request) {
       message,
       category
     );
+    const promoAppendixPromise = resolveAttractionPromoAppendix(supabaseBase, sessionId);
 
     const openai = getMichelleAttractionOpenAIClient();
     const assistantId = getMichelleAttractionAssistantId();
@@ -403,23 +406,27 @@ ${message}`;
           .on("error", (error: unknown) => {
             reject(error);
           })
-          .on("end", async () => {
-            if (fullReply.trim()) {
-              await supabase.from("michelle_attraction_messages").insert({
-                session_id: sessionId,
-                role: "assistant",
-                content: fullReply
-              });
-            }
+          .on("end", () => {
             resolve();
           });
       });
+
+      const promoAppendix = await promoAppendixPromise;
+      const finalReply = promoAppendix ? `${fullReply.trimEnd()}${promoAppendix}` : fullReply;
+
+      if (finalReply.trim()) {
+        await supabase.from("michelle_attraction_messages").insert({
+          session_id: sessionId,
+          role: "assistant",
+          content: finalReply
+        });
+      }
 
       await new Promise((resolve) => setTimeout(resolve, RUN_COMPLETION_DELAY_MS));
 
       return NextResponse.json({
         sessionId,
-        message: fullReply,
+        message: finalReply,
         knowledge: knowledgeMatches.slice(0, 4)
       });
     }
@@ -459,11 +466,19 @@ ${message}`;
               controller.close();
             })
             .on("end", async () => {
-              if (fullReply.trim()) {
+              const promoAppendix = await promoAppendixPromise;
+              let finalReply = fullReply;
+
+              if (promoAppendix) {
+                finalReply = `${finalReply.trimEnd()}${promoAppendix}`;
+                sendEvent({ type: "delta", content: promoAppendix });
+              }
+
+              if (finalReply.trim()) {
                 await supabase.from("michelle_attraction_messages").insert({
                   session_id: sessionId,
                   role: "assistant",
-                  content: fullReply
+                  content: finalReply
                 });
               }
 

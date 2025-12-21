@@ -10,6 +10,7 @@ import { retrieveKnowledgeMatches } from "@/lib/michelle/rag";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { trackApi } from "@/server/monitoring";
+import { resolvePsychologyPromoAppendix } from "@/server/services/michelle-sales";
 import type { Database } from "@tape/supabase";
 
 const requestSchema = z.object({
@@ -57,13 +58,14 @@ export async function POST(request: Request) {
     }
 
     try {
-      const { sessionId, threadId } = await resolveSession(
+    const { sessionId, threadId } = await resolveSession(
       supabase,
       user.id,
       parsed.data.sessionId,
       parsed.data.message,
       parsed.data.category
     );
+    const promoAppendixPromise = resolvePsychologyPromoAppendix(supabase, sessionId);
 
     // RAG検索で関連する心理学知識を取得
     console.log(`[Michelle Chat] User message: "${parsed.data.message.slice(0, 50)}..."`);
@@ -131,12 +133,17 @@ export async function POST(request: Request) {
     const assistantResponse = await runBufferedCompletion(betaThreads, threadId);
     console.log(`[Michelle Chat] Assistant response length: ${assistantResponse.length} chars`);
 
+    const promoAppendix = await promoAppendixPromise;
+    const finalAssistantResponse = promoAppendix
+      ? `${assistantResponse.trimEnd()}${promoAppendix}`
+      : assistantResponse;
+
     // アシスタントレスポンスをデータベースに保存
     if (assistantResponse.trim()) {
       await supabase.from("michelle_messages").insert({
         session_id: sessionId,
         role: "assistant",
-        content: assistantResponse
+        content: finalAssistantResponse
       });
       console.log("[Michelle Chat] Assistant message saved to database");
     }
@@ -144,7 +151,7 @@ export async function POST(request: Request) {
       console.log("[Michelle Chat] Chat completion successful");
       return NextResponse.json({
         sessionId,
-        message: assistantResponse,
+        message: finalAssistantResponse,
         knowledge: knowledgeMatches.slice(0, 4)
       });
     } catch (error) {
