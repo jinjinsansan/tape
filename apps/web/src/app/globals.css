@@ -4,6 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-tape-cream text-tape-brown antialiased;
+    @apply min-h-screen text-tape-brown antialiased;
+    background-color: #f9f7f3;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(198, 142, 155, 0.12), transparent 55%),
+      radial-gradient(circle at 80% 10%, rgba(138, 169, 200, 0.12), transparent 50%),
+      radial-gradient(circle at 50% 80%, rgba(216, 227, 219, 0.18), transparent 45%);
   }
 }

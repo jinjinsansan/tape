@@ -21,60 +21,60 @@ function HomePage() {
       description: "今の気持ちを書き留める",
       icon: BookHeart,
       href: "/diary",
-      color: "bg-tape-pink/20 text-tape-brown",
+      color: "bg-[#f4e7e2] text-[#4b3f3a]",
     },
     {
       title: "Michelle AI",
       description: "いつでも相談できるAIパートナー",
       icon: Bot,
       href: "/michelle",
-      color: "bg-tape-green/20 text-tape-brown",
+      color: "bg-[#e1ede7] text-[#4b3f3a]",
     },
     {
       title: "動画コース",
       description: "心の仕組みを学ぶ",
       icon: PlayCircle,
       href: "/courses",
-      color: "bg-tape-orange/20 text-tape-brown",
+      color: "bg-[#f5e8e0] text-[#4b3f3a]",
     },
     {
       title: "カウンセリング",
       description: "専門家に相談する",
       icon: CalendarHeart,
       href: "/counselor",
-      color: "bg-tape-beige text-tape-brown",
+      color: "bg-[#f2ece7] text-[#4b3f3a]",
     },
     {
       title: "みんなの日記",
       description: "公開された日記を読む",
       icon: Users,
       href: "/feed",
-      color: "bg-tape-light-brown/10 text-tape-brown",
+      color: "bg-[#ede6df] text-[#4b3f3a]",
     },
     {
       title: "管理者メニュー",
       description: "システム設定",
       icon: Settings,
       href: "/admin",
-      color: "bg-gray-100 text-gray-600",
+      color: "bg-[#ebe8f5] text-[#4b3f3a]",
     },
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-tape-cream">
+    <div className="flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-10 p-4 text-center md:p-8">
         <div className="flex justify-end">
           <SignOutButton />
         </div>
         {/* Hero Section */}
         <div className="space-y-4">
-          <p className="font-sans text-sm font-medium tracking-widest text-tape-light-brown">
+          <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#9a8e86]">
             {SITE_NAME_EN}
           </p>
-          <h1 className="font-sans text-4xl font-bold tracking-tight text-tape-brown md:text-5xl">
+          <h1 className="font-sans text-4xl font-bold tracking-tight text-[#4b3f3a] md:text-5xl">
             {SITE_NAME_JP}
           </h1>
-          <p className="mx-auto max-w-md text-lg text-tape-light-brown">
+          <p className="mx-auto max-w-md text-lg text-[#7a6a63]">
             あなたの心にそっと寄り添う、<br className="md:hidden" />
             やさしい居場所。
           </p>
@@ -84,7 +84,7 @@ function HomePage() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {features.map((feature) => (
             <Link key={feature.title} href={feature.href}>
-              <Card className="h-full border-none shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+              <Card className="h-full border-none bg-white/90 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
                 <CardContent className="flex flex-col items-center justify-center space-y-3 p-6">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-full ${feature.color}`}>
                     <feature.icon className="h-6 w-6" />

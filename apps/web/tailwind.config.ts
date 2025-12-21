@@ -9,13 +9,17 @@ const config: Config = {
     extend: {
       colors: {
         tape: {
-          cream: "#FFFBF5",
-          beige: "#F5F2EA",
-          brown: "#5C554F",
-          "light-brown": "#8E8680",
-          pink: "#FFDBCF",
-          green: "#CBE4D6",
-          orange: "#F2A490",
+          cream: "#f9f7f3",
+          beige: "#f1ece6",
+          brown: "#4b3f3a",
+          "light-brown": "#7a6a63",
+          pink: "#c68e9b",
+          green: "#cbded0",
+          orange: "#c69382",
+          lavender: "#e6e2f3",
+          blue: "#8aa9c8",
+          sage: "#d8e3db",
+          sand: "#efe7de",
         },
       },
       fontFamily: {

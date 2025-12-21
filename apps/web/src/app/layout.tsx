@@ -26,7 +26,7 @@ export default function RootLayout({
     <html lang="ja">
       <body
         className={cn(
-          "min-h-screen bg-[#FFFBF5] font-sans text-[#5C554F] antialiased flex flex-col",
+          "min-h-screen font-sans text-tape-brown antialiased flex flex-col",
           zenMaru.variable
         )}
       >

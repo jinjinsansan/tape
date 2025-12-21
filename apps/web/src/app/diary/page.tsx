@@ -73,7 +73,7 @@ export default function DiaryPage() {
 
   return (
     <AuthGate>
-      <div className="min-h-screen bg-tape-cream p-4 pb-20 md:p-8">
+      <div className="min-h-screen p-4 pb-20 md:p-8">
       <header className="mx-auto mb-8 max-w-4xl space-y-4 text-center">
         <Link href="/" className="inline-block">
           <Button variant="ghost" size="sm" className="mb-2">
@@ -81,8 +81,8 @@ export default function DiaryPage() {
             ホームに戻る
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-tape-brown">かんじょうにっき</h1>
-        <p className="text-tape-light-brown">
+        <h1 className="text-3xl font-bold text-[#4b3f3a]">かんじょうにっき</h1>
+        <p className="text-[#7a6a63]">
           今の気持ちをそのまま書き出してみましょう。<br />
           書くことで、少しだけ心が軽くなるかもしれません。
         </p>
@@ -93,20 +93,20 @@ export default function DiaryPage() {
           {resourceLinks.map((item) => {
             const isHowTo = item.href === "/diary/how-to";
             const cardClasses = cn(
-              "border-none bg-white/70 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-md",
-              isHowTo && highlightHowTo && "ring-2 ring-tape-pink shadow-lg animate-pulse"
+              "border border-[#efe7de] bg-white/85 backdrop-blur shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg",
+              isHowTo && highlightHowTo && "ring-2 ring-[#c68e9b] shadow-lg animate-pulse"
             );
 
             return (
               <Link key={item.href} href={item.href}>
                 <Card className={cardClasses}>
                 <CardContent className="flex items-start gap-4 p-6">
-                  <div className="rounded-2xl bg-tape-beige p-3 text-tape-brown">
+                  <div className="rounded-2xl bg-[#f4ede6] p-3 text-[#4b3f3a]">
                     <item.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-tape-brown">{item.title}</h3>
-                    <p className="mt-1 text-sm text-tape-light-brown">{item.description}</p>
+                    <h3 className="text-lg font-bold text-[#4b3f3a]">{item.title}</h3>
+                    <p className="mt-1 text-sm text-[#7a6a63]">{item.description}</p>
                   </div>
                 </CardContent>
               </Card>
