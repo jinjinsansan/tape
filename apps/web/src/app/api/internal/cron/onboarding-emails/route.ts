@@ -24,8 +24,7 @@ export async function GET() {
       .from("profiles")
       .select("id, onboarding_email_step, onboarding_email_started_at, created_at")
       .eq("onboarding_email_enabled", true)
-      .eq("onboarding_email_completed", false)
-      .not("onboarding_email_started_at", "is", null);
+      .eq("onboarding_email_completed", false);
 
     if (error) {
       throw error;
@@ -42,15 +41,21 @@ export async function GET() {
 
     for (const profile of profiles || []) {
       try {
-        const startedAt = new Date(profile.onboarding_email_started_at);
-        const daysSinceStart = Math.floor((today.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24));
+        const shouldResetStart = profile.onboarding_email_step === 0;
+        const referenceStart = shouldResetStart
+          ? today
+          : profile.onboarding_email_started_at
+            ? new Date(profile.onboarding_email_started_at)
+            : new Date(profile.created_at ?? today.toISOString());
+
+        const daysSinceStart = Math.floor((today.getTime() - referenceStart.getTime()) / (1000 * 60 * 60 * 24));
         
         // For new users (step 0), send step 1 immediately
         // For others, determine which step based on days since start
         let targetStep: OnboardingStep;
         
-        if (profile.onboarding_email_step === 0) {
-          // New user: send step 1
+        if (shouldResetStart) {
+          // New user or sequence not started: send step 1 starting today
           targetStep = 1;
         } else {
           // Existing user: daysSinceStart 0=step1, 1=step2, 2=step3, ...
@@ -82,13 +87,18 @@ export async function GET() {
         const success = await sendOnboardingEmail(profile.id, targetStep);
         
         if (success) {
-          // Update the step
+          const updates: Record<string, unknown> = {
+            onboarding_email_step: targetStep,
+            onboarding_email_completed: targetStep === 8
+          };
+
+          if (shouldResetStart || !profile.onboarding_email_started_at) {
+            updates.onboarding_email_started_at = referenceStart.toISOString();
+          }
+
           await supabase
             .from("profiles")
-            .update({ 
-              onboarding_email_step: targetStep,
-              onboarding_email_completed: targetStep === 8
-            })
+            .update(updates)
             .eq("id", profile.id);
           
           results.sent++;

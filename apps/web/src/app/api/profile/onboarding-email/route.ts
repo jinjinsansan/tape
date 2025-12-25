@@ -53,10 +53,22 @@ export async function POST(request: Request) {
     }
 
     const admin = getSupabaseAdminClient();
+    const nowIso = new Date().toISOString();
+
+    const updates: Record<string, unknown> = {
+      id: user.id,
+      onboarding_email_enabled: enabled
+    };
+
+    if (enabled) {
+      updates.onboarding_email_step = 0;
+      updates.onboarding_email_completed = false;
+      updates.onboarding_email_started_at = nowIso;
+    }
+
     const { error } = await admin
       .from("profiles")
-      .update({ onboarding_email_enabled: enabled })
-      .eq("id", user.id);
+      .upsert(updates, { onConflict: "id" });
 
     if (error) {
       throw error;
