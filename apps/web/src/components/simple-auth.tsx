@@ -52,6 +52,16 @@ export function SimpleAuth() {
           password,
         });
         if (error) throw error;
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+
+        fetch("/api/profile/onboarding-email/send-now", {
+          method: "POST",
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+        }).catch(() => {
+          /* best-effort */
+        });
         
         setSuccess("登録完了！そのままログインしてください");
         setMode("signin");

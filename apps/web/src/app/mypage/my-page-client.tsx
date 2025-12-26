@@ -251,6 +251,7 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
 
   const handleOnboardingEmailToggle = useCallback(async () => {
     setOnboardingLoading(true);
+    const wasEnabled = onboardingEmailEnabled;
     try {
       const response = await fetch("/api/profile/onboarding-email", {
         method: "POST",
@@ -263,7 +264,18 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
       }
 
       const data = await response.json();
-      setOnboardingEmailEnabled(data.onboardingEmailEnabled);
+      const nextEnabled = data.onboardingEmailEnabled;
+      setOnboardingEmailEnabled(nextEnabled);
+
+      if (!wasEnabled && nextEnabled) {
+        fetch("/api/profile/onboarding-email/send-now", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ forceRestart: true })
+        }).catch(() => {
+          /* best-effort */
+        });
+      }
     } catch (err) {
       console.error("Failed to update onboarding email setting", err);
       alert(err instanceof Error ? err.message : "設定の更新に失敗しました");
@@ -386,7 +398,7 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">DIARY REMINDER</p>
         <h2 className="text-2xl font-bold text-tape-brown">日記リマインダー</h2>
         <p className="text-sm text-tape-light-brown">
-          毎日22時に、その日の日記を書いていない場合にメールでお知らせします。
+          毎日22時に、その日の日記を書いていない場合にメールでお知らせします。※当日22時の1通のみで、即時送信はありません。
         </p>
 
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
@@ -420,7 +432,7 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">ONBOARDING EMAIL</p>
         <h2 className="text-2xl font-bold text-tape-brown">ステップメール</h2>
         <p className="text-sm text-tape-light-brown">
-          登録後8日間、毎日12時にアプリの使い方をメールでお届けします。
+          登録直後に1通目をすぐ配信し、その後は8日間毎日12時にアプリの使い方をメールでお届けします。
         </p>
 
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-tape-beige bg-tape-cream/30 p-4">
@@ -446,7 +458,7 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
           </button>
         </div>
         <p className="text-xs text-tape-light-brown">
-          ※ 配信停止後も、いつでも再開できます。
+          ※ 配信停止後も、いつでも再開できます（再開時に1通目から再スタート）。
         </p>
       </section>
 
