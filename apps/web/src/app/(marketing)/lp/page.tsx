@@ -279,79 +279,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-tape-brown md:text-4xl">
-              利用者の声
-            </h2>
-            <p className="text-tape-light-brown">
-              多くの方が、Tapeで変化を実感しています
-            </p>
-            <p className="mt-2 text-xs text-tape-light-brown">
-              ※イメージです
-            </p>
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-3xl bg-white p-8 shadow-lg">
-              <div className="mb-4 flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-5 w-5 fill-tape-orange text-tape-orange" />
-                ))}
-              </div>
-              <p className="mb-6 leading-relaxed text-tape-brown">
-                「恋愛でいつも同じパターンで傷ついていた理由が、ミシェルとの対話でやっと理解できました。3ヶ月続けて、今は自分を責めなくなりました」
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-tape-pink to-tape-orange" />
-                <div>
-                  <p className="font-bold text-tape-brown">M.Kさん（28歳・女性）</p>
-                  <p className="text-sm text-tape-light-brown">スタンダードプラン</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="rounded-3xl bg-white p-8 shadow-lg">
-              <div className="mb-4 flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-5 w-5 fill-tape-orange text-tape-orange" />
-                ))}
-              </div>
-              <p className="mb-6 leading-relaxed text-tape-brown">
-                「感情日記を書くだけで、こんなに心が軽くなるなんて。AIのコメントが的確すぎて、毎回『そうだったんだ』と気づかされます」
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-tape-blue to-tape-green" />
-                <div>
-                  <p className="font-bold text-tape-brown">Y.Tさん（34歳・男性）</p>
-                  <p className="text-sm text-tape-light-brown">無料プラン</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="rounded-3xl bg-white p-8 shadow-lg">
-              <div className="mb-4 flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-5 w-5 fill-tape-orange text-tape-orange" />
-                ))}
-              </div>
-              <p className="mb-6 leading-relaxed text-tape-brown">
-                「動画コースで心の仕組みを学んだら、人間関係のストレスが激減しました。知識があるだけで、こんなに楽になるんですね」
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-tape-lavender to-tape-pink" />
-                <div>
-                  <p className="font-bold text-tape-brown">S.Hさん（41歳・女性）</p>
-                  <p className="text-sm text-tape-light-brown">プレミアムプラン</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FAQ Section */}
       <section className="bg-white/50 px-4 py-20 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl">
@@ -433,7 +360,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-tape-beige bg-white/80 px-4 py-12 text-center backdrop-blur-sm">
         <div className="mx-auto max-w-6xl">
-          <p className="mb-4 text-2xl font-bold text-tape-brown">Tape</p>
+          <p className="mb-4 text-2xl font-bold text-tape-brown">テープ式心理学</p>
           <p className="mb-6 text-sm text-tape-light-brown">
             心に寄り添う、やさしい場所
           </p>
@@ -446,7 +373,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="mt-8 text-xs text-tape-light-brown">
-            © 2024 Tape. All rights reserved.
+            © 2024 テープ式心理学. All rights reserved.
           </p>
         </div>
       </footer>
