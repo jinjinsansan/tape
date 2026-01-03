@@ -12,7 +12,7 @@ const zenMaru = Zen_Maru_Gothic({
 
 export const metadata: Metadata = {
   title: "Tape - 心の痛みを言葉にして、本当の自分と出会う",
-  description: "感情日記、AIカウンセリング、専門的な動画コース。Tape式心理学があなたの内面の成長を、やさしくサポートします。",
+  description: "感情日記、AIカウンセリング、専門的な動画コース。テープ式心理学があなたの内面の成長を、やさしくサポートします。",
 };
 
 export default function MarketingLayout({

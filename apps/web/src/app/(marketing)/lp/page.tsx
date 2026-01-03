@@ -27,7 +27,7 @@ export default function LandingPage() {
           
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-tape-light-brown md:text-xl">
             感情日記、AIカウンセリング、専門的な動画コース。<br />
-            Tape式心理学があなたの内面の成長を、やさしくサポートします。
+            テープ式心理学があなたの内面の成長を、やさしくサポートします。
           </p>
           
           <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row">
@@ -101,7 +101,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold text-tape-brown md:text-4xl">
-              Tape式心理学の3つの柱
+              テープ式心理学の3つの柱
             </h2>
             <p className="text-tape-light-brown">
               書く、話す、学ぶ。3つのアプローチで、確実に変化を実感できます
@@ -139,7 +139,7 @@ export default function LandingPage() {
               </div>
               <h3 className="mb-3 text-2xl font-bold text-tape-brown">Michelle AI</h3>
               <p className="mb-4 leading-relaxed text-tape-light-brown">
-                24時間いつでも相談できるAIパートナー。Tape式心理学の知識で、あなたをサポート。
+                24時間いつでも相談できるAIパートナー。テープ式心理学の知識で、あなたをサポート。
               </p>
               <ul className="space-y-2 text-sm text-tape-brown">
                 <li className="flex items-center gap-2">
@@ -245,138 +245,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-tape-brown md:text-4xl">
-              あなたに合った始め方を選ぶ
-            </h2>
-            <p className="text-tape-light-brown">
-              無料から始めて、必要に応じてステップアップできます
-            </p>
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-3xl border-2 border-tape-beige bg-white p-8 shadow-lg transition-all hover:scale-105">
-              <div className="mb-6">
-                <h3 className="mb-2 text-2xl font-bold text-tape-brown">無料プラン</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-tape-brown">¥0</span>
-                  <span className="text-tape-light-brown">/月</span>
-                </div>
-                <p className="text-sm text-tape-light-brown">まずは試してみたい方へ</p>
-              </div>
-              <ul className="mb-8 space-y-3 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>感情日記（制限なし）</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>AIによる日記分析</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>みんなの日記を読む</span>
-                </li>
-              </ul>
-              <Link
-                href="/diary"
-                className="block w-full rounded-full border-2 border-tape-brown bg-white py-3 text-center font-bold text-tape-brown transition-all hover:bg-tape-beige"
-              >
-                無料で始める
-              </Link>
-            </div>
-            
-            <div className="relative rounded-3xl border-2 border-tape-pink bg-gradient-to-br from-white to-tape-beige p-8 shadow-2xl transition-all hover:scale-105">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-tape-pink to-tape-orange px-4 py-1 text-sm font-bold text-white shadow-md">
-                おすすめ
-              </div>
-              <div className="mb-6">
-                <h3 className="mb-2 text-2xl font-bold text-tape-brown">スタンダード</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-tape-brown">¥2,980</span>
-                  <span className="text-tape-light-brown">/月</span>
-                </div>
-                <p className="text-sm text-tape-light-brown">本気で変わりたい方へ</p>
-              </div>
-              <ul className="mb-8 space-y-3 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>無料プランの全機能</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span className="font-bold">Michelle AIチャット無制限</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>引き寄せチャット機能</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>基礎コースへのアクセス</span>
-                </li>
-              </ul>
-              <Link
-                href="/michelle/chat"
-                className="block w-full rounded-full bg-gradient-to-r from-tape-pink to-tape-orange py-3 text-center font-bold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-              >
-                今すぐ始める
-              </Link>
-            </div>
-            
-            <div className="rounded-3xl border-2 border-tape-beige bg-white p-8 shadow-lg transition-all hover:scale-105">
-              <div className="mb-6">
-                <h3 className="mb-2 text-2xl font-bold text-tape-brown">プレミアム</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-tape-brown">¥9,800</span>
-                  <span className="text-tape-light-brown">/月</span>
-                </div>
-                <p className="text-sm text-tape-light-brown">徹底的にサポートが欲しい方へ</p>
-              </div>
-              <ul className="mb-8 space-y-3 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>スタンダードの全機能</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span className="font-bold">全動画コース見放題</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>月1回カウンセラー相談</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-tape-pink" />
-                  <span>進捗トラッキング機能</span>
-                </li>
-              </ul>
-              <Link
-                href="/counselor"
-                className="block w-full rounded-full border-2 border-tape-brown bg-tape-brown py-3 text-center font-bold text-white transition-all hover:bg-tape-light-brown"
-              >
-                カウンセラーを見る
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Authority Section */}
       <section className="bg-gradient-to-b from-white/80 to-transparent px-4 py-20 backdrop-blur-sm">
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="mb-6 text-3xl font-bold text-tape-brown md:text-4xl">
-            Tape式心理学とは
+            テープ式心理学とは
           </h2>
           <div className="rounded-3xl bg-white p-8 shadow-xl md:p-12">
             <p className="mb-6 text-lg leading-relaxed text-tape-brown">
               従来の心理学を、<span className="font-bold text-tape-pink">もっと身近に、もっと実践的に</span>。
             </p>
             <p className="mb-8 leading-relaxed text-tape-light-brown">
-              Tape式心理学は、トラウマ理論、愛着理論、認知行動療法などの科学的根拠に基づきながら、
+              テープ式心理学は、トラウマ理論、愛着理論、認知行動療法などの科学的根拠に基づきながら、
               日常で実践できる形に落とし込んだ独自のメソッドです。<br />
               「心の仕組みを知る」「感情を言語化する」「新しい選択をする」という3つのステップで、
               誰でも確実に変化を実感できる設計になっています。
@@ -485,11 +365,11 @@ export default function LandingPage() {
             {[
               {
                 q: "本当に効果がありますか？",
-                a: "Tape式心理学は科学的根拠に基づいたメソッドです。感情日記による言語化、AIとの対話、体系的な学習という3つのアプローチで、多くの方が3ヶ月以内に変化を実感しています。"
+                a: "テープ式心理学は科学的根拠に基づいたメソッドです。感情日記による言語化、AIとの対話、体系的な学習という3つのアプローチで、多くの方が3ヶ月以内に変化を実感しています。"
               },
               {
                 q: "AIに相談するのは不安です",
-                a: "ミシェルAIは89の専門知識ベースを持ち、Tape式心理学に基づいた対話を行います。判断せず、あなたに寄り添う姿勢を大切にしています。また、必要に応じて人間のカウンセラーにも相談できます。"
+                a: "ミシェルAIは89の専門知識ベースを持ち、テープ式心理学に基づいた対話を行います。判断せず、あなたに寄り添う姿勢を大切にしています。また、必要に応じて人間のカウンセラーにも相談できます。"
               },
               {
                 q: "途中で解約できますか？",
