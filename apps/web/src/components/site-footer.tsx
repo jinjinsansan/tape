@@ -11,6 +11,7 @@ const footerLinks = [
 
 const socialLinks = [
   { label: "一般社団法人NAMIDAサポート協会", href: "https://web.namisapo.com/", icon: ExternalLink },
+  { label: "メンタルAIチーム", href: "https://www.mentalai.team/", icon: ExternalLink },
   { label: "YouTube", href: "https://www.youtube.com/channel/UCHWAYMRP3Ia7CgH6sg1USGg", icon: Youtube },
   { label: "X (Twitter)", href: "https://x.com/iamiamthatthat", icon: Twitter }
 ];
