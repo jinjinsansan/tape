@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getRouteUser } from "@/lib/supabase/auth-helpers";
+import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 import { adminCancelBooking } from "@/server/services/counselors";
 import { sendBookingCancelledEmail } from "@/server/emails";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -14,28 +14,12 @@ export async function DELETE(_: Request, context: { params: { id: string } }) {
   const { id } = paramsSchema.parse(context.params);
   const cookieStore = cookies();
   const supabase = createSupabaseRouteClient(cookieStore);
-  const adminSupabase = createSupabaseAdminClient();
+  const adminSupabase = getSupabaseAdminClient();
 
   try {
-    const user = await getRouteUser(supabase, "Admin cancel booking");
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user role from profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile) {
-      console.error("Failed to load profile", profileError);
-      return NextResponse.json({ error: "Profile not found" }, { status: 500 });
-    }
-
-    if (profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { response } = await ensureAdmin(supabase, "Admin cancel booking");
+    if (response) {
+      return response;
     }
 
     const booking = await adminCancelBooking(id);

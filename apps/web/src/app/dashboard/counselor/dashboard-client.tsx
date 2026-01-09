@@ -75,6 +75,7 @@ export function CounselorDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [profile, setProfile] = useState<CounselorProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -377,6 +378,30 @@ export function CounselorDashboardClient() {
       setSending(false);
     }
   };
+
+  const handleCancelSelectedBooking = useCallback(async () => {
+    if (!selectedBooking) return;
+    if (!["pending", "confirmed"].includes(selectedBooking.status)) return;
+    if (!confirm("この予約をキャンセルしますか？\nユーザーにも通知が届きます。")) return;
+
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/counselors/dashboard/bookings/${selectedBooking.id}/cancel`, {
+        method: "POST"
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error ?? "予約のキャンセルに失敗しました");
+      }
+      alert("予約をキャンセルしました");
+      await fetchBookings();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "予約のキャンセルに失敗しました");
+    } finally {
+      setCancelling(false);
+    }
+  }, [selectedBooking, fetchBookings]);
 
   if (loading) {
     return (
@@ -790,6 +815,15 @@ export function CounselorDashboardClient() {
                   プラン: {COUNSELOR_PLAN_CONFIGS[selectedBooking.plan_type].title}
                 </p>
                 {selectedBooking.notes && <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-600">メモ: {selectedBooking.notes}</p>}
+                {(["pending", "confirmed"] as string[]).includes(selectedBooking.status) && (
+                  <button
+                    onClick={handleCancelSelectedBooking}
+                    disabled={cancelling}
+                    className="mt-4 rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {cancelling ? "キャンセル処理中..." : "予約をキャンセル"}
+                  </button>
+                )}
               </div>
 
               <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">

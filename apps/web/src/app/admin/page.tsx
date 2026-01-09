@@ -36,7 +36,7 @@ async function getAdminStats() {
         .from("feed_reports")
         .select("*", { count: "exact", head: true })
         .eq("status", "pending"),
-      supabase.from("bookings").select("*", { count: "exact", head: true }),
+      supabase.from("counselor_bookings").select("*", { count: "exact", head: true }),
       supabase
         .from("feed_share_log")
         .select("*", { count: "exact", head: true })
@@ -72,6 +72,15 @@ export default async function AdminDashboard() {
   const stats = await getAdminStats();
 
   const sections = [
+    {
+      href: "/admin/bookings",
+      title: "予約・売上管理",
+      description: "全カウンセラーの予約/売上を確認し、重複や返金を処理",
+      icon: Calendar,
+      color: "from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20",
+      iconColor: "text-amber-600",
+      stats: `${stats.totalBookings}件`
+    },
     {
       href: "/admin/users",
       title: "ユーザー管理",

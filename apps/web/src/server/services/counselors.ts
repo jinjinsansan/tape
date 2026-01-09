@@ -7,10 +7,16 @@ import type {
   SlotStatus,
   CounselorPlanType
 } from "@tape/supabase";
+import { getAdminNotificationEmail } from "@/lib/env";
+import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
+import {
+  sendBookingAdminAlertEmail,
+  sendBookingCounselorNotificationEmail,
+  sendBookingCreatedEmail
+} from "@/server/emails";
+import { createNotification, notifyAdmin } from "@/server/services/notifications";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getOrCreateWallet, consumeWallet, topUpWallet } from "@/server/services/wallet";
-import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
-import { createNotification, notifyAdmin } from "@/server/services/notifications";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -35,12 +41,39 @@ export type IntroChatMessage = Database["public"]["Tables"]["counselor_intro_mes
   sender_profile?: Database["public"]["Tables"]["profiles"]["Row"] | null;
 };
 
+export type AdminBookingSummary = {
+  totalBookings: number;
+  pendingBookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  paidBookings: number;
+  totalRevenueCents: number;
+  monthly: Array<{ month: string; revenueCents: number; bookingCount: number }>;
+};
+
 type CreateBookingParams = {
   slug: string;
   clientUserId: string;
   planType: CounselorPlanType;
   notes?: string | null;
   slotId?: string | null;
+};
+
+type AdminSummaryRow = {
+  total_bookings?: number | null;
+  pending_bookings?: number | null;
+  confirmed_bookings?: number | null;
+  completed_bookings?: number | null;
+  cancelled_bookings?: number | null;
+  paid_bookings?: number | null;
+  total_revenue_cents?: number | null;
+};
+
+type AdminMonthlyRow = {
+  month: string;
+  revenue_cents: number;
+  booking_count: number;
 };
 
 const publicSelect = `
@@ -134,6 +167,104 @@ export const createBooking = async ({
     throw new SlotUnavailableError("このプランは現在提供されていません。");
   }
 
+  const { data: existingBooking } = await supabase
+    .from("counselor_bookings")
+    .select(`
+      *,
+      slot:counselor_slots(start_time, end_time)
+    `)
+    .eq("client_user_id", clientUserId)
+    .eq("counselor_id", counselor.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingBooking) {
+    let chatId = existingBooking.intro_chat_id;
+
+    if (!chatId) {
+      const { data: chat, error: chatError } = await supabase
+        .from("counselor_intro_chats")
+        .insert({ booking_id: existingBooking.id })
+        .select("id")
+        .single();
+
+      if (chatError) {
+        throw chatError;
+      }
+
+      chatId = chat.id;
+
+      const { error: updateExistingError } = await supabase
+        .from("counselor_bookings")
+        .update({ intro_chat_id: chatId })
+        .eq("id", existingBooking.id);
+
+      if (updateExistingError) {
+        throw updateExistingError;
+      }
+
+      existingBooking.intro_chat_id = chatId;
+    }
+
+    let resolvedSlotId = existingBooking.slot_id;
+
+    if (slotId !== undefined) {
+      const slotChanged = slotId !== existingBooking.slot_id;
+
+      if (slotChanged && existingBooking.slot_id) {
+        await markSlotStatus(supabase, existingBooking.slot_id, "available", { held_until: null });
+        resolvedSlotId = null;
+      }
+
+      if (slotId) {
+        const { data: nextSlot, error: slotError } = await supabase
+          .from("counselor_slots")
+          .select("id, counselor_id, start_time, end_time, status, held_until")
+          .eq("id", slotId)
+          .maybeSingle();
+
+        if (slotError) {
+          throw slotError;
+        }
+        if (!nextSlot || nextSlot.counselor_id !== counselor.id) {
+          throw new SlotUnavailableError("Slot not found");
+        }
+        if (nextSlot.status !== "available") {
+          throw new SlotUnavailableError("Slot is already booked");
+        }
+
+        await markSlotStatus(supabase, nextSlot.id, "held", {
+          held_until: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+        });
+        resolvedSlotId = nextSlot.id;
+      }
+    }
+
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from("counselor_bookings")
+      .update({
+        slot_id: resolvedSlotId,
+        price_cents: planConfig.priceCents,
+        notes,
+        plan_type: planType
+      })
+      .eq("id", existingBooking.id)
+      .select(`
+        *,
+        counselor:counselors(display_name, avatar_url, slug),
+        slot:counselor_slots(start_time, end_time)
+      `)
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return { booking: updatedBooking, chatId, counselor };
+  }
+
   const planConfig = COUNSELOR_PLAN_CONFIGS[planType];
   let resolvedSlotId: string | null = null;
   if (slotId) {
@@ -196,43 +327,83 @@ export const createBooking = async ({
   return { booking, chatId: chat.id, counselor };
 };
 
-export const cancelBooking = async (bookingId: string, userId: string) => {
+type CancelBookingOptions = {
+  allowCounselorActor?: boolean;
+};
+
+export const cancelBooking = async (
+  bookingId: string,
+  userId: string,
+  options: CancelBookingOptions = {}
+) => {
   const supabase = getSupabaseAdminClient();
   const { data: booking, error } = await supabase
     .from("counselor_bookings")
-    .select("id, slot_id, client_user_id, status")
+    .select(`
+      *,
+      counselor:counselors!counselor_bookings_counselor_id_fkey(id, display_name, auth_user_id),
+      slot:counselor_slots!counselor_bookings_slot_id_fkey(id, start_time, end_time)
+    `)
     .eq("id", bookingId)
     .maybeSingle();
 
   if (error) {
     throw error;
   }
-  if (!booking || booking.client_user_id !== userId) {
+  if (!booking) {
     throw new SlotUnavailableError("Booking not found");
   }
-  if (booking.status !== "pending") {
-    throw new SlotUnavailableError("Only pending bookings can be cancelled");
+
+  const isClient = booking.client_user_id === userId;
+  const isCounselor = options.allowCounselorActor && booking.counselor?.auth_user_id === userId;
+
+  if (!isClient && !isCounselor) {
+    throw new SlotUnavailableError("Booking not found");
+  }
+
+  if (booking.status === "cancelled") {
+    return booking;
+  }
+
+  if (!["pending", "confirmed"].includes(booking.status)) {
+    throw new SlotUnavailableError("Only pending or confirmed bookings can be cancelled");
   }
 
   if (booking.slot_id) {
     await markSlotStatus(supabase, booking.slot_id, "available", { held_until: null });
   }
 
+  const updates: Partial<Database["public"]["Tables"]["counselor_bookings"]["Update"]> = {
+    status: "cancelled"
+  };
+
+  const shouldRefund = booking.payment_status === "paid";
+  if (shouldRefund) {
+    updates.payment_status = "refunded";
+  }
+
   const { error: cancelError } = await supabase
     .from("counselor_bookings")
-    .update({ status: "cancelled" })
+    .update(updates)
     .eq("id", booking.id);
 
   if (cancelError) {
     throw cancelError;
   }
 
-  // Return booking for email notification
+  if (shouldRefund) {
+    await topUpWallet(booking.client_user_id, booking.price_cents, {
+      reason: "Booking cancelled",
+      bookingId
+    });
+  }
+
   const { data: cancelledBooking } = await supabase
     .from("counselor_bookings")
     .select(`
       *,
-      counselor:counselors!counselor_bookings_counselor_id_fkey(display_name),
+      client:profiles!counselor_bookings_client_user_id_fkey(display_name),
+      counselor:counselors!counselor_bookings_counselor_id_fkey(display_name, auth_user_id),
       slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
     `)
     .eq("id", booking.id)
@@ -326,10 +497,16 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
       ? new Date((confirmedBooking.slot as any).start_time).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
       : "未定";
     const planLabel = confirmedBooking.plan_type === "single_session" ? "単発セッション" : "月額コース";
+    const planTitle = COUNSELOR_PLAN_CONFIGS[confirmedBooking.plan_type]?.title;
 
-    // Get client email
     const { data: clientUser } = await supabase.auth.admin.getUserById(confirmedBooking.client_user_id);
-    const clientEmail = clientUser?.user?.email ?? "不明";
+    const clientEmail = clientUser?.user?.email ?? null;
+
+    let counselorEmail: string | null = null;
+    if (counselorAuthUserId) {
+      const { data: counselorUser } = await supabase.auth.admin.getUserById(counselorAuthUserId);
+      counselorEmail = counselorUser?.user?.email ?? null;
+    }
 
     // Notify client
     await createNotification({
@@ -360,7 +537,7 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
       type: "booking.confirmed.admin",
       category: "booking",
       title: "📅 カウンセリング予約通知",
-      body: `クライアント: ${clientName} (${clientEmail})\nカウンセラー: ${counselorName}\nプラン: ${planLabel}\n日時: ${slotTime}\n金額: ¥${(confirmedBooking.price_cents / 100).toLocaleString()}`,
+      body: `クライアント: ${clientName} (${clientEmail ?? "不明"})\nカウンセラー: ${counselorName}\nプラン: ${planLabel}\n日時: ${slotTime}\n金額: ¥${(confirmedBooking.price_cents / 100).toLocaleString()}`,
       data: {
         booking_id: confirmedBooking.id,
         client_user_id: confirmedBooking.client_user_id,
@@ -370,6 +547,25 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
         price_cents: confirmedBooking.price_cents
       }
     }).catch(err => console.error("Failed to notify admin", err));
+
+    if (clientEmail) {
+      await sendBookingCreatedEmail(clientEmail, clientName, counselorName, slotTime);
+    }
+
+    if (counselorEmail) {
+      await sendBookingCounselorNotificationEmail(
+        counselorEmail,
+        counselorName,
+        clientName,
+        slotTime,
+        planTitle
+      );
+    }
+
+    const adminEmail = getAdminNotificationEmail();
+    if (adminEmail) {
+      await sendBookingAdminAlertEmail(adminEmail, counselorName, clientName, slotTime, planTitle);
+    }
   }
 
   return confirmedBooking;
@@ -496,21 +692,97 @@ export const listCounselorDashboardBookings = async (counselorId: string): Promi
   }));
 };
 
-export const listAllBookings = async (limit = 100) => {
+type ListAllBookingsOptions = {
+  limit?: number;
+  status?: BookingStatus;
+  paymentStatus?: string;
+  counselorId?: string | null;
+  clientId?: string | null;
+};
+
+export const listAllBookings = async (options: ListAllBookingsOptions = {}) => {
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("counselor_bookings")
     .select(`
       *,
-      counselor:counselors(display_name),
-      client:profiles(display_name),
+      counselor:counselors(id, display_name, slug),
+      client:profiles(id, display_name),
       slot:counselor_slots(start_time, end_time)
     `)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(options.limit ?? 200);
+
+  if (options.status) {
+    query = query.eq("status", options.status);
+  }
+
+  if (options.paymentStatus) {
+    query = query.eq("payment_status", options.paymentStatus);
+  }
+
+  if (options.counselorId) {
+    query = query.eq("counselor_id", options.counselorId);
+  }
+
+  if (options.clientId) {
+    query = query.eq("client_user_id", options.clientId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data ?? [];
+};
+
+export const getAdminBookingSummary = async (): Promise<AdminBookingSummary> => {
+  const supabase = getSupabaseAdminClient();
+
+  const { data: summaryRow, error: summaryError } = await supabase
+    .from("admin_counselor_booking_summary")
+    .select("*")
+    .maybeSingle();
+
+  if (summaryError) {
+    throw summaryError;
+  }
+
+  const summary: AdminSummaryRow = summaryRow ?? {
+    total_bookings: 0,
+    pending_bookings: 0,
+    confirmed_bookings: 0,
+    completed_bookings: 0,
+    cancelled_bookings: 0,
+    paid_bookings: 0,
+    total_revenue_cents: 0
+  };
+
+  const { data: monthlyRows, error: monthlyError } = await supabase
+    .from("admin_counselor_booking_monthly")
+    .select("*")
+    .order("month", { ascending: false });
+
+  if (monthlyError) {
+    throw monthlyError;
+  }
+
+  return {
+    totalBookings: Number(summary.total_bookings ?? 0),
+    pendingBookings: Number(summary.pending_bookings ?? 0),
+    confirmedBookings: Number(summary.confirmed_bookings ?? 0),
+    completedBookings: Number(summary.completed_bookings ?? 0),
+    cancelledBookings: Number(summary.cancelled_bookings ?? 0),
+    paidBookings: Number(summary.paid_bookings ?? 0),
+    totalRevenueCents: Number(summary.total_revenue_cents ?? 0),
+    monthly: (monthlyRows ?? []).map((row) => {
+      const monthly = row as AdminMonthlyRow;
+      return {
+        month: monthly.month,
+        revenueCents: Number(monthly.revenue_cents ?? 0),
+        bookingCount: Number(monthly.booking_count ?? 0)
+      };
+    })
+  };
 };
 
 export const adminCancelBooking = async (bookingId: string) => {

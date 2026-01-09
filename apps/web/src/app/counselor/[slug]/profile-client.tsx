@@ -179,6 +179,9 @@ export function CounselorPage({ slug }: { slug: string }) {
   );
 
   const handleBookingAction = async (payNow: boolean) => {
+    if (pendingAction) {
+      return;
+    }
     if (!isAuthenticated) {
       setError("ログイン後にご利用ください");
       return;
