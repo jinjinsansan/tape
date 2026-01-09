@@ -361,8 +361,19 @@ export const cancelBooking = async (
     throw new SlotUnavailableError("Booking not found");
   }
 
+  const { data: clientProfile } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .eq("id", booking.client_user_id)
+    .maybeSingle();
+
+  const withClient = () => ({
+    ...booking,
+    client: clientProfile ? { id: clientProfile.id, display_name: clientProfile.display_name } : null
+  });
+
   if (booking.status === "cancelled") {
-    return booking;
+    return withClient();
   }
 
   if (!["pending", "confirmed"].includes(booking.status)) {
@@ -402,14 +413,16 @@ export const cancelBooking = async (
     .from("counselor_bookings")
     .select(`
       *,
-      client:profiles!counselor_bookings_client_user_id_fkey(display_name),
       counselor:counselors!counselor_bookings_counselor_id_fkey(display_name, auth_user_id),
       slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
     `)
     .eq("id", booking.id)
     .single();
 
-  return cancelledBooking;
+  return {
+    ...cancelledBooking,
+    client: clientProfile ? { id: clientProfile.id, display_name: clientProfile.display_name } : null
+  };
 };
 
 type IntroMessagePayload = {
@@ -481,7 +494,6 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
     .from("counselor_bookings")
     .select(`
       *,
-      client:profiles!counselor_bookings_client_user_id_fkey(id, display_name, avatar_url),
       counselor:counselors!counselor_bookings_counselor_id_fkey(id, display_name, auth_user_id),
       slot:counselor_slots!counselor_bookings_slot_id_fkey(start_time, end_time)
     `)
@@ -490,7 +502,13 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
 
   // Send notifications
   if (confirmedBooking) {
-    const clientName = (confirmedBooking.client as any)?.display_name ?? "ユーザー";
+    const { data: clientProfile } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .eq("id", confirmedBooking.client_user_id)
+      .maybeSingle();
+
+    const clientName = clientProfile?.display_name ?? "ユーザー";
     const counselorName = (confirmedBooking.counselor as any)?.display_name ?? "カウンセラー";
     const counselorAuthUserId = (confirmedBooking.counselor as any)?.auth_user_id;
     const slotTime = (confirmedBooking.slot as any)?.start_time 
@@ -566,7 +584,10 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
     if (adminEmail) {
       await sendBookingAdminAlertEmail(adminEmail, counselorName, clientName, slotTime, planTitle);
     }
-  }
+    return {
+      ...confirmedBooking,
+      client: clientProfile ?? null
+    } as typeof confirmedBooking & { client: typeof clientProfile | null };
 
   return confirmedBooking;
 };
@@ -707,7 +728,6 @@ export const listAllBookings = async (options: ListAllBookingsOptions = {}) => {
     .select(`
       *,
       counselor:counselors(id, display_name, slug),
-      client:profiles(id, display_name),
       slot:counselor_slots(start_time, end_time)
     `)
     .order("created_at", { ascending: false })
@@ -732,7 +752,26 @@ export const listAllBookings = async (options: ListAllBookingsOptions = {}) => {
   const { data, error } = await query;
 
   if (error) throw error;
-  return data ?? [];
+
+  const bookings = data ?? [];
+  const clientIds = [...new Set(bookings.map((booking) => booking.client_user_id).filter(Boolean))];
+  const clientMap = new Map<string, { id: string; display_name: string | null }>();
+
+  if (clientIds.length > 0) {
+    const { data: clients } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", clientIds);
+
+    clients?.forEach((client) => {
+      clientMap.set(client.id, { id: client.id, display_name: client.display_name });
+    });
+  }
+
+  return bookings.map((booking) => ({
+    ...booking,
+    client: clientMap.get(booking.client_user_id) ?? null
+  }));
 };
 
 export const getAdminBookingSummary = async (): Promise<AdminBookingSummary> => {
@@ -826,17 +865,22 @@ export const adminCancelBooking = async (bookingId: string) => {
     .from("counselor_bookings")
     .select(`
       *,
-      client:profiles(id, display_name, email:auth_user_id(email)), -- Wait, profiles doesn't link email directly usually
       counselor:counselors(display_name),
       slot:counselor_slots(start_time, end_time)
     `)
     .eq("id", bookingId)
     .single();
-    
-    // Note: Fetching email from auth_users is tricky via join in standard Supabase if not configured.
-    // We'll assume the caller handles email fetching or we use a separate call if needed.
-    
-    return booking;
+
+  const { data: clientProfile } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .eq("id", booking.client_user_id)
+    .maybeSingle();
+
+  return {
+    ...cancelledBooking,
+    client: clientProfile ?? null
+  };
 };
 
 export const listUserBookings = async (userId: string) => {
