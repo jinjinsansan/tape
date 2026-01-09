@@ -588,6 +588,7 @@ export const confirmBooking = async (bookingId: string, userId: string) => {
       ...confirmedBooking,
       client: clientProfile ?? null
     } as typeof confirmedBooking & { client: typeof clientProfile | null };
+  }
 
   return confirmedBooking;
 };
