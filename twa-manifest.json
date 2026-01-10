@@ -1,0 +1,27 @@
+{
+  "packageId": "com.namisapo.app",
+  "host": "namisapo.app",
+  "name": "かんじょうにっき",
+  "launcherName": "かんじょうにっき",
+  "themeColor": "#F6EFEA",
+  "navigationColor": "#F6EFEA",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "fullScreen": false,
+  "splashScreenFadeOutDuration": 300,
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://namisapo.app/manifest.json",
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "sha256Fingerprints": [
+    "REPLACE_WITH_SHA256_CERT_FINGERPRINT"
+  ]
+}
