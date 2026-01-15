@@ -11,6 +11,8 @@ type DiaryEntry = {
   user_email: string | null;
   title: string | null;
   content: string;
+  event_summary: string | null;
+  realization: string | null;
   journal_date: string;
   published_at: string | null;
   visibility: "public" | "followers" | "private";
@@ -346,6 +348,18 @@ export function DiaryManagementClient() {
                   <p className="line-clamp-2 text-sm text-slate-600">
                     {entry.content}
                   </p>
+          {entry.event_summary && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600">
+              <p className="font-semibold text-slate-700">出来事メモ</p>
+              <p className="mt-1 whitespace-pre-wrap text-slate-700">{entry.event_summary}</p>
+            </div>
+          )}
+          {entry.realization && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-800">
+              <p className="font-semibold text-amber-900">気づきメモ</p>
+              <p className="mt-1 whitespace-pre-wrap">{entry.realization}</p>
+            </div>
+          )}
 
                   {/* メタ情報 */}
                   <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
@@ -494,6 +508,22 @@ export function DiaryManagementClient() {
                       {selectedEntry.content}
                     </div>
                   </div>
+                  {selectedEntry.event_summary && (
+                    <div>
+                      <div className="text-sm font-semibold text-slate-700">出来事メモ</div>
+                      <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-white p-4 text-slate-900">
+                        {selectedEntry.event_summary}
+                      </div>
+                    </div>
+                  )}
+                  {selectedEntry.realization && (
+                    <div>
+                      <div className="text-sm font-semibold text-slate-700">気づきメモ</div>
+                      <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-amber-100 bg-amber-50/80 p-4 text-amber-900">
+                        {selectedEntry.realization}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

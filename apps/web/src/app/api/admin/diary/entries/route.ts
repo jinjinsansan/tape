@@ -28,6 +28,8 @@ export async function GET(request: Request) {
           user_id,
           title,
           content,
+          event_summary,
+          realization,
           journal_date,
           published_at,
           visibility,
