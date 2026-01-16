@@ -7,14 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SignOutButton } from "@/components/signout-button";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
-import type { NamisapoBlogPost, NamisapoNewsItem } from "@/lib/namisapo";
+import type { NamisapoNewsItem } from "@/lib/namisapo";
 
 type HomeContentProps = {
   newsItems: NamisapoNewsItem[];
-  blogPosts: NamisapoBlogPost[];
 };
 
-export function HomeContent({ newsItems, blogPosts }: HomeContentProps) {
+export function HomeContent({ newsItems }: HomeContentProps) {
   const features = [
     {
       title: "感情日記",
@@ -142,64 +141,6 @@ export function HomeContent({ newsItems, blogPosts }: HomeContentProps) {
                 className="inline-flex items-center gap-1 text-sm font-semibold text-[#b06a3b]"
               >
                 協会サイトでもっと見る
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </section>
-
-          <section className="rounded-4xl border border-[#f0e4d8] bg-white/90 p-6 text-left shadow-[0_18px_38px_rgba(81,67,60,0.04)]">
-            <header className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95]">ブログ</p>
-              <h2 className="text-2xl font-semibold text-[#51433c]">テープ式心理学コラム</h2>
-              <p className="text-sm text-[#8b7a71]">
-                心の仕組みやセルフケアのヒントを、協会メンバーが丁寧に解説しています。
-              </p>
-            </header>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {(!blogPosts || blogPosts.length === 0) && (
-                <p className="col-span-full py-4 text-sm text-[#8b7a71]">記事の取得に失敗しました。</p>
-              )}
-              {blogPosts?.map((post) => (
-                <a
-                  key={post.id}
-                  href={post.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-[#f0e4d8] bg-[#fff8f2]"
-                >
-                  {post.imageUrl && (
-                    <div
-                      className="h-32 w-full bg-cover bg-center transition group-hover:scale-[1.01]"
-                      style={{ backgroundImage: `url(${post.imageUrl})` }}
-                    />
-                  )}
-                  <div className="flex flex-1 flex-col gap-3 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {post.categories.slice(0, 2).map((category) => (
-                        <span key={category} className="rounded-full bg-[#fff1df] px-3 py-0.5 text-xs text-[#b06a3b]">
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-sm text-[#8b7a71]">{post.dateText || formatDate(post.isoDate)}</p>
-                    <h3 className="text-lg font-semibold text-[#51433c]">{post.title}</h3>
-                    <p className="text-sm text-[#8b7a71]">{post.excerpt}</p>
-                    <span className="mt-auto inline-flex items-center gap-1 text-sm font-semibold text-[#b06a3b]">
-                      記事を読む
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Link
-                href="https://web.namisapo.com/?page_id=39"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[#b06a3b]"
-              >
-                記事一覧へ
                 <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </div>
