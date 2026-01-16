@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, Menu, MessageSquare, Plus, Send, Share2, Trash2, User, X } from "lucide-react";
 import Image from "next/image";
 
@@ -664,6 +664,30 @@ export function MichelleChatClient() {
     return cleaned;
   };
 
+  const renderMessageContent = (content: string) => {
+    const cleaned = cleanContent(content);
+    const parts = cleaned.split(/(https?:\/\/[^\s]+)/gi);
+    const urlPattern = /^https?:\/\/[^\s]+$/i;
+
+    return parts.map((part, index) => {
+      if (urlPattern.test(part)) {
+        return (
+          <a
+            key={`link-${index}`}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline decoration-[#f59fc4] decoration-dotted underline-offset-4 hover:text-[#c75c8a]"
+          >
+            {part}
+          </a>
+        );
+      }
+
+      return <Fragment key={`text-${index}`}>{part}</Fragment>;
+    });
+  };
+
   const handleRetryLoad = useCallback(() => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       return;
@@ -925,7 +949,7 @@ export function MichelleChatClient() {
                         )}
                       >
                         <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                          {message.pending ? "" : cleanContent(message.content)}
+                          {message.pending ? "" : renderMessageContent(message.content)}
                         </p>
                         {message.pending && (
                           <div className="flex items-center gap-2">
