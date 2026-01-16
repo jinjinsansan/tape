@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle, Radio } from "lucide-react";
+import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle, Radio, Globe } from "lucide-react";
 import { SITE_NAME_JP } from "@/lib/branding";
 
 const navItems = [
@@ -158,6 +158,15 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            <a
+              href="https://www.mentalai.team/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-[#51433c] hover:bg-[#f7efe6]"
+            >
+              <Globe className="h-5 w-5" />
+              メンタルAIチーム
+            </a>
             <hr className="my-2 border-[#f0e4d8]" />
             <a
               href="https://lin.ee/hwaj6UP"
