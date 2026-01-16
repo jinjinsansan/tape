@@ -566,6 +566,7 @@ export interface Database {
           title: string | null;
           openai_thread_id: string | null;
           total_tokens: number;
+          diary_prompt_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -576,6 +577,7 @@ export interface Database {
           title?: string | null;
           openai_thread_id?: string | null;
           total_tokens?: number;
+          diary_prompt_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -585,6 +587,7 @@ export interface Database {
           title?: string | null;
           openai_thread_id?: string | null;
           total_tokens?: number;
+          diary_prompt_count?: number;
           created_at?: string;
           updated_at?: string;
         };

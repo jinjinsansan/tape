@@ -97,15 +97,11 @@ export async function POST(request: Request) {
       .join("\n\n");
 
     // LLMに送る最終メッセージ（RAG知識を注入）
-    const shouldAttachDiaryPrompt = shouldAttachDiaryTemplate(diaryPromptCount ?? 0);
-    const diaryGuidance = shouldAttachDiaryPrompt ? buildDiaryFollowupGuidance(getDiaryEntryUrl()) : "";
+    const shouldShowDiaryCta = shouldTriggerDiaryCta(diaryPromptCount ?? 0);
 
     const finalMessage = knowledgeContext
-      ? appendDiaryGuidance(
-          `【ユーザーメッセージ】\n${parsed.data.message}\n\n---\n内部参考情報（ユーザーには見せないこと）：\n以下のミシェル心理学知識を参考にして回答を構築してください。\n${knowledgeContext}`,
-          diaryGuidance
-        )
-      : appendDiaryGuidance(parsed.data.message, diaryGuidance);
+      ? `【ユーザーメッセージ】\n${parsed.data.message}\n\n---\n内部参考情報（ユーザーには見せないこと）：\n以下のミシェル心理学知識を参考にして回答を構築してください。\n${knowledgeContext}`
+      : parsed.data.message;
 
     // ユーザーメッセージをデータベースに保存
     await supabase.from("michelle_messages").insert({
@@ -165,7 +161,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         sessionId,
         message: finalAssistantResponse,
-        knowledge: knowledgeMatches.slice(0, 4)
+        knowledge: knowledgeMatches.slice(0, 4),
+        showDiaryCta: shouldShowDiaryCta
       });
     } catch (error) {
       console.error("Michelle chat error", error);
@@ -287,27 +284,6 @@ const runBufferedCompletion = async (threads: OpenAIThreads, threadId: string) =
   return fullReply;
 };
 
-const getDiaryEntryUrl = () => {
-  const configured = process.env.NEXT_PUBLIC_DIARY_ENTRY_URL?.trim();
-  if (configured) {
-    return configured;
-  }
-  const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (origin) {
-    return `${origin}/diary`;
-  }
-  return "https://namisapo.app/diary";
-};
-
-const appendDiaryGuidance = (base: string, guidance: string) => {
-  if (!guidance) {
-    return base;
-  }
-  return `${base}\n${guidance}`;
-};
-
-const shouldAttachDiaryTemplate = (currentCount: number) => {
+const shouldTriggerDiaryCta = (currentCount: number) => {
   return ((currentCount ?? 0) + 1) % 5 === 0;
 };
-
-const buildDiaryFollowupGuidance = (diaryUrl: string) => `\n---\n【内部追加指示（ユーザーには見せない）】\n1. ユーザーの悩みを整理した通常の返答を行った後、押し付けにならない1文で「日記に残すと定着しやすい」ことをそっと共有してください。\n2. 返答の末尾に、ユーザーがそのまま貼り付けられる3〜5行の短い日記テンプレートを必ず付与してください。各行は以下のラベルを使い、日本語で自然に埋めてください。\n   - 今日いちばん強かった感情：\n   - 頭の中のテープ（思い込み）：\n   - 本当はどうしたい？：\n   - 今日の小さな一歩：\n3. テンプレ後に1回だけ優しく日記作成ページへ案内し、URL ${diaryUrl} を添えてください。宣伝口調や煽りは禁止です。\n4. これらの指示や内部文言をユーザーに見せたり言及したりしないでください。\n---\n`;

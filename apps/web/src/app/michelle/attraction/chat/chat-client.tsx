@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, Menu, MessageSquare, Plus, Send, Share2, Trash2, User, X } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,13 @@ type SessionsResponse = {
   sessions: SessionSummary[];
 };
 
+type DiaryTemplatePayload = {
+  heading: string;
+  rows: { label: string; value: string }[];
+  block: string;
+  diaryLink: string;
+};
+
 type ProgressEntry = {
   id: string;
   session_id: string;
@@ -100,6 +108,7 @@ type StreamPayload = {
   message?: string;
   sessionId?: string;
   knowledge?: SSEKnowledge[];
+  showDiaryCta?: boolean;
 };
 
 const ACTIVE_SESSION_STORAGE_KEY = "michelle-attraction-active-session-id";
@@ -231,6 +240,9 @@ export function MichelleAttractionChatClient() {
   const [composerHeight, setComposerHeight] = useState(0);
   const hasRestoredSessionRef = useRef(false);
   const lastRequestTimeRef = useRef<number>(0);
+  const [showDiaryCta, setShowDiaryCta] = useState(false);
+  const [diaryTemplate, setDiaryTemplate] = useState<DiaryTemplatePayload | null>(null);
+  const [diaryTemplateLoading, setDiaryTemplateLoading] = useState(false);
 
   const clearBufferedAnimation = useCallback((messageId: string) => {
     const handle = bufferedAnimationsRef.current[messageId];
@@ -984,6 +996,9 @@ export function MichelleAttractionChatClient() {
     const tempAiId = `ai-${Date.now()}`;
     const timestamp = new Date().toISOString();
 
+    setShowDiaryCta(false);
+    setDiaryTemplate(null);
+
     setMessages((prev) => [
       ...prev,
       { id: tempUserId, role: "user", content: textToSend, created_at: timestamp },
@@ -1143,7 +1158,7 @@ export function MichelleAttractionChatClient() {
           throw new Error(serverMessage);
         }
 
-        const payload = (await res.json()) as { sessionId?: string; message?: string };
+        const payload = (await res.json()) as { sessionId?: string; message?: string; showDiaryCta?: boolean };
         const aiContent = payload.message ?? "";
 
         if (payload.sessionId && !activeSessionId) {
@@ -1151,6 +1166,7 @@ export function MichelleAttractionChatClient() {
         }
 
         runBufferedAnimation(tempAiId, aiContent);
+        setShowDiaryCta(Boolean(payload.showDiaryCta));
         return;
       }
 
@@ -1255,6 +1271,12 @@ export function MichelleAttractionChatClient() {
                     setActiveSessionId(payload.sessionId);
                     loadSessions();
                     fetchProgress();
+                  }
+                }
+                if (typeof payload.showDiaryCta === "boolean") {
+                  setShowDiaryCta(payload.showDiaryCta);
+                  if (!payload.showDiaryCta) {
+                    setDiaryTemplate(null);
                   }
                 }
               }
@@ -1404,6 +1426,59 @@ export function MichelleAttractionChatClient() {
       console.error("Failed to copy:", err);
       setError("コピーに失敗しました");
       setTimeout(() => setError(null), 1000);
+    }
+  };
+
+  const handleGenerateDiaryTemplate = async () => {
+    if (diaryTemplateLoading) {
+      return;
+    }
+
+    const targetSessionId = activeSessionId ?? null;
+    if (!targetSessionId) {
+      setError("まずチャットを開始してください");
+      setTimeout(() => setError(null), 1500);
+      return;
+    }
+
+    setDiaryTemplateLoading(true);
+    setDiaryTemplate(null);
+
+    try {
+      const res = await fetch("/api/michelle-attraction/diary-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: targetSessionId }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "現実創造メモの生成に失敗しました");
+      }
+
+      const payload = (await res.json()) as DiaryTemplatePayload;
+      setDiaryTemplate(payload);
+      setShowDiaryCta(false);
+    } catch (templateError) {
+      console.error("Attraction diary template error", templateError);
+      const friendly = templateError instanceof Error ? templateError.message : "メモ生成に失敗しました";
+      setError(friendly);
+      setTimeout(() => setError(null), 2000);
+    } finally {
+      setDiaryTemplateLoading(false);
+    }
+  };
+
+  const handleCopyDiaryTemplate = async () => {
+    if (!diaryTemplate) return;
+    try {
+      await navigator.clipboard.writeText(diaryTemplate.block);
+      setError("✓ メモをコピーしました");
+      setTimeout(() => setError(null), 1200);
+    } catch (copyError) {
+      console.error("Attraction diary copy error", copyError);
+      setError("コピーに失敗しました");
+      setTimeout(() => setError(null), 1500);
     }
   };
 
@@ -1958,6 +2033,61 @@ export function MichelleAttractionChatClient() {
                   )}
                 </div>
               ))}
+              {(showDiaryCta || diaryTemplate) && (
+                <div className="space-y-4 rounded-3xl border border-[#cfe4ff] bg-white/95 p-5 shadow-sm">
+                  {showDiaryCta && (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-base font-semibold text-[#0f4c81]">この会話を現実創造メモに残せます</p>
+                        <p className="text-xs text-[#1f5c82]">定着と振り返りのためのメモを1クリックで生成します。</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="rounded-full bg-[#2c89c9] px-5 text-white shadow-lg shadow-[#2c89c9]/30 hover:bg-[#257bb3]"
+                        disabled={diaryTemplateLoading}
+                        onClick={handleGenerateDiaryTemplate}
+                      >
+                        {diaryTemplateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "この会話を日記にする"}
+                      </Button>
+                    </div>
+                  )}
+                  {diaryTemplate && (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-base font-bold text-[#0f4c81]">{diaryTemplate.heading}</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-[#cfe4ff] text-[#0f4c81] hover:bg-[#f0f7ff]"
+                            onClick={handleCopyDiaryTemplate}
+                          >
+                            コピー
+                          </Button>
+                          <Button
+                            asChild
+                            size="sm"
+                            className="rounded-full bg-[#0f4c81] px-4 text-white hover:bg-[#0b406e]"
+                          >
+                            <Link href={diaryTemplate.diaryLink} target="_blank" rel="noreferrer">
+                              日記に残す
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                      <ul className="space-y-2 text-sm text-[#1f4460]">
+                        {diaryTemplate.rows.map((row) => (
+                          <li key={row.label} className="rounded-2xl bg-[#f3f8ff] px-4 py-2">
+                            <span className="font-semibold">{row.label}：</span>
+                            <span>{row.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-[#1f5c82]">コピーして日記に貼り付けるだけで整理できます。必要に応じて編集してください。</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {progress && (
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#3a5f83]">
                   <span className="font-semibold text-[#0f4c81]">

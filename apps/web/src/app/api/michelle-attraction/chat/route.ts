@@ -203,7 +203,7 @@ export async function POST(request: Request) {
     }
 
   try {
-    const { sessionId, threadId, isNewSession } = await resolveSession(
+    const { sessionId, threadId, isNewSession, diaryPromptCount } = await resolveSession(
       supabase,
       user.id,
       incomingSessionId,
@@ -211,6 +211,8 @@ export async function POST(request: Request) {
       category
     );
     const promoAppendixPromise = resolveAttractionPromoAppendix(supabaseBase, sessionId);
+    const shouldShowDiaryCta = shouldTriggerDiaryCta(diaryPromptCount ?? 0);
+    const nextDiaryPromptCount = (diaryPromptCount ?? 0) + 1;
 
     const openai = getMichelleAttractionOpenAIClient();
     const assistantId = getMichelleAttractionAssistantId();
@@ -424,10 +426,16 @@ ${message}`;
 
       await new Promise((resolve) => setTimeout(resolve, RUN_COMPLETION_DELAY_MS));
 
+      await supabase
+        .from("michelle_attraction_sessions")
+        .update({ diary_prompt_count: nextDiaryPromptCount })
+        .eq("id", sessionId);
+
       return NextResponse.json({
         sessionId,
         message: finalReply,
-        knowledge: knowledgeMatches.slice(0, 4)
+        knowledge: knowledgeMatches.slice(0, 4),
+        showDiaryCta: shouldShowDiaryCta
       });
     }
 
@@ -439,7 +447,7 @@ ${message}`;
         };
 
         try {
-          sendEvent({ type: "meta", sessionId, knowledge: knowledgeMatches.slice(0, 4) });
+          sendEvent({ type: "meta", sessionId, knowledge: knowledgeMatches.slice(0, 4), showDiaryCta: shouldShowDiaryCta });
 
           let fullReply = "";
 
@@ -482,6 +490,11 @@ ${message}`;
                 });
               }
 
+              await supabase
+                .from("michelle_attraction_sessions")
+                .update({ diary_prompt_count: nextDiaryPromptCount })
+                .eq("id", sessionId);
+
               await new Promise((resolve) => setTimeout(resolve, RUN_COMPLETION_DELAY_MS));
 
               sendEvent({ type: "done" });
@@ -521,7 +534,7 @@ const resolveSession = async (
   if (incomingSessionId) {
     const { data, error } = await supabase
       .from("michelle_attraction_sessions")
-      .select("id, openai_thread_id")
+      .select("id, openai_thread_id, diary_prompt_count")
       .eq("id", incomingSessionId)
       .eq("auth_user_id", authUserId)
       .maybeSingle();
@@ -531,7 +544,12 @@ const resolveSession = async (
     }
 
     const threadId = await ensureThreadId(supabase, data.id, data.openai_thread_id);
-    return { sessionId: data.id, threadId, isNewSession: false };
+    return {
+      sessionId: data.id,
+      threadId,
+      isNewSession: false,
+      diaryPromptCount: data.diary_prompt_count ?? 0
+    };
   }
 
   const derivedCategory = category ?? "life";
@@ -542,9 +560,10 @@ const resolveSession = async (
     .insert({
       auth_user_id: authUserId,
       category: derivedCategory,
-      title
+      title,
+      diary_prompt_count: 0
     })
-    .select("id")
+    .select("id, diary_prompt_count")
     .single();
 
   if (error || !data) {
@@ -552,7 +571,11 @@ const resolveSession = async (
   }
 
   const threadId = await ensureThreadId(supabase, data.id, null);
-  return { sessionId: data.id, threadId, isNewSession: true };
+  return { sessionId: data.id, threadId, isNewSession: true, diaryPromptCount: data.diary_prompt_count ?? 0 };
+};
+
+const shouldTriggerDiaryCta = (currentCount: number | null | undefined) => {
+  return ((currentCount ?? 0) + 1) % 5 === 0;
 };
 
 const ensureThreadId = async (

@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, Menu, MessageSquare, Plus, Send, Share2, Trash2, User, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,11 +36,19 @@ type SessionsResponse = {
   sessions: SessionSummary[];
 };
 
+type DiaryTemplatePayload = {
+  heading: string;
+  rows: { label: string; value: string }[];
+  block: string;
+  diaryLink: string;
+};
+
 type StreamPayload = {
   type: "meta" | "delta" | "done" | "error";
   content?: string;
   message?: string;
   sessionId?: string;
+  showDiaryCta?: boolean;
 };
 
 const ACTIVE_SESSION_STORAGE_KEY = "michelle-psychology-active-session-id";
@@ -102,6 +111,9 @@ export function MichelleChatClient() {
   const [isPhaseInsightLoading, setIsPhaseInsightLoading] = useState(false);
   const [guidedActionLoading, setGuidedActionLoading] = useState<null | GuidedAction>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [showDiaryCta, setShowDiaryCta] = useState(false);
+  const [diaryTemplate, setDiaryTemplate] = useState<DiaryTemplatePayload | null>(null);
+  const [diaryTemplateLoading, setDiaryTemplateLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -522,6 +534,8 @@ export function MichelleChatClient() {
     const tempAiId = `ai-${Date.now()}`;
     const timestamp = new Date().toISOString();
 
+    setShowDiaryCta(false);
+    setDiaryTemplate(null);
     setMessages((prev) => [
       ...prev,
       { id: tempUserId, role: "user", content: textToSend, created_at: timestamp },
@@ -562,7 +576,7 @@ export function MichelleChatClient() {
       }
 
       // バッファードレスポンス（JSON）を処理
-      const data = (await res.json()) as { sessionId: string; message: string };
+      const data = (await res.json()) as { sessionId: string; message: string; showDiaryCta?: boolean };
       const aiContent = data.message;
 
       if (data.sessionId && !activeSessionId) {
@@ -573,6 +587,8 @@ export function MichelleChatClient() {
       setMessages((prev) =>
         prev.map((msg) => (msg.id === tempAiId ? { ...msg, content: aiContent, pending: false } : msg)),
       );
+
+      setShowDiaryCta(Boolean(data.showDiaryCta));
 
       if (!activeSessionId && data.sessionId) {
         setActiveSessionId(data.sessionId);
@@ -645,6 +661,59 @@ export function MichelleChatClient() {
       console.error("Failed to copy:", err);
       setError("コピーに失敗しました");
       setTimeout(() => setError(null), 1000);
+    }
+  };
+
+  const handleGenerateDiaryTemplate = async () => {
+    if (diaryTemplateLoading) {
+      return;
+    }
+
+    const targetSessionId = activeSessionId ?? activeSession?.id ?? null;
+    if (!targetSessionId) {
+      setError("まずミシェルに相談してからご利用ください");
+      setTimeout(() => setError(null), 1500);
+      return;
+    }
+
+    setDiaryTemplateLoading(true);
+    setDiaryTemplate(null);
+
+    try {
+      const res = await fetch("/api/michelle/diary-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: targetSessionId }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "日記テンプレの生成に失敗しました");
+      }
+
+      const payload = (await res.json()) as DiaryTemplatePayload;
+      setDiaryTemplate(payload);
+      setShowDiaryCta(false);
+    } catch (templateError) {
+      console.error("Diary template error", templateError);
+      const friendly = templateError instanceof Error ? templateError.message : "メモ生成に失敗しました";
+      setError(friendly);
+      setTimeout(() => setError(null), 2000);
+    } finally {
+      setDiaryTemplateLoading(false);
+    }
+  };
+
+  const handleCopyDiaryTemplate = async () => {
+    if (!diaryTemplate) return;
+    try {
+      await navigator.clipboard.writeText(diaryTemplate.block);
+      setError("✓ メモをコピーしました");
+      setTimeout(() => setError(null), 1200);
+    } catch (copyError) {
+      console.error("Diary template copy error", copyError);
+      setError("コピーに失敗しました");
+      setTimeout(() => setError(null), 1500);
     }
   };
 
@@ -1016,6 +1085,61 @@ export function MichelleChatClient() {
                     )}
                   </div>
                 ))}
+                {(showDiaryCta || diaryTemplate) && (
+                  <div className="space-y-4 rounded-3xl border border-[#ffd4e3] bg-white/90 p-5 shadow-sm">
+                    {showDiaryCta && (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-base font-semibold text-[#7b364d]">この会話を30秒で日記に残せます</p>
+                          <p className="text-xs text-[#b1637d]">押し付けではなく、あとで見返せる整理メモとしてご案内します。</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="rounded-full bg-[#f472b6] px-5 text-white shadow-lg shadow-[#f472b6]/30 hover:bg-[#eb5ea8]"
+                          disabled={diaryTemplateLoading}
+                          onClick={handleGenerateDiaryTemplate}
+                        >
+                          {diaryTemplateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "この会話を日記にする"}
+                        </Button>
+                      </div>
+                    )}
+                    {diaryTemplate && (
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-base font-bold text-[#7b364d]">{diaryTemplate.heading}</p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#ffd4e3] text-[#7b364d] hover:bg-[#fff2f7]"
+                              onClick={handleCopyDiaryTemplate}
+                            >
+                              コピー
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              className="rounded-full bg-[#7b364d] px-4 text-white hover:bg-[#6a3045]"
+                            >
+                              <Link href={diaryTemplate.diaryLink} target="_blank" rel="noreferrer">
+                                日記に残す
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                        <ul className="space-y-2 text-sm text-[#5f3b4a]">
+                          {diaryTemplate.rows.map((row) => (
+                            <li key={row.label} className="rounded-2xl bg-[#fff5f9] px-4 py-2">
+                              <span className="font-semibold">{row.label}：</span>
+                              <span>{row.value}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="text-xs text-[#b1637d]">メモはそのままコピーしてご利用いただけます。必要に応じて編集してください。</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
