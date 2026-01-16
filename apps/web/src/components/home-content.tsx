@@ -158,12 +158,10 @@ export function HomeContent({ newsItems }: HomeContentProps) {
               </p>
               <div>
                 <Link
-                  href="https://www.youtube.com/@namisapo/streams"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/live"
                   className="inline-flex items-center justify-center rounded-full bg-[#b06a3b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#b06a3b]/40 transition hover:-translate-y-0.5 hover:bg-[#9a5832]"
                 >
-                  ライブ一覧を見る
+                  勉強会の詳細を見る
                 </Link>
               </div>
             </div>

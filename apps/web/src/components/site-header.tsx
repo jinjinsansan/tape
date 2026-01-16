@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle } from "lucide-react";
+import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle, Radio } from "lucide-react";
 import { SITE_NAME_JP } from "@/lib/branding";
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/michelle", label: "Michelle AI", icon: Bot },
   { href: "/courses", label: "動画コース", icon: PlayCircle },
   { href: "/counselor", label: "カウンセリング", icon: CalendarHeart },
+  { href: "/live", label: "ライブ勉強会", icon: Radio },
   { href: "/feed", label: "みんなの日記", icon: Users },
   { href: "/mypage", label: "マイページ", icon: UserCircle }
 ];
