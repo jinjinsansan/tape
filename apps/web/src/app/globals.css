@@ -25,16 +25,6 @@
       radial-gradient(circle at 85% 75%, rgba(255, 240, 214, 0.3), transparent 40%);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-shippori), "Shippori Mincho", "Yu Mincho", serif;
-    letter-spacing: 0.05em;
-  }
-
   .text-\[\#51433c\],
   .text-tape-brown {
     color: var(--color-primary) !important;

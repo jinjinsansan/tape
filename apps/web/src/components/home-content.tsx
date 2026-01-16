@@ -68,7 +68,7 @@ export function HomeContent({ newsItems, blogPosts }: HomeContentProps) {
         </div>
         <div className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#51433c] md:text-5xl">{SITE_NAME_JP}</h1>
+          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#51433c] md:text-5xl">{SITE_NAME_JP}</h1>
           <p className="mx-auto max-w-md text-lg text-[#8b7a71]">
             あなたの心にそっと寄り添う、<br className="md:hidden" />
             やさしい居場所。
