@@ -145,6 +145,29 @@ export function HomeContent({ newsItems }: HomeContentProps) {
               </Link>
             </div>
           </section>
+
+          <section className="rounded-4xl border border-[#f0e4d8] bg-gradient-to-br from-[#fff7ef] via-[#fff0e2] to-[#ffe5d0] p-6 text-left shadow-[0_22px_45px_rgba(95,59,31,0.08)]">
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b06a3b]">週次ライブ</p>
+              <div>
+                <p className="text-sm font-semibold text-[#b06a3b]">毎週月曜 20:00｜無料ライブ勉強会</p>
+                <h2 className="mt-2 text-2xl font-semibold text-[#513c32]">テープ式心理学を“実例で”学べます（質問もOK）</h2>
+              </div>
+              <p className="text-sm text-[#8b7a71]">
+                リアルタイムでテープ式心理学のケーススタディを紹介しながら、いただいた質問にもその場でお答えします。
+              </p>
+              <div>
+                <Link
+                  href="https://www.youtube.com/@namisapo/streams"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full bg-[#b06a3b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#b06a3b]/40 transition hover:-translate-y-0.5 hover:bg-[#9a5832]"
+                >
+                  ライブ一覧を見る
+                </Link>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
       <SiteFooter />
