@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Zen_Maru_Gothic } from "next/font/google";
+import { Zen_Maru_Gothic, Shippori_Mincho } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
@@ -9,6 +9,13 @@ const zenMaru = Zen_Maru_Gothic({
   weight: ["300", "400", "500", "700"],
   subsets: ["latin"],
   variable: "--font-zen-maru",
+  display: "swap",
+});
+
+const shipporiMincho = Shippori_Mincho({
+  weight: ["400", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-shippori",
   display: "swap",
 });
 
@@ -42,7 +49,8 @@ export default function RootLayout({
       <body
         className={cn(
           "min-h-screen font-sans text-tape-brown antialiased flex flex-col",
-          zenMaru.variable
+          zenMaru.variable,
+          shipporiMincho.variable
         )}
       >
         <SiteHeader />

@@ -16,6 +16,7 @@
 
   body {
     @apply min-h-screen text-tape-brown antialiased;
+    font-family: var(--font-zen-maru), "Zen Maru Gothic", "Hiragino Sans", "Yu Gothic", sans-serif;
     background-color: var(--color-body);
     background-image:
       radial-gradient(circle at 15% 20%, rgba(255, 174, 106, 0.18), transparent 55%),

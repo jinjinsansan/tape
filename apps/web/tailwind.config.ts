@@ -23,7 +23,19 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-zen-maru)", "sans-serif"],
+        sans: [
+          "var(--font-zen-maru)",
+          "Zen Maru Gothic",
+          "Hiragino Sans",
+          "Yu Gothic",
+          "sans-serif"
+        ],
+        serif: [
+          "var(--font-shippori)",
+          "Shippori Mincho",
+          "Yu Mincho",
+          "serif"
+        ]
       },
       borderRadius: {
         "4xl": "2rem",
