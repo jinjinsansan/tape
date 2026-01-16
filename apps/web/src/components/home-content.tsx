@@ -105,9 +105,9 @@ export function HomeContent({ newsItems, blogPosts }: HomeContentProps) {
           <section className="rounded-4xl border border-[#f0e4d8] bg-white/90 p-6 text-left shadow-[0_18px_38px_rgba(81,67,60,0.04)]">
             <header className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95]">協会ニュース</p>
-              <h2 className="text-2xl font-semibold text-[#51433c]">テープ式心理学の今</h2>
+              <h2 className="text-2xl font-semibold text-[#51433c]">最近の協会活動実績</h2>
               <p className="text-sm text-[#8b7a71]">
-                日記・ミシェル体験がより良い社会に繋がるよう、協会の活動をそっと紹介します。
+                詳しくは公式サイトをご確認ください。
               </p>
             </header>
             <div className="mt-4 divide-y divide-[#f0e4d8]">
