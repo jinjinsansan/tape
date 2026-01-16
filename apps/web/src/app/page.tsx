@@ -24,8 +24,8 @@ function HomePage() {
       color: "bg-[#fdeef1] text-[#51433c]",
     },
     {
-      title: "Michelle AI",
-      description: "いつでも相談できるAIパートナー",
+      title: "ミシェルAI",
+      descriptionLines: ["1分でミシェルに相談する", "気遣いゼロで、今のつらさを1分で言語化します"],
       icon: Bot,
       href: "/michelle",
       color: "bg-[#eef7f3] text-[#51433c]",
@@ -91,7 +91,15 @@ function HomePage() {
                   </div>
                   <div className="space-y-1">
                     <h3 className="font-bold text-tape-brown">{feature.title}</h3>
-                    <p className="text-xs text-tape-light-brown">{feature.description}</p>
+                    {Array.isArray(feature.descriptionLines) ? (
+                      <div className="text-xs text-tape-light-brown">
+                        {feature.descriptionLines.map((line) => (
+                          <p key={line}>{line}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-tape-light-brown">{feature.description}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
