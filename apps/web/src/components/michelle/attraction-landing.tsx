@@ -44,10 +44,10 @@ export default function AttractionLanding({ disabled }: Props) {
                 asChild
                 size="lg"
                 disabled={disabled}
-                className="h-14 flex-1 rounded-full bg-[#8aa9c8] text-white shadow-lg shadow-[#8aa9c8]/25 transition hover:bg-[#809fbe]"
+                className="h-14 flex-1 rounded-full bg-[#7bb8dd] text-white shadow-lg shadow-[#7bb8dd]/25 transition hover:bg-[#6aa8cd]"
               >
                 <Link href="/michelle/attraction/chat" className="flex w-full items-center justify-center">
-                  チャットを始める
+                  引き寄せミシェルを開始（無料）
                 </Link>
               </Button>
               <Button

@@ -45,10 +45,10 @@ export default function PsychologyLanding({ disabled }: Props) {
                 asChild
                 size="lg"
                 disabled={disabled}
-                className="h-14 flex-1 rounded-full bg-[#c68e9b] text-white shadow-lg shadow-[#c68e9b]/25 transition hover:bg-[#bd8491]"
+                className="h-14 flex-1 rounded-full bg-[#ff9ec5] text-white shadow-lg shadow-[#ff9ec5]/25 transition hover:bg-[#f88bb7]"
               >
                 <Link href="/michelle/chat" className="flex w-full items-center justify-center gap-2">
-                  カウンセリングを始める
+                  感情整理ミシェルを開始（無料）
                 </Link>
               </Button>
               <Button

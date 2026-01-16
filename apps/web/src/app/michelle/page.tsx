@@ -36,8 +36,8 @@ export default function MichelleLandingPage() {
   }
 
   const tabs = [
-    { id: "psychology" as Variant, label: "ミシェル心理学チャット", available: isPsychologyAvailable },
-    { id: "attraction" as Variant, label: "ミシェル引き寄せチャット", available: isAttractionAvailable }
+    { id: "psychology" as Variant, label: "感情整理（ピンク）", available: isPsychologyAvailable },
+    { id: "attraction" as Variant, label: "引き寄せ（ブルー）", available: isAttractionAvailable }
   ];
 
   const firstAvailable = tabs.find((tab) => tab.available)?.id ?? "psychology";
@@ -47,16 +47,35 @@ export default function MichelleLandingPage() {
   return (
     <div className="bg-[#f9f7f3]">
       <section className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16">
-      <header className="space-y-4 text-center">
-        <p className="text-xs font-semibold tracking-[0.3em] text-tape-green">テープ式心理学</p>
-        <h1 className="text-4xl font-bold text-tape-brown">あなたの課題に合わせてAIコンシェルジュを選択</h1>
-        <p className="text-base text-tape-brown/80">
-          Google Cloud 上で動くテープ式心理学専用LLMが、感情の整理から願望実現まで伴走します。<br className="hidden md:inline" />
-          同じページ内で「心の解体」に特化したピンクプランと、「引き寄せ・現実創造」に特化したブループランを切り替えられます。
-        </p>
-      </header>
+        <header className="space-y-4 text-center">
+          <p className="text-xs font-semibold tracking-[0.3em] text-tape-green">テープ式心理学</p>
+          <h1 className="text-4xl font-bold text-tape-brown">あなたの課題に合わせてAIコンシェルジュを選択</h1>
+          <p className="text-base text-tape-brown/80">
+            Google Cloud 上で動くテープ式心理学専用LLMが、感情の整理から願望実現まで伴走します。<br className="hidden md:inline" />
+            同じページ内で「心の解体」に特化したピンクプランと、「引き寄せ・現実創造」に特化したブループランを切り替えられます。
+          </p>
+        </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <section className="mx-auto w-full max-w-3xl space-y-3 rounded-3xl border border-white/60 bg-white/70 p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold text-tape-brown">どっちで始めますか？（迷ったらピンク）</p>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Link
+              href="/michelle/chat"
+              className="flex-1 rounded-2xl bg-gradient-to-r from-[#ffbfcf] to-[#ff9ec5] px-4 py-4 text-base font-bold text-white shadow-lg shadow-[#ff9ec5]/30 transition hover:opacity-90"
+            >
+              感情整理ミシェルを開始（無料）
+            </Link>
+            <Link
+              href="/michelle/attraction/chat"
+              className="flex-1 rounded-2xl bg-gradient-to-r from-[#9ac9ff] to-[#7bb8dd] px-4 py-4 text-base font-bold text-white shadow-lg shadow-[#7bb8dd]/30 transition hover:opacity-90"
+            >
+              引き寄せミシェルを開始（無料）
+            </Link>
+          </div>
+          <p className="text-xs text-tape-light-brown">※クリックするとチャット画面に移動します</p>
+        </section>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         {tabs.map((tab) => (
           <button
             key={tab.id}
