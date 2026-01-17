@@ -21,7 +21,7 @@ import {
 
 import { SignOutButton } from "@/components/signout-button";
 import { SiteFooter } from "@/components/site-footer";
-import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
+import { SITE_NAME_EN, SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import type { NamisapoNewsItem } from "@/lib/namisapo";
 import { cn } from "@/lib/utils";
 
@@ -208,7 +208,7 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
 
         <header className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
-          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#51433c] md:text-5xl">{SITE_NAME_JP}</h1>
+          <h1 className={cn("text-4xl md:text-5xl", SITE_TITLE_FONT_CLASS)}>{SITE_NAME_JP}</h1>
         </header>
 
         <div className="space-y-8 text-left">
