@@ -57,7 +57,7 @@ const APP_SHORTCUTS: AppShortcut[] = [
     category: "primary"
   },
   {
-    title: "自己肯定感スコア測るくん",
+    title: "自己肯定感テスト",
     subtitle: "テープ式スコア診断",
     href: "/self-esteem",
     icon: Sparkles,
