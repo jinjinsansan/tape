@@ -1,103 +1,237 @@
 "use client";
 
 import Link from "next/link";
-import { BookHeart, Bot, CalendarHeart, ExternalLink, PlayCircle, Settings, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  BookHeart,
+  Bot,
+  CalendarHeart,
+  ExternalLink,
+  Globe,
+  LineChart,
+  MessageCircle,
+  PlayCircle,
+  Radio,
+  Settings,
+  Sparkles,
+  Twitter,
+  Users,
+  Youtube
+} from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { SignOutButton } from "@/components/signout-button";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
 import type { NamisapoNewsItem } from "@/lib/namisapo";
+import { cn } from "@/lib/utils";
+
+type ShortcutCategory = "primary" | "social" | "admin";
+type PrivilegedRole = "admin" | "counselor";
+
+type AppShortcut = {
+  title: string;
+  subtitle: string;
+  href: string;
+  icon: LucideIcon;
+  bubbleClass: string;
+  category: ShortcutCategory;
+  isExternal?: boolean;
+  badge?: string;
+  requiresRole?: PrivilegedRole[];
+};
 
 type HomeContentProps = {
   newsItems: NamisapoNewsItem[];
+  viewerRole: string | null;
 };
 
-export function HomeContent({ newsItems }: HomeContentProps) {
-  const features = [
-    {
-      title: "感情日記",
-      description: "今の気持ちを書き留める",
-      icon: BookHeart,
-      href: "/diary",
-      color: "bg-[#fdeef1] text-[#51433c]",
-    },
-    {
-      title: "ミシェルAI",
-      descriptionLines: ["1分でミシェルに相談する", "気遣いゼロで、今のつらさを1分で言語化します"],
-      icon: Bot,
-      href: "/michelle",
-      color: "bg-[#eef7f3] text-[#51433c]",
-    },
-    {
-      title: "動画コース",
-      description: "心の仕組みを学ぶ",
-      icon: PlayCircle,
-      href: "/courses",
-      color: "bg-[#fff0e7] text-[#51433c]",
-    },
-    {
-      title: "カウンセリング",
-      description: "専門家に相談する",
-      icon: CalendarHeart,
-      href: "/counselor",
-      color: "bg-[#f8f1e8] text-[#51433c]",
-    },
-    {
-      title: "みんなの日記",
-      description: "公開された日記を読む",
-      icon: Users,
-      href: "/feed",
-      color: "bg-[#f3eee7] text-[#51433c]",
-    },
-    {
-      title: "管理者メニュー",
-      description: "システム設定",
-      icon: Settings,
-      href: "/admin",
-      color: "bg-[#f2efff] text-[#51433c]",
-    },
-  ];
+const APP_SHORTCUTS: AppShortcut[] = [
+  {
+    title: "感情日記",
+    subtitle: "今の気持ちを3分で整理",
+    href: "/diary",
+    icon: BookHeart,
+    bubbleClass: "bg-[#fdeef1] text-[#e53564]",
+    category: "primary"
+  },
+  {
+    title: "自己肯定感スコア測るくん",
+    subtitle: "テープ式スコア診断",
+    href: "/self-esteem",
+    icon: Sparkles,
+    bubbleClass: "bg-[#eef7ff] text-[#5271ff]",
+    category: "primary"
+  },
+  {
+    title: "無価値感推移グラフ",
+    subtitle: "スコアの変化を見る",
+    href: "/diary/worthlessness",
+    icon: LineChart,
+    bubbleClass: "bg-[#f4f1ff] text-[#7b4ae2]",
+    category: "primary"
+  },
+  {
+    title: "ミシェルAI",
+    subtitle: "1分で相談する",
+    href: "/michelle",
+    icon: Bot,
+    bubbleClass: "bg-[#eef7f3] text-[#1c8f65]",
+    category: "primary"
+  },
+  {
+    title: "動画コース",
+    subtitle: "テープ式心理学を学ぶ",
+    href: "/courses",
+    icon: PlayCircle,
+    bubbleClass: "bg-[#fff0e7] text-[#b06a3b]",
+    category: "primary"
+  },
+  {
+    title: "カウンセリング予約",
+    subtitle: "専門家と話す",
+    href: "/counselor",
+    icon: CalendarHeart,
+    bubbleClass: "bg-[#f8f1e8] text-[#ca5a58]",
+    category: "primary"
+  },
+  {
+    title: "みんなの日記",
+    subtitle: "公開日記を読む",
+    href: "/feed",
+    icon: Users,
+    bubbleClass: "bg-[#f3eee7] text-[#946c4c]",
+    category: "primary"
+  },
+  {
+    title: "ライブ勉強会",
+    subtitle: "毎週月曜20:00",
+    href: "/live",
+    icon: Radio,
+    bubbleClass: "bg-[#ffe7f1] text-[#d72670]",
+    category: "primary"
+  },
+  {
+    title: "公式サイト",
+    subtitle: "協会ニュースはこちら",
+    href: "https://web.namisapo.com/",
+    icon: Globe,
+    bubbleClass: "bg-[#eef3ff] text-[#3556c6]",
+    category: "social",
+    isExternal: true
+  },
+  {
+    title: "YouTube",
+    subtitle: "ライブ配信を見る",
+    href: "https://www.youtube.com/@namisapo/streams",
+    icon: Youtube,
+    bubbleClass: "bg-[#fff1f0] text-[#f02d2d]",
+    category: "social",
+    isExternal: true
+  },
+  {
+    title: "X",
+    subtitle: "最新の活動速報",
+    href: "https://x.com/iamthataru",
+    icon: Twitter,
+    bubbleClass: "bg-[#e7f5ff] text-[#1d9bf0]",
+    category: "social",
+    isExternal: true
+  },
+  {
+    title: "公式LINE",
+    subtitle: "限定通知を受け取る",
+    href: "https://lin.ee/xwy2PhU",
+    icon: MessageCircle,
+    bubbleClass: "bg-[#e6faec] text-[#15b159]",
+    category: "social",
+    isExternal: true
+  },
+  {
+    title: "管理者パネル",
+    subtitle: "管理者＆カウンセラー専用",
+    href: "/admin",
+    icon: Settings,
+    bubbleClass: "bg-[#f2efff] text-[#6557d2]",
+    category: "admin",
+    badge: "ADMIN",
+    requiresRole: ["admin", "counselor"]
+  }
+];
+
+const SHORTCUT_SECTIONS: { id: ShortcutCategory; title: string; description: string }[] = [
+  {
+    id: "primary",
+    title: "Tapeアプリメニュー",
+    description: "スマホアプリのように、よく使うメニューをタップしやすく並べました。"
+  },
+  {
+    id: "social",
+    title: "公式アカウント・情報発信",
+    description: "協会のSNS・外部サイトはこちらからどうぞ。"
+  },
+  {
+    id: "admin",
+    title: "管理メニュー",
+    description: "管理者・カウンセラーの方のみ表示されます。"
+  }
+];
+
+const normalizePrivilegedRole = (role: string | null): PrivilegedRole | null => {
+  if (role === "admin" || role === "counselor") {
+    return role;
+  }
+  return null;
+};
+
+const canAccessShortcut = (shortcut: AppShortcut, role: PrivilegedRole | null) => {
+  if (!shortcut.requiresRole) return true;
+  if (!role) return false;
+  return shortcut.requiresRole.includes(role);
+};
+
+export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
+  const privilegedRole = normalizePrivilegedRole(viewerRole);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <main className="mx-auto w-full max-w-2xl flex-1 space-y-10 p-4 text-center md:p-8">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#fffaf4] via-[#f9f4ff] to-[#f2fbff]">
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 pb-12 pt-6 text-center md:px-8">
         <div className="flex justify-end">
           <SignOutButton />
         </div>
-        <div className="space-y-4">
+
+        <header className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
           <h1 className="font-serif text-4xl font-bold tracking-tight text-[#51433c] md:text-5xl">{SITE_NAME_JP}</h1>
-          <p className="mx-auto max-w-md text-lg text-[#8b7a71]">
-            あなたの心にそっと寄り添う、<br className="md:hidden" />
-            やさしい居場所。
+          <p className="mx-auto max-w-2xl text-lg text-[#8b7a71]">
+            やりたいことをスマホアプリのように直感的に。<br className="md:hidden" />
+            テープ式心理学のすべてのメニューがここに並びます。
           </p>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-          {features.map((feature) => (
-            <Link key={feature.title} href={feature.href}>
-              <Card className="h-full border border-[#f0e4d8] bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
-                <CardContent className="flex flex-col items-center justify-center space-y-3 p-6">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full ${feature.color}`}>
-                    <feature.icon className="h-6 w-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-tape-brown">{feature.title}</h3>
-                    {Array.isArray(feature.descriptionLines) ? (
-                      <div className="text-xs text-tape-light-brown">
-                        {feature.descriptionLines.map((line) => (
-                          <p key={line}>{line}</p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-tape-light-brown">{feature.description}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+        <div className="space-y-12 text-left">
+          {SHORTCUT_SECTIONS.map((section) => {
+            const shortcuts = APP_SHORTCUTS.filter(
+              (shortcut) => shortcut.category === section.id && canAccessShortcut(shortcut, privilegedRole)
+            );
+
+            if (shortcuts.length === 0) {
+              return null;
+            }
+
+            return (
+              <section key={section.id} className="space-y-4">
+                <div className="space-y-2 text-center md:text-left">
+                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95]">{section.title}</p>
+                  <p className="text-sm text-[#8b7a71]">{section.description}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                  {shortcuts.map((shortcut) => (
+                    <AppTile key={shortcut.title} {...shortcut} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
         <div className="space-y-6">
@@ -105,9 +239,7 @@ export function HomeContent({ newsItems }: HomeContentProps) {
             <header className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95]">協会ニュース</p>
               <h2 className="text-2xl font-semibold text-[#51433c]">最近の協会活動実績</h2>
-              <p className="text-sm text-[#8b7a71]">
-                詳しくは公式サイトをご確認ください。
-              </p>
+              <p className="text-sm text-[#8b7a71]">詳しくは公式サイトをご確認ください。</p>
             </header>
             <div className="mt-4 divide-y divide-[#f0e4d8]">
               {(!newsItems || newsItems.length === 0) && (
@@ -172,6 +304,44 @@ export function HomeContent({ newsItems }: HomeContentProps) {
     </div>
   );
 }
+
+type AppTileProps = AppShortcut;
+
+const AppTile = ({ title, subtitle, icon: Icon, bubbleClass, href, isExternal, badge }: AppTileProps) => {
+  const wrapperClass =
+    "group block h-full rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f4d8c4] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
+
+  const content = (
+    <div className="relative flex h-full flex-col items-center justify-between rounded-3xl border border-[#f0e4d8] bg-white/95 p-4 text-center shadow-[0_12px_30px_rgba(81,67,60,0.08)] transition-all group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(81,67,60,0.15)]">
+      {badge && (
+        <span className="absolute right-3 top-3 rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-semibold text-[#a05824]">
+          {badge}
+        </span>
+      )}
+      <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl text-lg", bubbleClass)}>
+        <Icon className="h-7 w-7" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-[#513c32]">{title}</p>
+        <p className="text-xs leading-tight text-[#8b7a71]">{subtitle}</p>
+      </div>
+    </div>
+  );
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={wrapperClass}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={wrapperClass}>
+      {content}
+    </Link>
+  );
+};
 
 const formatDate = (isoDate?: string) => {
   if (!isoDate) return "";
