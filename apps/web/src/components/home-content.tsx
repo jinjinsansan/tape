@@ -280,7 +280,7 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-[#f0e4d8] bg-gradient-to-br from-[#fff7ef] via-[#fff0e2] to-[#ffe5d0] p-6 text-left shadow-[0_22px_45px_rgba(95,59,31,0.08)]">
+          <section className="rounded-4xl border border-[#f0e4d8] bg-gradient-to-r from-rose-100/80 via-amber-50 to-sky-100/80 p-6 text-left shadow-[0_22px_45px_rgba(95,59,31,0.08)]">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b06a3b]">週次ライブ</p>
               <div>
