@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentType, SVGProps } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type ComponentType, type SVGProps } from "react";
+import { createSupabaseBrowserClient } from "@tape/supabase";
 import {
   BookHeart,
   Bot,
   CalendarHeart,
   ExternalLink,
+  FileText,
   Globe,
   LineChart,
+  LogOut,
   MessageCircle,
   PlayCircle,
   Radio,
@@ -19,7 +23,6 @@ import {
   Youtube
 } from "lucide-react";
 
-import { SignOutButton } from "@/components/signout-button";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE_NAME_EN, SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import type { NamisapoNewsItem } from "@/lib/namisapo";
@@ -40,6 +43,7 @@ type AppShortcut = {
   isExternal?: boolean;
   badge?: string;
   requiresRole?: PrivilegedRole[];
+  actionType?: "signout";
 };
 
 type HomeContentProps = {
@@ -121,6 +125,15 @@ const APP_SHORTCUTS: AppShortcut[] = [
     category: "primary"
   },
   {
+    title: "ログアウト",
+    subtitle: "セッションを終了",
+    href: "#logout",
+    icon: LogOut,
+    bubbleClass: "bg-[#fff0f0] text-[#c62828]",
+    category: "primary",
+    actionType: "signout"
+  },
+  {
     title: "公式サイト",
     subtitle: "協会ニュースはこちら",
     href: "https://web.namisapo.com/",
@@ -153,6 +166,15 @@ const APP_SHORTCUTS: AppShortcut[] = [
     href: "https://lin.ee/xwy2PhU",
     icon: MessageCircle,
     bubbleClass: "bg-[#e6faec] text-[#15b159]",
+    category: "social",
+    isExternal: true
+  },
+  {
+    title: "テープ式心理学 note",
+    subtitle: "最新記事を読む",
+    href: "https://note.com/namisapo",
+    icon: FileText,
+    bubbleClass: "bg-[#f3eefc] text-[#6b3fbf]",
     category: "social",
     isExternal: true
   },
@@ -202,10 +224,6 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#fffaf4] via-[#f9f4ff] to-[#f2fbff]">
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 pb-12 pt-6 text-center md:px-8">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
-
         <header className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
           <h1 className={cn("text-4xl md:text-5xl text-[#51433c]", SITE_TITLE_FONT_CLASS)}>{SITE_NAME_JP}</h1>
@@ -309,12 +327,18 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
 
 type AppTileProps = AppShortcut;
 
-const AppTile = ({ title, subtitle, icon: Icon, bubbleClass, href, isExternal, badge }: AppTileProps) => {
+const AppTile = ({ title, subtitle, icon: Icon, bubbleClass, href, isExternal, badge, actionType }: AppTileProps) => {
+  const router = useRouter();
+  const [actionPending, setActionPending] = useState(false);
   const wrapperClass =
     "group block h-full rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f4d8c4] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
+  const subtitleText = actionType === "signout" && actionPending ? "ログアウト中..." : subtitle;
 
   const content = (
-    <div className="relative flex h-full flex-col items-center justify-between rounded-3xl border border-[#f0e4d8] bg-white/95 p-4 text-center shadow-[0_12px_30px_rgba(81,67,60,0.08)] transition-all group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(81,67,60,0.15)]">
+    <div className={cn(
+      "relative flex h-full flex-col items-center justify-between rounded-3xl border border-[#f0e4d8] bg-white/95 p-4 text-center shadow-[0_12px_30px_rgba(81,67,60,0.08)] transition-all",
+      actionType !== "signout" && "group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(81,67,60,0.15)]"
+    )}>
       {badge && (
         <span className="absolute right-3 top-3 rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-semibold text-[#a05824]">
           {badge}
@@ -325,10 +349,35 @@ const AppTile = ({ title, subtitle, icon: Icon, bubbleClass, href, isExternal, b
       </div>
       <div className="space-y-1">
         <p className="text-sm font-semibold text-[#513c32]">{title}</p>
-        <p className="text-xs leading-tight text-[#8b7a71]">{subtitle}</p>
+        <p className="text-xs leading-tight text-[#8b7a71]">{subtitleText}</p>
       </div>
     </div>
   );
+
+  if (actionType === "signout") {
+    const handleSignOut = async () => {
+      if (actionPending) return;
+      setActionPending(true);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.signOut();
+        router.refresh();
+      } finally {
+        setActionPending(false);
+      }
+    };
+
+    return (
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className={cn(wrapperClass, actionPending && "cursor-not-allowed opacity-80")}
+        disabled={actionPending}
+      >
+        {content}
+      </button>
+    );
+  }
 
   if (isExternal) {
     return (

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SignOutButton } from "@/components/signout-button";
 import {
   Menu,
   X,
@@ -112,7 +111,6 @@ export function SiteHeader() {
                 <Settings className="h-5 w-5" />
               </Button>
             </Link>
-            <SignOutButton />
           </nav>
 
           <div className="flex items-center gap-3">
@@ -128,7 +126,6 @@ export function SiteHeader() {
             )}
 
             <div className="flex items-center gap-2 md:hidden">
-              <SignOutButton />
               {profileName && (
                 <Link
                   href="/mypage"
