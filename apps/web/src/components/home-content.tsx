@@ -14,6 +14,7 @@ import {
   Radio,
   Settings,
   Sparkles,
+  UserCircle,
   Users,
   Youtube
 } from "lucide-react";
@@ -109,6 +110,14 @@ const APP_SHORTCUTS: AppShortcut[] = [
     href: "/live",
     icon: Radio,
     bubbleClass: "bg-[#ffe7f1] text-[#d72670]",
+    category: "primary"
+  },
+  {
+    title: "マイページ",
+    subtitle: "プロフィール・通知設定",
+    href: "/mypage",
+    icon: UserCircle,
+    bubbleClass: "bg-[#eef3ff] text-[#3f5fb0]",
     category: "primary"
   },
   {
