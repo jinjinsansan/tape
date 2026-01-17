@@ -1,8 +1,6 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, BookOpenCheck, LineChart, Sparkles } from "lucide-react";
+import { ChevronLeft, BookOpenCheck, Sparkles } from "lucide-react";
 
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
@@ -11,12 +9,6 @@ import { AuthGate } from "@/components/auth-gate";
 import { cn } from "@/lib/utils";
 
 const resourceLinks = [
-  {
-    title: "かんじょうにっきの使い方",
-    description: "書き方・初期診断・毎日のコツを1ページで確認",
-    href: "/diary/how-to",
-    icon: Sparkles
-  },
   {
     title: "感情の種類",
     description: "8つのネガティブ・4つのポジティブを整理",
@@ -28,49 +20,10 @@ const resourceLinks = [
     description: "検索・フィルタでこれまでの気持ちを振り返り",
     href: "/diary/history",
     icon: BookOpenCheck
-  },
-  {
-    title: "無価値感の推移",
-    description: "スコアのグラフと感情の傾向をチェック",
-    href: "/diary/worthlessness",
-    icon: LineChart
   }
 ];
 
 export default function DiaryPage() {
-  const [needsAssessment, setNeedsAssessment] = useState(false);
-  const [checkedAssessment, setCheckedAssessment] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/diary/initial-score", { cache: "no-store" });
-        if (!res.ok) {
-          throw new Error("failed to load score");
-        }
-        const data = await res.json();
-        if (!active) return;
-        setNeedsAssessment(!data.initialScore);
-      } catch (error) {
-        if (!active) return;
-        setNeedsAssessment(false);
-      } finally {
-        if (active) {
-          setCheckedAssessment(true);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const highlightHowTo = checkedAssessment && needsAssessment;
-
   return (
     <AuthGate>
       <div className="min-h-screen p-4 pb-20 md:p-8">
@@ -110,10 +63,8 @@ export default function DiaryPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {resourceLinks.map((item) => {
-            const isHowTo = item.href === "/diary/how-to";
             const cardClasses = cn(
-              "border border-[#f0e4d8] bg-white/95 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg",
-              isHowTo && highlightHowTo && "ring-2 ring-[#d59da9] shadow-lg animate-pulse"
+              "border border-[#f0e4d8] bg-white/95 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
             );
 
             return (
