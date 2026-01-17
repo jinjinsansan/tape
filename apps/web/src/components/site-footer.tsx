@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Youtube, Twitter, ExternalLink } from "lucide-react";
-import { SITE_NAME_EN, SITE_NAME_JP } from "@/lib/branding";
+import { SITE_NAME_EN, SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
+import { cn } from "@/lib/utils";
 
 const footerLinks = [
   { label: "利用規約", href: "/terms" },
@@ -22,7 +23,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 text-[#51433c] md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-semibold tracking-[0.4em] text-[#a4938a]">{SITE_NAME_EN}</p>
-          <p className="mt-2 text-lg font-bold">{SITE_NAME_JP}</p>
+          <p className={cn("mt-2 text-lg text-[#51433c]", SITE_TITLE_FONT_CLASS)}>{SITE_NAME_JP}</p>
           <p className="mt-1 text-xs text-[#a4938a]">心に寄り添うケアをすべての人へ。</p>
         </div>
 

@@ -129,4 +129,10 @@
     animation: pulseProgress 1.2s ease-in-out infinite;
     transform-origin: left;
   }
+
+  h1,
+  h2,
+  .heading-serif {
+    @apply font-serif;
+  }
 }
