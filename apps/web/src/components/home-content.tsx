@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 import {
   BookHeart,
   Bot,
@@ -14,7 +14,6 @@ import {
   Radio,
   Settings,
   Sparkles,
-  Twitter,
   Users,
   Youtube
 } from "lucide-react";
@@ -28,11 +27,13 @@ import { cn } from "@/lib/utils";
 type ShortcutCategory = "primary" | "social" | "admin";
 type PrivilegedRole = "admin" | "counselor";
 
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+
 type AppShortcut = {
   title: string;
   subtitle: string;
   href: string;
-  icon: LucideIcon;
+  icon: IconComponent;
   bubbleClass: string;
   category: ShortcutCategory;
   isExternal?: boolean;
@@ -132,7 +133,7 @@ const APP_SHORTCUTS: AppShortcut[] = [
     title: "X",
     subtitle: "最新の活動速報",
     href: "https://x.com/iamthataru",
-    icon: Twitter,
+    icon: XLogoIcon,
     bubbleClass: "bg-[#e7f5ff] text-[#1d9bf0]",
     category: "social",
     isExternal: true
@@ -158,21 +159,18 @@ const APP_SHORTCUTS: AppShortcut[] = [
   }
 ];
 
-const SHORTCUT_SECTIONS: { id: ShortcutCategory; title: string; description: string }[] = [
+const SHORTCUT_SECTIONS: { id: ShortcutCategory; title: string }[] = [
   {
     id: "primary",
-    title: "Tapeアプリメニュー",
-    description: "スマホアプリのように、よく使うメニューをタップしやすく並べました。"
+    title: "Tapeアプリメニュー"
   },
   {
     id: "social",
-    title: "公式アカウント・情報発信",
-    description: "協会のSNS・外部サイトはこちらからどうぞ。"
+    title: "公式アカウント・情報発信"
   },
   {
     id: "admin",
-    title: "管理メニュー",
-    description: "管理者・カウンセラーの方のみ表示されます。"
+    title: "管理メニュー"
   }
 ];
 
@@ -194,7 +192,7 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#fffaf4] via-[#f9f4ff] to-[#f2fbff]">
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 pb-12 pt-6 text-center md:px-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 pb-12 pt-6 text-center md:px-8">
         <div className="flex justify-end">
           <SignOutButton />
         </div>
@@ -202,13 +200,9 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
         <header className="space-y-4">
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
           <h1 className="font-serif text-4xl font-bold tracking-tight text-[#51433c] md:text-5xl">{SITE_NAME_JP}</h1>
-          <p className="mx-auto max-w-2xl text-lg text-[#8b7a71]">
-            やりたいことをスマホアプリのように直感的に。<br className="md:hidden" />
-            テープ式心理学のすべてのメニューがここに並びます。
-          </p>
         </header>
 
-        <div className="space-y-12 text-left">
+        <div className="space-y-8 text-left">
           {SHORTCUT_SECTIONS.map((section) => {
             const shortcuts = APP_SHORTCUTS.filter(
               (shortcut) => shortcut.category === section.id && canAccessShortcut(shortcut, privilegedRole)
@@ -219,10 +213,9 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
             }
 
             return (
-              <section key={section.id} className="space-y-4">
-                <div className="space-y-2 text-center md:text-left">
-                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95]">{section.title}</p>
-                  <p className="text-sm text-[#8b7a71]">{section.description}</p>
+              <section key={section.id} className="space-y-3">
+                <div className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#b29f95] md:text-left">
+                  {section.title}
                 </div>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                   {shortcuts.map((shortcut) => (
@@ -351,3 +344,11 @@ const formatDate = (isoDate?: string) => {
   }
   return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 };
+
+function XLogoIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 4l7.5 7.5L4 20h4l4.5-5 4 5H20l-6.5-7.5L20 4h-4l-4 4.5L8 4H4z" />
+    </svg>
+  );
+}
