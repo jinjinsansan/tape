@@ -5,7 +5,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookHeart, Bot, PlayCircle, CalendarHeart, Users, Settings, Home, UserCircle, MessageCircle, Radio, Globe } from "lucide-react";
+import { SignOutButton } from "@/components/signout-button";
+import {
+  Menu,
+  X,
+  BookHeart,
+  Bot,
+  PlayCircle,
+  CalendarHeart,
+  Users,
+  Settings,
+  Home,
+  UserCircle,
+  MessageCircle,
+  Radio,
+  Globe
+} from "lucide-react";
 import { SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 
 const navItems = [
@@ -97,6 +112,7 @@ export function SiteHeader() {
                 <Settings className="h-5 w-5" />
               </Button>
             </Link>
+            <SignOutButton />
           </nav>
 
           <div className="flex items-center gap-3">
@@ -112,6 +128,7 @@ export function SiteHeader() {
             )}
 
             <div className="flex items-center gap-2 md:hidden">
+              <SignOutButton />
               {profileName && (
                 <Link
                   href="/mypage"

@@ -47,11 +47,13 @@ type FeedEntry = {
   counselorComment: { content: string; author: string } | null;
   isShareable: boolean;
   shareCount: number;
+  commentCount: number;
   comments?: FeedComment[];
   showComments?: boolean;
   commentInput?: string;
   submittingComment?: boolean;
   commentsError?: string;
+  commentsLoading?: boolean;
 };
 
 type FeedResponse = {
@@ -117,7 +119,11 @@ export function FeedPageClient() {
           throw new Error("フィードの取得に失敗しました");
         }
         const data = (await res.json()) as FeedResponse;
-        setEntries((prev) => (mode === "append" ? [...prev, ...data.entries] : data.entries));
+        const processedEntries = data.entries.map((entry) => ({
+          ...entry,
+          showComments: entry.commentCount > 0
+        }));
+        setEntries((prev) => (mode === "append" ? [...prev, ...processedEntries] : processedEntries));
         setCursor(data.nextCursor);
         setHasMore(Boolean(data.nextCursor));
       } catch (err) {
@@ -135,6 +141,7 @@ export function FeedPageClient() {
     initialFetchedRef.current = true;
     fetchFeed("initial", null);
   }, [fetchFeed]);
+
 
   const handleReactionToggle = async (entryId: string, reactionId: string) => {
     const entry = entries.find((item) => item.id === entryId);
@@ -211,30 +218,50 @@ export function FeedPageClient() {
     );
 
     const entry = entries.find((e) => e.id === entryId);
-    if (entry && !entry.comments) {
+    const willShow = entry ? !entry.showComments : false;
+    if (entry && willShow && !entry.comments && !entry.commentsLoading) {
       await loadComments(entryId);
     }
   };
 
-  const loadComments = async (entryId: string) => {
+  const loadComments = useCallback(async (entryId: string) => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.id === entryId
+          ? { ...entry, commentsLoading: true, commentsError: undefined }
+          : entry
+      )
+    );
     try {
       const res = await fetch(`/api/feed/${entryId}/comments`);
       if (!res.ok) throw new Error("Failed to load comments");
       const data = await res.json();
       setEntries((prev) =>
         prev.map((entry) =>
-          entry.id === entryId ? { ...entry, comments: data.comments, commentsError: undefined } : entry
+          entry.id === entryId
+            ? { ...entry, comments: data.comments, commentsError: undefined, commentsLoading: false }
+            : entry
         )
       );
     } catch (err) {
       console.error(err);
       setEntries((prev) =>
         prev.map((entry) =>
-          entry.id === entryId ? { ...entry, commentsError: "コメントの読み込みに失敗しました" } : entry
+          entry.id === entryId
+            ? { ...entry, commentsError: "コメントの読み込みに失敗しました", commentsLoading: false }
+            : entry
         )
       );
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    entries.forEach((entry) => {
+      if (entry.showComments && entry.commentCount > 0 && !entry.comments && !entry.commentsLoading) {
+        void loadComments(entry.id);
+      }
+    });
+  }, [entries, loadComments]);
 
   const handleCommentSubmit = async (entryId: string) => {
     const entry = entries.find((e) => e.id === entryId);
@@ -264,7 +291,9 @@ export function FeedPageClient() {
             ...e,
             comments: [...(e.comments || []), data.comment],
             commentInput: "",
-            submittingComment: false
+            submittingComment: false,
+            commentCount: e.commentCount + 1,
+            showComments: true
           };
         })
       );
@@ -292,9 +321,11 @@ export function FeedPageClient() {
       setEntries((prev) =>
         prev.map((e) => {
           if (e.id !== entryId) return e;
+          const updatedComments = (e.comments || []).filter((c) => c.id !== commentId);
           return {
             ...e,
-            comments: (e.comments || []).filter((c) => c.id !== commentId)
+            comments: updatedComments,
+            commentCount: Math.max(e.commentCount - 1, 0)
           };
         })
       );
@@ -468,6 +499,10 @@ export function FeedPageClient() {
                         >
                           再試行
                         </button>
+                      </div>
+                    ) : entry.commentsLoading ? (
+                      <div className="rounded-lg bg-tape-cream/50 p-3 text-center text-xs text-tape-light-brown">
+                        コメントを読み込み中です...
                       </div>
                     ) : entry.comments && entry.comments.length > 0 ? (
                       <div className="space-y-3">

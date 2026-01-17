@@ -34,6 +34,7 @@ export type FeedEntry = {
   counselorComment: { content: string; author: string } | null;
   isShareable: boolean;
   shareCount: number;
+  commentCount: number;
 };
 
 type FeedQueryParams = {
@@ -153,12 +154,33 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       aiComment,
       counselorComment,
       isShareable: item.is_shareable ?? false,
-      shareCount: item.share_count ?? 0
+      shareCount: item.share_count ?? 0,
+      commentCount: 0
     };
   }) as FeedEntry[];
 
   const hasNext = entries.length > limit;
   const slicedEntries = hasNext ? entries.slice(0, limit) : entries;
+  const entryIds = slicedEntries.map((entry) => entry.id);
+
+  if (entryIds.length > 0) {
+    const { data: commentRows, error: commentsError } = await supabase
+      .from("emotion_diary_comments")
+      .select("entry_id")
+      .in("entry_id", entryIds)
+      .eq("source", "user");
+
+    if (!commentsError && commentRows) {
+      const counts: Record<string, number> = {};
+      commentRows.forEach((row) => {
+        counts[row.entry_id] = (counts[row.entry_id] ?? 0) + 1;
+      });
+      slicedEntries.forEach((entry) => {
+        entry.commentCount = counts[entry.id] ?? 0;
+      });
+    }
+  }
+
   const nextCursor = hasNext ? slicedEntries[slicedEntries.length - 1]?.publishedAt ?? null : null;
 
   return { entries: slicedEntries, nextCursor };
@@ -283,7 +305,8 @@ export const getPublicFeedEntryById = async (entryId: string, viewerId?: string 
     aiComment,
     counselorComment,
     isShareable: data.is_shareable ?? false,
-    shareCount: data.share_count ?? 0
+    shareCount: data.share_count ?? 0,
+    commentCount: 0
   } satisfies FeedEntry;
 };
 
