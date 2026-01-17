@@ -292,6 +292,73 @@ export interface Database {
           journal_date?: string;
         };
       };
+      self_esteem_question_history: {
+        Row: {
+          id: number;
+          user_id: string;
+          question_id: string;
+          shown_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          question_id: string;
+          shown_date: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          question_id?: string;
+          shown_date?: string;
+          created_at?: string;
+        };
+      };
+      self_esteem_test_results: {
+        Row: {
+          id: string;
+          user_id: string;
+          test_date: string;
+          question_ids: string[];
+          answers: Json;
+          self_esteem_score: number;
+          worthlessness_score: number;
+          is_posted_to_diary: boolean;
+          diary_entry_id: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          test_date: string;
+          question_ids: string[];
+          answers: Json;
+          self_esteem_score: number;
+          worthlessness_score: number;
+          is_posted_to_diary?: boolean;
+          diary_entry_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          test_date?: string;
+          question_ids?: string[];
+          answers?: Json;
+          self_esteem_score?: number;
+          worthlessness_score?: number;
+          is_posted_to_diary?: boolean;
+          diary_entry_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       notifications: {
         Row: {
           id: string;

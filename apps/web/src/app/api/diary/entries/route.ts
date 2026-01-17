@@ -9,6 +9,7 @@ import {
   listDiaryEntries,
   type DiaryFeelingInput
 } from "@/server/services/diary";
+import { markResultPostedForDate } from "@/server/services/self-esteem-test";
 import { scheduleDiaryAiCommentJob } from "@/server/services/diary-ai-comments";
 import { awardPoints } from "@/server/services/points";
 import { recordReferralDiaryDay } from "@/server/services/referrals";
@@ -151,6 +152,15 @@ export async function POST(request: Request) {
         });
       } catch (schedulerError) {
         console.error("Failed to schedule diary AI comment", schedulerError);
+      }
+
+      const testDateForLinkage = data.selfEsteemTestDate ?? entry?.journal_date ?? null;
+      if (entry && testDateForLinkage) {
+        try {
+          await markResultPostedForDate(supabase, user!.id, testDateForLinkage, entry.id);
+        } catch (markError) {
+          console.error("Failed to link self esteem test result", markError);
+        }
       }
     }
 

@@ -89,6 +89,25 @@ export default function DiaryPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-10">
+        <section className="rounded-3xl border border-[#f0e4d8] bg-white/95 p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#d59da9]">
+                DAILY TEST
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-[#51433c]">自己肯定感スコアテスト</h2>
+              <p className="mt-1 text-sm text-[#8b7a71]">
+                ネガティブ設問5問に答えて、今日の自己肯定感と無価値感を1分で数値化。日記に自動で下書きをつくれます。
+              </p>
+            </div>
+            <Link href="/diary/self-esteem-test" className="inline-flex">
+              <Button className="w-full rounded-full bg-tape-pink px-6 py-3 text-white shadow-md hover:bg-tape-pink/90" size="lg">
+                今日のテストを受ける
+              </Button>
+            </Link>
+          </div>
+        </section>
+
         <section className="grid gap-4 md:grid-cols-2">
           {resourceLinks.map((item) => {
             const isHowTo = item.href === "/diary/how-to";

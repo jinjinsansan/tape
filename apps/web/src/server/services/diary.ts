@@ -485,22 +485,58 @@ export const getPreviousWorthlessnessScore = async (
 };
 
 export const listEntriesForTrend = async (supabase: Supabase, userId: string) => {
-  const { data, error } = await supabase
-    .from("emotion_diary_entries")
-    .select(
-      `id, journal_date, self_esteem_score, worthlessness_score, emotion_label, created_at`
-    )
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .order("journal_date", { ascending: true })
-    .order("created_at", { ascending: true })
-    .limit(5000);
+  const [entriesResult, testsResult] = await Promise.all([
+    supabase
+      .from("emotion_diary_entries")
+      .select(`id, journal_date, self_esteem_score, worthlessness_score, emotion_label, created_at`)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("journal_date", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(5000),
+    supabase
+      .from("self_esteem_test_results")
+      .select(`diary_entry_id,test_date,self_esteem_score,worthlessness_score,completed_at,created_at,updated_at`)
+      .eq("user_id", userId)
+      .eq("is_posted_to_diary", true)
+      .is("diary_entry_id", null)
+      .order("test_date", { ascending: true })
+  ]);
 
-  if (error) {
-    throw error;
+  if (entriesResult.error) {
+    throw entriesResult.error;
+  }
+  if (testsResult.error) {
+    throw testsResult.error;
   }
 
-  return data ?? [];
+  const normalizedTests = (testsResult.data ?? []).map((result) => ({
+    id: result.diary_entry_id ?? null,
+    journal_date: result.test_date,
+    self_esteem_score: result.self_esteem_score,
+    worthlessness_score: result.worthlessness_score,
+    emotion_label: null,
+    created_at: result.completed_at ?? result.updated_at ?? result.created_at
+  }));
+
+  const combined = [
+    ...((entriesResult.data ?? []) as Array<{
+      id: string;
+      journal_date: string;
+      self_esteem_score: number | null;
+      worthlessness_score: number | null;
+      emotion_label: string | null;
+      created_at: string;
+    }>),
+    ...normalizedTests
+  ];
+
+  return combined.sort((a, b) => {
+    if (a.journal_date === b.journal_date) {
+      return (a.created_at ?? a.journal_date).localeCompare(b.created_at ?? b.journal_date);
+    }
+    return a.journal_date.localeCompare(b.journal_date);
+  });
 };
 
 export const listSelfAssessments = async (supabase: Supabase, userId: string, limit = 5) => {

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SELF_ESTEEM_DRAFT_STORAGE_KEY } from "@/lib/self-esteem/constants";
+import type { DiaryDraftStorage } from "@/lib/self-esteem/types";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 
@@ -166,6 +168,8 @@ export function DiaryDashboard() {
   const [commentVisibilitySavingId, setCommentVisibilitySavingId] = useState<string | null>(null);
   const [eventSummary, setEventSummary] = useState("");
   const [realization, setRealization] = useState("");
+  const [selfEsteemTestDate, setSelfEsteemTestDate] = useState<string | null>(null);
+  const [testDraftApplied, setTestDraftApplied] = useState(false);
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -321,11 +325,46 @@ export function DiaryDashboard() {
     return true;
   }, [getAuthHeaders]);
 
-  const resetComposer = (visibility: DiaryVisibility = form.visibility) => {
+  const getStoredSelfEsteemDraft = useCallback((): DiaryDraftStorage | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const raw = window.localStorage.getItem(SELF_ESTEEM_DRAFT_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as DiaryDraftStorage;
+      if (parsed?.source !== "self_esteem_test") {
+        return null;
+      }
+      return parsed;
+    } catch (error) {
+      console.error("Failed to parse self esteem test draft", error);
+      return null;
+    }
+  }, []);
+
+  const clearStoredSelfEsteemDraft = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.removeItem(SELF_ESTEEM_DRAFT_STORAGE_KEY);
+  }, []);
+
+  const resetComposer = (
+    visibility: DiaryVisibility = form.visibility,
+    options: { clearTestDraft?: boolean } = {}
+  ) => {
     setForm({ ...defaultForm, journalDate: today(), visibility });
     setEventSummary("");
     setRealization("");
     setEmotionLabel(null);
+    if (options.clearTestDraft) {
+      setSelfEsteemTestDate(null);
+      setTestDraftApplied(false);
+      clearStoredSelfEsteemDraft();
+    }
   };
 
   useEffect(() => {
@@ -469,6 +508,28 @@ export function DiaryDashboard() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (testDraftApplied) {
+      return;
+    }
+    const draft = getStoredSelfEsteemDraft();
+    if (!draft) {
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      content: draft.content,
+      journalDate: draft.journalDate ?? today()
+    }));
+    setEventSummary(draft.eventSummary);
+    setEmotionLabel(draft.emotionLabel);
+    setSelfEsteemScore(draft.selfEsteemScore);
+    setWorthlessnessScore(draft.worthlessnessScore);
+    setSelfEsteemTestDate(draft.testDate);
+    setTestDraftApplied(true);
+    showToast("success", "自己肯定感テストの結果を読み込みました");
+  }, [getStoredSelfEsteemDraft, showToast, testDraftApplied]);
+
   const handleSelfScoreChange = (value: number) => {
     const clamped = Math.min(Math.max(value, 0), 100);
     setSelfEsteemScore(clamped);
@@ -480,6 +541,12 @@ export function DiaryDashboard() {
     setWorthlessnessScore(clamped);
     setSelfEsteemScore(100 - clamped);
   };
+
+  const handleDiscardTestDraft = useCallback(() => {
+    setSelfEsteemTestDate(null);
+    setTestDraftApplied(false);
+    clearStoredSelfEsteemDraft();
+  }, [clearStoredSelfEsteemDraft]);
 
   const handleCreate = async () => {
     if (!form.content.trim()) {
@@ -508,6 +575,7 @@ export function DiaryDashboard() {
         worthlessnessScore,
         visibility: form.visibility,
         journalDate: form.journalDate,
+        selfEsteemTestDate: selfEsteemTestDate ?? undefined,
       isAiCommentPublic: form.shareAiComment,
       isCounselorCommentPublic: form.shareCounselorComment,
       isShareable: form.visibility === "public" ? form.shareToFeed : false
@@ -559,7 +627,7 @@ export function DiaryDashboard() {
           worthlessness_score: guestEntry.worthlessness_score ?? worthlessnessScore,
           self_esteem_score: guestEntry.self_esteem_score ?? selfEsteemScore
         });
-        resetComposer(form.visibility);
+        resetComposer(form.visibility, { clearTestDraft: true });
         showToast("success", "日記を保存しました（この端末に保管中）");
         return;
       }
@@ -577,7 +645,7 @@ export function DiaryDashboard() {
         worthlessness_score: createdEntry.worthlessness_score ?? worthlessnessScore,
         self_esteem_score: createdEntry.self_esteem_score ?? selfEsteemScore
       });
-      resetComposer(form.visibility);
+      resetComposer(form.visibility, { clearTestDraft: true });
       showToast("success", "日記を保存しました");
     } catch (err) {
       console.error(err);
@@ -778,6 +846,24 @@ export function DiaryDashboard() {
                   className="h-24 w-full rounded-2xl border border-tape-beige bg-white px-4 py-3 text-base md:text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
                 />
               </label>
+
+              {selfEsteemTestDate && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-tape-beige bg-white/75 p-4 text-xs text-tape-brown md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-semibold">自己肯定感テスト（{selfEsteemTestDate}）の結果を反映中</p>
+                    <p className="mt-1 text-[11px] text-tape-light-brown">
+                      スライダーを調整すると最新のスコアとして日記に保存されます。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDiscardTestDraft}
+                    className="rounded-full border border-tape-beige px-3 py-1 text-[11px] font-semibold text-tape-light-brown transition hover:border-tape-pink hover:text-tape-pink"
+                  >
+                    結果を破棄する
+                  </button>
+                </div>
+              )}
 
               {isWorthlessnessSelected && (
                 <>

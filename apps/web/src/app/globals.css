@@ -109,4 +109,24 @@
   .shadow-\[0_18px_38px_rgba\(81,67,60,0\.07\)\] {
     box-shadow: 0 18px 38px rgba(95, 59, 31, 0.08) !important;
   }
+
+  @keyframes pulseProgress {
+    0% {
+      transform: scaleX(0.1);
+      opacity: 0.4;
+    }
+    50% {
+      transform: scaleX(0.85);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 0.4;
+    }
+  }
+
+  .animate-pulse-progress {
+    animation: pulseProgress 1.2s ease-in-out infinite;
+    transform-origin: left;
+  }
 }
