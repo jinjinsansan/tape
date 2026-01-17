@@ -475,8 +475,10 @@ export function DiaryDashboard() {
         };
         if (data.initialScore) {
           setInitialScore(data.initialScore);
-          setSelfEsteemScore(data.initialScore.self_esteem_score);
-          setWorthlessnessScore(data.initialScore.worthlessness_score);
+          if (!testDraftApplied) {
+            setSelfEsteemScore(data.initialScore.self_esteem_score);
+            setWorthlessnessScore(data.initialScore.worthlessness_score);
+          }
         }
         if (data.previousScore) {
           setPreviousScoreInfo(data.previousScore);
@@ -496,7 +498,7 @@ export function DiaryDashboard() {
       }
     };
     loadInitialScore();
-  }, [sessionChecked, getAuthHeaders]);
+  }, [sessionChecked, getAuthHeaders, testDraftApplied]);
 
   const showToast = useCallback((type: "success" | "error", message: string) => {
     setToast({ type, message });
