@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SELF_ESTEEM_DRAFT_STORAGE_KEY } from "@/lib/self-esteem/constants";
@@ -170,6 +170,7 @@ export function DiaryDashboard() {
   const [realization, setRealization] = useState("");
   const [selfEsteemTestDate, setSelfEsteemTestDate] = useState<string | null>(null);
   const [testDraftApplied, setTestDraftApplied] = useState(false);
+  const testDraftActiveRef = useRef(false);
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -452,6 +453,10 @@ export function DiaryDashboard() {
   }, [guestMode, sessionChecked, enableGuestMode, syncPreviousFromEntries, syncGuestEntriesToCloud, getAuthHeaders]);
 
   useEffect(() => {
+    testDraftActiveRef.current = testDraftApplied;
+  }, [testDraftApplied]);
+
+  useEffect(() => {
     if (!sessionChecked) {
       return;
     }
@@ -475,7 +480,7 @@ export function DiaryDashboard() {
         };
         if (data.initialScore) {
           setInitialScore(data.initialScore);
-          if (!testDraftApplied) {
+          if (!testDraftActiveRef.current) {
             setSelfEsteemScore(data.initialScore.self_esteem_score);
             setWorthlessnessScore(data.initialScore.worthlessness_score);
           }
@@ -498,7 +503,7 @@ export function DiaryDashboard() {
       }
     };
     loadInitialScore();
-  }, [sessionChecked, getAuthHeaders, testDraftApplied]);
+  }, [sessionChecked, getAuthHeaders]);
 
   const showToast = useCallback((type: "success" | "error", message: string) => {
     setToast({ type, message });
