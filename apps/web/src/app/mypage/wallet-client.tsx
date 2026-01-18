@@ -86,6 +86,7 @@ export function WalletClient() {
   const [referralMessage, setReferralMessage] = useState<string | null>(null);
   const [pointInfo, setPointInfo] = useState<{ rules: PointRule[]; rewards: PointRewardRow[] } | null>(null);
   const [showPointHistory, setShowPointHistory] = useState(false);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
 
   const loadLegacyWallet = useCallback(async () => {
     try {
@@ -616,43 +617,85 @@ export function WalletClient() {
       </div>
 
       <div className="rounded-2xl border border-tape-beige bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="h-5 w-5 text-tape-light-brown" />
-          <h3 className="text-lg font-bold text-tape-brown">利用履歴</h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-tape-light-brown" />
+            <h3 className="text-lg font-bold text-tape-brown">利用履歴</h3>
+          </div>
+          {transactions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowTransactionHistory((prev) => !prev)}
+              className="text-xs font-semibold text-tape-orange underline-offset-4 hover:underline"
+            >
+              {showTransactionHistory ? "履歴を閉じる" : `直近${transactions.length}件を表示`}
+            </button>
+          )}
         </div>
         {transactions.length === 0 ? (
           <p className="text-sm text-tape-light-brown text-center py-8">まだ履歴がありません。</p>
         ) : (
           <div className="space-y-3">
-            {transactions.map((tx) => {
-              const isCredit = tx.amount_cents > 0;
-              const typeLabel = (
-                {
-                  topup: "チャージ",
-                  consume: "利用",
-                  refund: "返金",
-                  hold: "保留",
-                  release: "解除",
-                  bonus: "ボーナス",
-                  reward: "景品交換"
-                } as Record<string, string>
-              )[tx.type] ?? tx.type;
+            {!showTransactionHistory && (
+              <div className="rounded-2xl border border-dashed border-tape-beige bg-tape-cream/40 p-4 text-sm text-tape-brown">
+                <p className="text-xs font-semibold text-tape-light-brown mb-1">最新の動き</p>
+                {(() => {
+                  const latest = transactions[0];
+                  const isCredit = latest.amount_cents > 0;
+                  const typeLabel = (
+                    {
+                      topup: "チャージ",
+                      consume: "利用",
+                      refund: "返金",
+                      hold: "保留",
+                      release: "解除",
+                      bonus: "ボーナス",
+                      reward: "景品交換"
+                    } as Record<string, string>
+                  )[latest.type] ?? latest.type;
+                  return (
+                    <>
+                      <p className="font-bold">{typeLabel}</p>
+                      <p className="text-[11px] text-tape-light-brown">
+                        {new Date(latest.created_at).toLocaleString("ja-JP")} /
+                        {isCredit ? " +" : " -"}
+                        ¥{Math.abs(latest.amount_cents / 100).toLocaleString()}
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            {showTransactionHistory &&
+              transactions.map((tx) => {
+                const isCredit = tx.amount_cents > 0;
+                const typeLabel = (
+                  {
+                    topup: "チャージ",
+                    consume: "利用",
+                    refund: "返金",
+                    hold: "保留",
+                    release: "解除",
+                    bonus: "ボーナス",
+                    reward: "景品交換"
+                  } as Record<string, string>
+                )[tx.type] ?? tx.type;
 
-              return (
-                <div key={tx.id} className="flex items-center justify-between border-b border-tape-beige pb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-tape-brown">{typeLabel}</p>
-                    <p className="text-xs text-tape-light-brown">{new Date(tx.created_at).toLocaleString("ja-JP")}</p>
+                return (
+                  <div key={tx.id} className="flex items-center justify-between border-b border-tape-beige pb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-tape-brown">{typeLabel}</p>
+                      <p className="text-xs text-tape-light-brown">{new Date(tx.created_at).toLocaleString("ja-JP")}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-bold ${isCredit ? "text-green-600" : "text-tape-pink"}`}>
+                        {isCredit ? "+" : "-"}¥{Math.abs(tx.amount_cents / 100).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-tape-light-brown">残高: ¥{(tx.balance_after_cents / 100).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${isCredit ? "text-green-600" : "text-tape-pink"}`}>
-                      {isCredit ? "+" : "-"}¥{Math.abs(tx.amount_cents / 100).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-tape-light-brown">残高: ¥{(tx.balance_after_cents / 100).toLocaleString()}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </div>
