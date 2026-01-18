@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@tape/supabase";
 import { getSupabaseAdminClient } from "@/server/supabase";
+import { fetchDiaryCountsForUsers, fetchDiaryCountForUser } from "@/server/utils/diary-counts";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -15,6 +16,8 @@ export type FeedEntry = {
     id: string;
     displayName: string | null;
     avatarUrl: string | null;
+    role: string | null;
+    diaryCount: number;
   };
   feelings: {
     label: string;
@@ -113,12 +116,14 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
   const userIds = [...new Set((data ?? []).map((item) => item.user_id))];
   const { data: profilesData } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url")
+    .select("id, display_name, avatar_url, role")
     .in("id", userIds);
 
   const profilesMap = new Map(
     (profilesData ?? []).map((profile) => [profile.id, profile])
   );
+
+  const diaryCountsMap = await fetchDiaryCountsForUsers(supabase, userIds);
 
   const entries = (data ?? []).map((item) => {
     const profile = profilesMap.get(item.user_id);
@@ -139,7 +144,9 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       author: {
         id: item.user_id,
         displayName: profile?.display_name ?? "匿名ユーザー",
-        avatarUrl: profile?.avatar_url ?? null
+        avatarUrl: profile?.avatar_url ?? null,
+        role: profile?.role ?? null,
+        diaryCount: diaryCountsMap.get(item.user_id) ?? 0
       },
       feelings: (item.feelings ?? []).map((feeling) => ({
         label: feeling.label,
@@ -268,9 +275,11 @@ export const getPublicFeedEntryById = async (entryId: string, viewerId?: string 
 
   const { data: profileData } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url")
+    .select("id, display_name, avatar_url, role")
     .eq("id", data.user_id)
     .maybeSingle();
+
+  const diaryCount = await fetchDiaryCountForUser(supabase, data.user_id);
 
   const aiComment =
     data.is_ai_comment_public && data.ai_comment_status === "completed" && data.ai_comment
@@ -290,7 +299,9 @@ export const getPublicFeedEntryById = async (entryId: string, viewerId?: string 
     author: {
       id: data.user_id,
       displayName: profileData?.display_name ?? "匿名ユーザー",
-      avatarUrl: profileData?.avatar_url ?? null
+      avatarUrl: profileData?.avatar_url ?? null,
+      role: profileData?.role ?? null,
+      diaryCount
     },
     feelings: (data.feelings ?? []).map((feeling) => ({
       label: feeling.label,

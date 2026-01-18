@@ -29,9 +29,15 @@ export default async function MyPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, avatar_url")
+    .select("display_name, avatar_url, role")
     .eq("id", user.id)
     .maybeSingle();
+
+  const { count: diaryCount } = await supabase
+    .from("emotion_diary_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
 
   const initialProfile = {
     displayName:
@@ -41,6 +47,11 @@ export default async function MyPage() {
       null,
     avatarUrl: profile?.avatar_url ?? null,
     email: user.email ?? null
+  };
+
+  const badgeMeta = {
+    diaryCount: diaryCount ?? 0,
+    role: profile?.role ?? null
   };
 
   const sections = [
@@ -72,7 +83,7 @@ export default async function MyPage() {
 
           <Card className="border-[#f0e4d8] bg-white/95 shadow-[0_18px_38px_rgba(81,67,60,0.07)]">
             <CardContent className="p-6">
-              <MyPageClient initialProfile={initialProfile} />
+              <MyPageClient initialProfile={initialProfile} badgeMeta={badgeMeta} />
             </CardContent>
           </Card>
         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { DIARY_BORDER_TIERS, getDiaryBorderColor, getDiaryTierForCount, getNextDiaryTier, COUNSELOR_BORDER_COLOR } from "@/constants/diary-badge";
 
 type Profile = {
   displayName: string | null;
@@ -14,12 +15,16 @@ type Profile = {
 
 type MyPageClientProps = {
   initialProfile: Profile;
+  badgeMeta: {
+    diaryCount: number;
+    role: string | null;
+  };
 };
 
 const DEFAULT_AVATAR = "https://placehold.co/120x120/F5F2EA/5C554F?text=User";
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
-export function MyPageClient({ initialProfile }: MyPageClientProps) {
+export function MyPageClient({ initialProfile, badgeMeta }: MyPageClientProps) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialProfile.displayName ?? "");
   const [avatarPreview, setAvatarPreview] = useState(initialProfile.avatarUrl);
@@ -39,6 +44,22 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
+  const diaryCount = badgeMeta?.diaryCount ?? 0;
+  const userRole = badgeMeta?.role ?? null;
+  const isCounselor = userRole === "counselor";
+  const avatarBorderStyle = useMemo(
+    () => ({ borderColor: getDiaryBorderColor(userRole, diaryCount) }),
+    [userRole, diaryCount]
+  );
+  const currentTier = useMemo(() => getDiaryTierForCount(diaryCount), [diaryCount]);
+  const nextTier = useMemo(() => getNextDiaryTier(diaryCount), [diaryCount]);
+  const nextTierRemaining = nextTier ? Math.max(nextTier.threshold - diaryCount, 0) : 0;
+  const progressMessage = isCounselor
+    ? "カウンセラーは常に特別カラー（ディープパープル）で表示されます"
+    : nextTier
+      ? `次の${nextTier.label}まであと${nextTierRemaining}件`
+      : "最上位のロイヤルローズ枠に到達しています！";
 
   const initials = useMemo(() => {
     if (displayName) {
@@ -326,10 +347,14 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
                 <img
                   src={avatarPreview}
                   alt={displayName || "ユーザーアイコン"}
-                  className="h-24 w-24 rounded-full object-cover border border-tape-beige"
+                  className="h-24 w-24 rounded-full object-cover border"
+                  style={avatarBorderStyle}
                 />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-dashed border-tape-beige bg-tape-cream text-sm text-tape-light-brown">
+                <div
+                  className="flex h-24 w-24 items-center justify-center rounded-full border border-dashed bg-tape-cream text-sm text-tape-light-brown"
+                  style={avatarBorderStyle}
+                >
                   {initials}
                 </div>
               )}
@@ -393,6 +418,85 @@ export function MyPageClient({ initialProfile }: MyPageClientProps) {
           </div>
         </div>
       </form>
+
+      <section className="space-y-4 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">DIARY ICON</p>
+        <h2 className="text-2xl font-bold text-tape-brown">アイコン枠線の段階</h2>
+        <p className="text-sm text-tape-light-brown">
+          「みんなの日記」に表示されるあなたのアイコン枠は、日記投稿数に応じて少しずつ華やかなカラーへ変化します。
+        </p>
+
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="flex-1 rounded-2xl border border-tape-beige bg-tape-cream/20 p-4">
+            <div className="flex items-center gap-4">
+              <div className="relative h-16 w-16 rounded-full bg-white">
+                <div className="absolute inset-0 rounded-full border-[6px]" style={avatarBorderStyle} />
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-tape-brown">
+                  {diaryCount}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-tape-light-brown">現在の枠線</p>
+                <p className="text-lg font-bold text-tape-brown">
+                  {isCounselor ? "カウンセラー専用カラー" : currentTier ? `${currentTier.label}` : "ベージュ枠"}
+                </p>
+                <p className="text-xs text-tape-light-brown">{progressMessage}</p>
+              </div>
+            </div>
+            {!isCounselor && (
+              <p className="mt-3 text-xs text-tape-light-brown">
+                これまでの公開・非公開に関わらず日記投稿合計に応じて色がアップデートされます。
+              </p>
+            )}
+            {isCounselor && (
+              <p className="mt-3 text-xs text-tape-light-brown">
+                カウンセラーは常にディープパープル（{COUNSELOR_BORDER_COLOR}）で表示されます。
+              </p>
+            )}
+          </div>
+
+          {!isCounselor && (
+            <div className="flex-1 rounded-2xl border border-dashed border-tape-beige p-4">
+              <p className="text-xs font-semibold text-tape-light-brown">次のステップ</p>
+              {nextTier ? (
+                <div className="mt-2 space-y-1 text-sm text-tape-brown">
+                  <p>
+                    次は <span className="font-semibold">{nextTier.label}</span>（{nextTier.threshold}件）
+                  </p>
+                  <p className="text-xs text-tape-light-brown">
+                    あと {nextTierRemaining} 件の日記で到達します。
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-tape-brown">最上位カラーに到達済みです！おめでとうございます🎉</p>
+              )}
+              <div className="mt-4 rounded-2xl bg-tape-cream/40 p-3 text-xs text-tape-light-brown">
+                継続の目安:
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  <li>3件で最初のカラー</li>
+                  <li>30件で1か月分の記録</li>
+                  <li>100件でスカイブルー</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {DIARY_BORDER_TIERS.map((tier) => (
+            <div key={tier.threshold} className="flex items-center gap-3 rounded-2xl border border-tape-beige/70 bg-tape-cream/10 p-3">
+              <div className="h-10 w-10 rounded-full border-4" style={{ borderColor: tier.color }} />
+              <div>
+                <p className="text-sm font-semibold text-tape-brown">{tier.label}</p>
+                <p className="text-xs text-tape-light-brown">{tier.threshold}件 / {tier.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-tape-light-brown">
+          ※ 3件未満はベージュ枠です。カウンセラーは枠線が常にディープパープルになります。
+        </p>
+      </section>
 
       <section className="space-y-3 rounded-3xl border border-tape-beige bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold tracking-[0.4em] text-tape-light-brown">DIARY REMINDER</p>

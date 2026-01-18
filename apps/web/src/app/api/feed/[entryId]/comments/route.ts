@@ -5,6 +5,7 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { awardPoints } from "@/server/services/points";
+import { fetchDiaryCountsForUsers, fetchDiaryCountForUser } from "@/server/utils/diary-counts";
 
 export async function GET(
   request: NextRequest,
@@ -39,12 +40,14 @@ export async function GET(
     const userIds = [...new Set((comments || []).map((c) => c.commenter_user_id).filter(Boolean) as string[])];
     const { data: profilesData } = await adminSupabase
       .from("profiles")
-      .select("id, display_name, avatar_url")
+      .select("id, display_name, avatar_url, role")
       .in("id", userIds);
 
     const profilesMap = new Map(
       (profilesData || []).map((profile) => [profile.id, profile])
     );
+
+    const diaryCountsMap = await fetchDiaryCountsForUsers(adminSupabase, userIds);
 
     const formattedComments = (comments || []).map((comment) => {
       const profile = comment.commenter_user_id ? profilesMap.get(comment.commenter_user_id) : null;
@@ -55,7 +58,9 @@ export async function GET(
         author: {
           id: comment.commenter_user_id,
           displayName: profile?.display_name || "匿名ユーザー",
-          avatarUrl: profile?.avatar_url || null
+          avatarUrl: profile?.avatar_url || null,
+          role: profile?.role ?? null,
+          diaryCount: comment.commenter_user_id ? diaryCountsMap.get(comment.commenter_user_id) ?? 0 : 0
         }
       };
     });
@@ -143,9 +148,11 @@ export async function POST(
     // プロファイル情報を別途取得
     const { data: profile } = await adminSupabase
       .from("profiles")
-      .select("id, display_name, avatar_url")
+      .select("id, display_name, avatar_url, role")
       .eq("id", user.id)
       .single();
+
+    const diaryCount = await fetchDiaryCountForUser(adminSupabase, user.id);
 
     const formattedComment = {
       id: comment.id,
@@ -154,7 +161,9 @@ export async function POST(
       author: {
         id: comment.commenter_user_id,
         displayName: profile?.display_name || "匿名ユーザー",
-        avatarUrl: profile?.avatar_url || null
+        avatarUrl: profile?.avatar_url || null,
+        role: profile?.role ?? null,
+        diaryCount
       }
     };
 

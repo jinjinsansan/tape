@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getDiaryBorderColor } from "@/constants/diary-badge";
 import { Flag, MessageCircle, Sparkles } from "lucide-react";
 
 import { FeedShareButton } from "./feed-share-button";
@@ -18,6 +19,8 @@ type FeedComment = {
     id: string;
     displayName: string;
     avatarUrl: string | null;
+    role: string | null;
+    diaryCount: number;
   };
 };
 
@@ -31,6 +34,8 @@ type FeedEntry = {
     id: string;
     displayName: string | null;
     avatarUrl: string | null;
+    role: string | null;
+    diaryCount: number;
   };
   moodScore: number | null;
   moodLabel: string | null;
@@ -93,6 +98,19 @@ const emotionToneMap: Record<string, string> = {
   達成感: "bg-[#ecffe9] text-[#4c6f3f] border-[#dafad2]",
   幸せ: "bg-[#fff3e6] text-[#8a5b2b] border-[#ffe0c5]"
 };
+
+const getAvatarBorderStyle = (role: string | null | undefined, diaryCount: number | undefined) => ({
+  borderColor: getDiaryBorderColor(role, diaryCount ?? 0)
+});
+
+const normalizeComment = (comment: FeedComment): FeedComment => ({
+  ...comment,
+  author: {
+    ...comment.author,
+    role: comment.author.role ?? null,
+    diaryCount: comment.author.diaryCount ?? 0
+  }
+});
 
 export function FeedPageClient() {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
@@ -235,11 +253,12 @@ export function FeedPageClient() {
     try {
       const res = await fetch(`/api/feed/${entryId}/comments`);
       if (!res.ok) throw new Error("Failed to load comments");
-      const data = await res.json();
+      const data = (await res.json()) as { comments?: FeedComment[] };
+      const normalized = (data.comments ?? []).map((comment) => normalizeComment(comment));
       setEntries((prev) =>
         prev.map((entry) =>
           entry.id === entryId
-            ? { ...entry, comments: data.comments, commentsError: undefined, commentsLoading: false }
+            ? { ...entry, comments: normalized, commentsError: undefined, commentsLoading: false }
             : entry
         )
       );
@@ -282,14 +301,15 @@ export function FeedPageClient() {
       });
 
       if (!res.ok) throw new Error("Failed to post comment");
-      const data = await res.json();
+      const data = (await res.json()) as { comment: FeedComment };
+      const normalizedComment = normalizeComment(data.comment);
 
       setEntries((prev) =>
         prev.map((e) => {
           if (e.id !== entryId) return e;
           return {
             ...e,
-            comments: [...(e.comments || []), data.comment],
+            comments: [...(e.comments || []), normalizedComment],
             commentInput: "",
             submittingComment: false,
             commentCount: e.commentCount + 1,
@@ -367,7 +387,12 @@ export function FeedPageClient() {
             <Card key={entry.id} className="border-[#f0e4d8] bg-white/95 shadow-[0_18px_38px_rgba(81,67,60,0.07)]">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3">
-                  <img src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"} alt={entry.author.displayName ?? "匿名"} className="h-10 w-10 rounded-full object-cover border-2 border-[#f0e4d8] bg-[#fff8f2]" />
+                  <img
+                    src={entry.author.avatarUrl ?? "https://placehold.co/48x48/F5F2EA/5C554F?text=User"}
+                    alt={entry.author.displayName ?? "匿名"}
+                    className="h-10 w-10 rounded-full object-cover border-2 bg-[#fff8f2]"
+                    style={getAvatarBorderStyle(entry.author.role, entry.author.diaryCount)}
+                  />
                   <div className="flex-1">
                     <p className="text-sm font-bold text-[#51433c]">{entry.author.displayName ?? "匿名ユーザー"}</p>
                     <p className="text-xs text-[#a4938a]">{new Date(entry.publishedAt ?? entry.journalDate).toLocaleString("ja-JP")}</p>
@@ -512,7 +537,8 @@ export function FeedPageClient() {
                               <img
                                 src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
                                 alt={comment.author.displayName}
-                                className="h-8 w-8 rounded-full object-cover border border-tape-beige"
+                                className="h-8 w-8 rounded-full object-cover border bg-[#fff8f2]"
+                                style={getAvatarBorderStyle(comment.author.role, comment.author.diaryCount)}
                               />
                               <div className="flex-1">
                                 <div className="flex items-center justify-between">
