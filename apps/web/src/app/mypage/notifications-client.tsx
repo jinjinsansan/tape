@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ChevronDown, Trash2 } from "lucide-react";
 
 type NotificationCategoryKey = "all" | "announcement" | "booking" | "wallet" | "other";
 
@@ -40,6 +41,8 @@ export function NotificationsClient() {
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -57,6 +60,7 @@ export function NotificationsClient() {
       }
       const payload = await res.json();
       setNotifications(payload.notifications ?? []);
+      setExpandedIds([]);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "お知らせの取得に失敗しました");
@@ -103,6 +107,36 @@ export function NotificationsClient() {
     markAsRead(unreadIds);
   };
 
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      setDeletingId(id);
+      setError(null);
+      try {
+        const res = await fetch("/api/mypage/notifications", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [id] })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload?.error ?? "お知らせの削除に失敗しました");
+        }
+        setNotifications((prev) => prev.filter((item) => item.id !== id));
+        setExpandedIds((prev) => prev.filter((itemId) => itemId !== id));
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "お知らせの削除に失敗しました");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    []
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -139,32 +173,77 @@ export function NotificationsClient() {
           お知らせはまだありません。
         </div>
       ) : (
-        <div className="space-y-3">
-          {notifications.map((item) => (
-            <article
-              key={item.id}
-              className={cn(
-                "rounded-2xl border px-4 py-3 transition",
-                item.read_at ? "border-tape-beige bg-white" : "border-tape-orange/40 bg-tape-orange/5"
-              )}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[11px] text-tape-light-brown">
-                  <span className="rounded-full bg-tape-beige px-2 py-0.5 text-[10px] text-tape-brown">
-                    {CATEGORY_LABEL[item.category]}
-                  </span>
-                  <span>{formatDate(item.created_at)}</span>
-                </div>
-                {!item.read_at && (
-                  <Button variant="ghost" size="sm" className="text-xs text-tape-orange" onClick={() => markAsRead([item.id])}>
-                    既読にする
-                  </Button>
+        <div className="space-y-2">
+          {notifications.map((item) => {
+            const isExpanded = expandedIds.includes(item.id);
+            return (
+              <article
+                key={item.id}
+                className={cn(
+                  "rounded-2xl border px-4 py-3 transition",
+                  item.read_at ? "border-tape-beige bg-white" : "border-tape-orange/40 bg-tape-orange/5"
                 )}
-              </div>
-              <p className="mt-2 text-sm font-semibold text-tape-brown">{item.title ?? "お知らせ"}</p>
-              {item.body && <p className="mt-1 text-xs text-tape-brown/80 whitespace-pre-wrap">{item.body}</p>}
-            </article>
-          ))}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(item.id)}
+                    className="flex flex-1 items-center gap-3 text-left"
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-tape-beige bg-white">
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 text-tape-brown transition-transform",
+                          isExpanded ? "rotate-180" : ""
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-tape-light-brown">
+                        <span className="rounded-full bg-tape-beige px-2 py-0.5 text-[10px] text-tape-brown">
+                          {CATEGORY_LABEL[item.category]}
+                        </span>
+                        <span>{formatDate(item.created_at)}</span>
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-tape-brown line-clamp-1">{item.title ?? "お知らせ"}</p>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    {!item.read_at && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-tape-orange"
+                        onClick={() => markAsRead([item.id])}
+                      >
+                        既読
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="rounded-full border border-tape-beige p-2 text-tape-light-brown transition hover:bg-tape-cream disabled:opacity-50"
+                      aria-label="通知を削除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="mt-3 space-y-2 rounded-2xl border border-dashed border-tape-beige bg-white/80 p-3 text-xs text-tape-brown">
+                    <p className="whitespace-pre-wrap leading-relaxed">{item.body ?? "本文はありません。"}</p>
+                    {item.data && Object.keys(item.data).length > 0 && (
+                      <pre className="rounded-xl bg-tape-cream/60 p-2 text-[10px] text-tape-light-brown overflow-x-auto">
+                        {JSON.stringify(item.data, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

@@ -49,6 +49,20 @@ export const markNotificationRead = async (notificationId: string, userId: strin
   }
 };
 
+export const deleteNotifications = async (notificationIds: string[], userId: string) => {
+  if (!notificationIds.length) return;
+  const client = supabase();
+  const { error } = await client
+    .from("notifications")
+    .delete()
+    .eq("user_id", userId)
+    .in("id", notificationIds);
+
+  if (error) {
+    throw error;
+  }
+};
+
 type CreateNotificationParams = {
   userId: string;
   channel: NotificationChannel;

@@ -4,12 +4,16 @@ import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser, SupabaseAuthUnavailableError } from "@/lib/supabase/auth-helpers";
-import { listNotifications, markNotificationRead } from "@/server/services/notifications";
+import { deleteNotifications, listNotifications, markNotificationRead } from "@/server/services/notifications";
 import type { NotificationCategory } from "@tape/supabase";
 
 const categorySchema = z.enum(["all", "announcement", "booking", "wallet", "other"]);
 
 const markSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1)
+});
+
+const deleteSchema = z.object({
   ids: z.array(z.string().uuid()).min(1)
 });
 
@@ -81,5 +85,23 @@ export async function PATCH(request: Request) {
   } catch (error) {
     console.error("Failed to mark notifications read", error);
     return NextResponse.json({ error: "既読更新に失敗しました" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { response, user } = await getUser();
+  if (response) return response;
+
+  const parsed = deleteSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+  }
+
+  try {
+    await deleteNotifications(parsed.data.ids, user!.id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete notifications", error);
+    return NextResponse.json({ error: "お知らせの削除に失敗しました" }, { status: 500 });
   }
 }

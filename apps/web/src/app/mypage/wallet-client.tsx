@@ -85,6 +85,7 @@ export function WalletClient() {
   const [claimingReferral, setClaimingReferral] = useState(false);
   const [referralMessage, setReferralMessage] = useState<string | null>(null);
   const [pointInfo, setPointInfo] = useState<{ rules: PointRule[]; rewards: PointRewardRow[] } | null>(null);
+  const [showPointHistory, setShowPointHistory] = useState(false);
 
   const loadLegacyWallet = useCallback(async () => {
     try {
@@ -451,28 +452,49 @@ export function WalletClient() {
       </div>
 
       <div className="rounded-2xl border border-tape-beige bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="h-5 w-5 text-tape-light-brown" />
-          <h3 className="text-lg font-bold text-tape-brown">ポイント履歴</h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-tape-light-brown" />
+            <h3 className="text-lg font-bold text-tape-brown">ポイント履歴</h3>
+          </div>
+          {pointEvents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPointHistory((prev) => !prev)}
+              className="text-xs font-semibold text-tape-orange underline-offset-4 hover:underline"
+            >
+              {showPointHistory ? "履歴を閉じる" : `全${pointEvents.length}件を表示`}
+            </button>
+          )}
         </div>
         {pointEvents.length === 0 ? (
           <p className="text-sm text-tape-light-brown">まだポイント履歴がありません。</p>
         ) : (
           <div className="space-y-3">
-            {pointEvents.map((event) => {
-              const info = actionLabels[event.action] ?? { label: event.action, description: "" };
-              return (
-                <div key={event.id} className="flex items-center justify-between border-b border-tape-beige pb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-tape-brown">{info.label}</p>
-                    <p className="text-xs text-tape-light-brown">
-                      {info.description} / {new Date(event.created_at).toLocaleString("ja-JP")}
-                    </p>
+            {!showPointHistory && (
+              <div className="rounded-2xl border border-dashed border-tape-beige bg-tape-cream/40 p-4 text-sm text-tape-brown">
+                <p className="text-xs font-semibold text-tape-light-brown mb-1">最新の獲得</p>
+                <p className="font-bold">{actionLabels[pointEvents[0].action]?.label ?? pointEvents[0].action}</p>
+                <p className="text-[11px] text-tape-light-brown">
+                  {new Date(pointEvents[0].created_at).toLocaleString("ja-JP")} / +{pointEvents[0].points} pt
+                </p>
+              </div>
+            )}
+            {showPointHistory &&
+              pointEvents.map((event) => {
+                const info = actionLabels[event.action] ?? { label: event.action, description: "" };
+                return (
+                  <div key={event.id} className="flex items-center justify-between border-b border-tape-beige pb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-tape-brown">{info.label}</p>
+                      <p className="text-xs text-tape-light-brown">
+                        {info.description} / {new Date(event.created_at).toLocaleString("ja-JP")}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold text-green-600">+{event.points} pt</p>
                   </div>
-                  <p className="text-sm font-bold text-green-600">+{event.points} pt</p>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </div>
