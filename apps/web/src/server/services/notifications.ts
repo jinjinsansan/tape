@@ -58,6 +58,7 @@ type CreateNotificationParams = {
   data?: Json;
   category?: NotificationCategory;
   userEmail?: string | null;
+  sendEmail?: boolean;
 };
 
 const deriveCategoryFromType = (type: string): NotificationCategory => {
@@ -75,7 +76,7 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const buildEmailHtml = (title: string, body: string) => {
+export const renderNotificationEmailHtml = (title: string, body: string) => {
   const safeTitle = escapeHtml(title);
   const safeBody = escapeHtml(body).replace(/\n/g, "<br />");
   return `<!doctype html>
@@ -119,6 +120,10 @@ export const createNotification = async (params: CreateNotificationParams) => {
 
   const notification = data as Database["public"]["Tables"]["notifications"]["Row"];
 
+  if (params.sendEmail === false) {
+    return notification;
+  }
+
   try {
     let email = params.userEmail ?? null;
     if (!email) {
@@ -130,8 +135,8 @@ export const createNotification = async (params: CreateNotificationParams) => {
     }
     if (email) {
       const subject = params.title ?? "テープ式心理学からのお知らせ";
-      const html = buildEmailHtml(subject, params.body ?? "内容をご確認ください。");
-      let status = "sent";
+      const html = renderNotificationEmailHtml(subject, params.body ?? "内容をご確認ください。");
+      let status: "sent" | "failed" | "skipped" = "sent";
       let externalRef: string | null = null;
 
       try {
@@ -139,7 +144,7 @@ export const createNotification = async (params: CreateNotificationParams) => {
         if (result === null) {
           status = "skipped";
         } else {
-          externalRef = (result as { id?: string } | null)?.id ?? null;
+          externalRef = result;
         }
       } catch (emailError) {
         console.error("Failed to send notification email", emailError);

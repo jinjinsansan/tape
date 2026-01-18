@@ -1,4 +1,7 @@
-import { createNotification } from "@/server/services/notifications";
+import type { Database } from "@tape/supabase";
+
+import { createNotification, renderNotificationEmailHtml } from "@/server/services/notifications";
+import { sendNotificationEmail } from "@/server/notifications/resend";
 import { getSupabaseAdminClient } from "@/server/supabase";
 
 type BroadcastAudience = "all" | "selected";
@@ -23,6 +26,13 @@ const chunkArray = <T>(items: T[], size = 25): T[][] => {
   }
   return chunks;
 };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const RESEND_MAX_RECIPIENTS_PER_REQUEST = 50;
+const RESEND_REQUEST_INTERVAL_MS = 600;
+
+type NotificationDeliveryInsert = Database["public"]["Tables"]["notification_deliveries"]["Insert"];
 
 const fetchAllTargets = async () => {
   const client = getSupabaseAdminClient();
@@ -81,14 +91,16 @@ export const sendBroadcast = async (params: SendBroadcastParams) => {
     throw new Error("配信対象が見つかりませんでした");
   }
 
+  const html = renderNotificationEmailHtml(params.subject, params.body);
   let success = 0;
   let failed = 0;
+  const preparedTargets: { target: BroadcastTarget; notificationId: string }[] = [];
 
-  for (const chunk of chunkArray(targets, 20)) {
+  for (const chunk of chunkArray(targets, 25)) {
     await Promise.all(
       chunk.map(async (target) => {
         try {
-          await createNotification({
+          const notification = await createNotification({
             userId: target.userId,
             channel: "in_app",
             type: "announcement.broadcast",
@@ -96,15 +108,95 @@ export const sendBroadcast = async (params: SendBroadcastParams) => {
             title: params.subject,
             body: params.body,
             data: { broadcast_subject: params.subject },
-            userEmail: target.email
+            userEmail: target.email,
+            sendEmail: false
           });
-          success += 1;
+          preparedTargets.push({ target, notificationId: notification.id });
         } catch (error) {
-          console.error("Failed to send broadcast notification", error);
+          console.error("Failed to enqueue broadcast notification", error);
           failed += 1;
         }
       })
     );
+  }
+
+  const insertDeliveryRecords = async (records: NotificationDeliveryInsert[]) => {
+    if (!records.length) return;
+    const { error } = await client.from("notification_deliveries").insert(records);
+    if (error) {
+      console.error("Failed to record notification deliveries", error);
+    }
+  };
+
+  const emailReady = preparedTargets.filter(({ target }) => Boolean(target.email));
+  const missingEmail = preparedTargets.filter(({ target }) => !target.email);
+
+  if (missingEmail.length) {
+    failed += missingEmail.length;
+    await insertDeliveryRecords(
+      missingEmail.map((item) => ({
+        notification_id: item.notificationId,
+        channel: "email",
+        status: "skipped",
+        external_reference: null
+      }))
+    );
+  }
+
+  const emailChunks = chunkArray(emailReady, RESEND_MAX_RECIPIENTS_PER_REQUEST);
+
+  for (let index = 0; index < emailChunks.length; index += 1) {
+    const chunk = emailChunks[index];
+    const to = chunk.map((item) => item.target.email!);
+
+    if (!to.length) {
+      continue;
+    }
+
+    try {
+      const externalRef = await sendNotificationEmail({
+        to,
+        subject: params.subject,
+        html
+      });
+
+      if (externalRef) {
+        success += chunk.length;
+        await insertDeliveryRecords(
+          chunk.map((item) => ({
+            notification_id: item.notificationId,
+            channel: "email",
+            status: "sent",
+            external_reference: externalRef
+          }))
+        );
+      } else {
+        failed += chunk.length;
+        await insertDeliveryRecords(
+          chunk.map((item) => ({
+            notification_id: item.notificationId,
+            channel: "email",
+            status: "skipped",
+            external_reference: null
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send broadcast email batch", error);
+      failed += chunk.length;
+      await insertDeliveryRecords(
+        chunk.map((item) => ({
+          notification_id: item.notificationId,
+          channel: "email",
+          status: "failed",
+          external_reference: null
+        }))
+      );
+    }
+
+    if (index < emailChunks.length - 1) {
+      await sleep(RESEND_REQUEST_INTERVAL_MS);
+    }
   }
 
   const sampleEmails = targets

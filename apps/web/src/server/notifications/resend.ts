@@ -18,12 +18,12 @@ const getResendClient = (): Resend => {
 };
 
 type SendEmailParams = {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
 };
 
-export const sendNotificationEmail = async (params: SendEmailParams) => {
+export const sendNotificationEmail = async (params: SendEmailParams): Promise<string | null> => {
   if (!isResendEnabled()) {
     console.warn("Resend disabled; skipping email send");
     return null;
@@ -31,10 +31,16 @@ export const sendNotificationEmail = async (params: SendEmailParams) => {
 
   const resend = getResendClient();
   const fromEmail = getResendFromEmail();
-  return resend.emails.send({
+  const result = await resend.emails.send({
     from: fromEmail,
     to: params.to,
     subject: params.subject,
     html: params.html
   });
+
+  if (result.error) {
+    throw new Error(`Resend error (${result.error.name}): ${result.error.message}`);
+  }
+
+  return result.data?.id ?? null;
 };
