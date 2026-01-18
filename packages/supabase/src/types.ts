@@ -1079,6 +1079,77 @@ export interface Database {
           updated_at?: string;
         };
       };
+      diary_ai_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: string;
+          current_step: string;
+          answers: Json;
+          emotion: string | null;
+          self_esteem_score: number | null;
+          worthlessness_score: number | null;
+          draft: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: string;
+          current_step?: string;
+          answers?: Json;
+          emotion?: string | null;
+          self_esteem_score?: number | null;
+          worthlessness_score?: number | null;
+          draft?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          status?: string;
+          current_step?: string;
+          answers?: Json;
+          emotion?: string | null;
+          self_esteem_score?: number | null;
+          worthlessness_score?: number | null;
+          draft?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      diary_ai_drafts: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          token: string;
+          payload: Json;
+          status: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          token: string;
+          payload: Json;
+          status?: string;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          session_id?: string;
+          user_id?: string;
+          token?: string;
+          payload?: Json;
+          status?: string;
+          expires_at?: string;
+          created_at?: string;
+        };
+      };
       emotion_diary_reactions: {
         Row: {
           entry_id: string;

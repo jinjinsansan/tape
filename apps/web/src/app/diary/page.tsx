@@ -20,6 +20,12 @@ const resourceLinks = [
     description: "検索・フィルタでこれまでの気持ちを振り返り",
     href: "/diary/history",
     icon: BookOpenCheck
+  },
+  {
+    title: "日記補助AI (ミシェル)",
+    description: "AIと3ステップ対話で下書きを自動生成",
+    href: "/diary/assistant",
+    icon: Sparkles
   }
 ];
 

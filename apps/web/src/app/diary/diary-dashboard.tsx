@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EMOTION_OPTIONS } from "@/constants/emotions";
 import { SELF_ESTEEM_DRAFT_STORAGE_KEY } from "@/lib/self-esteem/constants";
 import type { DiaryDraftStorage } from "@/lib/self-esteem/types";
 import { cn } from "@/lib/utils";
@@ -86,20 +88,11 @@ type EmotionOption = {
   description: string;
 };
 
-const emotionOptions: EmotionOption[] = [
-  { label: "恐怖", tone: "bg-purple-100 text-purple-800 border-purple-200", description: "息苦しさ、震え、冷や汗など身体の反応が強く現れる状態。" },
-  { label: "悲しみ", tone: "bg-blue-100 text-blue-800 border-blue-200", description: "喪失感や心に穴が空いたような感覚。" },
-  { label: "怒り", tone: "bg-red-100 text-red-800 border-red-200", description: "体温が上がり、拳を握るようなエネルギー。" },
-  { label: "悔しい", tone: "bg-green-100 text-green-800 border-green-200", description: "やり返したい、もっと出来たはずというエネルギー。" },
-  { label: "無価値感", tone: "bg-gray-100 text-gray-800 border-gray-300", description: "存在意義が無いと感じる深い自己否定。" },
-  { label: "罪悪感", tone: "bg-orange-100 text-orange-800 border-orange-200", description: "申し訳なさや取り返しがつかないと感じる思い。" },
-  { label: "寂しさ", tone: "bg-indigo-100 text-indigo-800 border-indigo-200", description: "孤独を感じ、誰かに会いたくなる気持ち。" },
-  { label: "恥ずかしさ", tone: "bg-pink-100 text-pink-800 border-pink-200", description: "隠れたくなる、顔が赤くなる感覚。" },
-  { label: "嬉しい", tone: "bg-yellow-100 text-yellow-800 border-yellow-200", description: "心が弾み、自然と笑顔になる感覚。" },
-  { label: "感謝", tone: "bg-teal-100 text-teal-800 border-teal-200", description: "支えられた温かさや恩返ししたい気持ち。" },
-  { label: "達成感", tone: "bg-lime-100 text-lime-800 border-lime-200", description: "やり切った誇らしさ、努力が報われた感覚。" },
-  { label: "幸せ", tone: "bg-amber-100 text-amber-800 border-amber-200", description: "満たされて安心している穏やかな状態。" }
-];
+const emotionOptions: EmotionOption[] = EMOTION_OPTIONS.map((option) => ({
+  label: option.label,
+  tone: option.toneClass,
+  description: option.description
+}));
 
 const GUEST_STORAGE_KEY = "tape_diary_guest_entries";
 
@@ -157,6 +150,9 @@ const derivePreviousScoreFromEntries = (entries: DiaryEntry[]): PreviousScoreInf
 
 export function DiaryDashboard() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftToken = searchParams?.get("draftToken");
   const [activeTab, setActiveTab] = useState<DiaryTab>("mine");
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -174,6 +170,7 @@ export function DiaryDashboard() {
   const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [assistantDraftLoading, setAssistantDraftLoading] = useState(false);
   const isWorthlessnessSelected = emotionLabel === "無価値感";
 
   const handleEmotionSelect = (label: string) => {
@@ -508,6 +505,68 @@ export function DiaryDashboard() {
   const showToast = useCallback((type: "success" | "error", message: string) => {
     setToast({ type, message });
   }, []);
+
+  useEffect(() => {
+    const token = draftToken;
+    if (!token || assistantDraftLoading) {
+      return;
+    }
+
+    const applyDraft = async () => {
+      setAssistantDraftLoading(true);
+      try {
+        const res = await fetch(`/api/diary/assistant/draft/${token}`);
+        if (!res.ok) {
+          throw new Error("Failed to load draft");
+        }
+        const data = (await res.json()) as {
+          draft?: {
+            title?: string;
+            content?: string;
+            eventSummary?: string;
+            realization?: string | null;
+            emotionLabel?: string | null;
+            journalDate?: string;
+            selfEsteemScore?: number | null;
+            worthlessnessScore?: number | null;
+            selfEsteemTestDate?: string | null;
+          };
+        };
+        const draft = data.draft ?? null;
+        if (draft) {
+          setForm((prev) => ({
+            ...prev,
+            title: draft.title ?? prev.title,
+            content: draft.content ?? prev.content,
+            journalDate: draft.journalDate ?? prev.journalDate
+          }));
+          setEventSummary(draft.eventSummary ?? "");
+          setRealization(draft.realization ?? "");
+          if (draft.emotionLabel) {
+            setEmotionLabel(draft.emotionLabel);
+          }
+          if (typeof draft.selfEsteemScore === "number") {
+            setSelfEsteemScore(draft.selfEsteemScore);
+          }
+          if (typeof draft.worthlessnessScore === "number") {
+            setWorthlessnessScore(draft.worthlessnessScore);
+          }
+          if (draft.selfEsteemTestDate) {
+            setSelfEsteemTestDate(draft.selfEsteemTestDate);
+          }
+          showToast("success", "AI下書きを読み込みました");
+        }
+      } catch (draftError) {
+        console.error(draftError);
+        showToast("error", "下書きを読み込めませんでした");
+      } finally {
+        setAssistantDraftLoading(false);
+        router.replace("/diary", { scroll: false });
+      }
+    };
+
+    void applyDraft();
+  }, [assistantDraftLoading, draftToken, router, showToast]);
 
   useEffect(() => {
     if (!toast) return;
