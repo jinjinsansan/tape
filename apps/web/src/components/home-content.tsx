@@ -61,6 +61,15 @@ const APP_SHORTCUTS: AppShortcut[] = [
     category: "primary"
   },
   {
+    title: "日記補助AI",
+    subtitle: "ミシェルが下書きを提案",
+    href: "https://namisapo.app/diary/assistant",
+    icon: Sparkles,
+    bubbleClass: "bg-[#fff4f8] text-[#d9488b]",
+    category: "primary",
+    isExternal: true
+  },
+  {
     title: "自己肯定感テスト",
     subtitle: "テープ式スコア診断",
     href: "/self-esteem",

@@ -171,6 +171,8 @@ export function DiaryDashboard() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [assistantDraftLoading, setAssistantDraftLoading] = useState(false);
+  const processedDraftTokenRef = useRef<string | null>(null);
+  const pendingDraftTokenRef = useRef<string | null>(null);
   const isWorthlessnessSelected = emotionLabel === "無価値感";
 
   const handleEmotionSelect = (label: string) => {
@@ -512,6 +514,12 @@ export function DiaryDashboard() {
       return;
     }
 
+    if (pendingDraftTokenRef.current === token || processedDraftTokenRef.current === token) {
+      return;
+    }
+
+    pendingDraftTokenRef.current = token;
+
     const applyDraft = async () => {
       setAssistantDraftLoading(true);
       try {
@@ -554,12 +562,17 @@ export function DiaryDashboard() {
           if (draft.selfEsteemTestDate) {
             setSelfEsteemTestDate(draft.selfEsteemTestDate);
           }
+          processedDraftTokenRef.current = token;
           showToast("success", "AI下書きを読み込みました");
         }
       } catch (draftError) {
         console.error(draftError);
+        if (processedDraftTokenRef.current === token) {
+          processedDraftTokenRef.current = null;
+        }
         showToast("error", "下書きを読み込めませんでした");
       } finally {
+        pendingDraftTokenRef.current = null;
         setAssistantDraftLoading(false);
         router.replace("/diary", { scroll: false });
       }

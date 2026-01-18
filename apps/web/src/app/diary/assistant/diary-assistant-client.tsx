@@ -59,6 +59,14 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+const SELF_ESTEEM_SCALE_OPTIONS = [
+  { value: 1, label: "全くそう思わない" },
+  { value: 2, label: "あまりそう思わない" },
+  { value: 3, label: "どちらでもない" },
+  { value: 4, label: "ややそう思う" },
+  { value: 5, label: "とてもそう思う" }
+];
+
 export function DiaryAssistantClient() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
@@ -337,6 +345,17 @@ export function DiaryAssistantClient() {
           </div>
         </div>
       )}
+      {loading.draft && (
+        <div className="flex items-start gap-3">
+          <MichelleAvatar size="sm" className="mt-1" />
+          <div className="rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm text-[#6b574c] shadow-sm">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
+              <span>日記を整理しています…</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -400,32 +419,33 @@ export function DiaryAssistantClient() {
 
   const renderTestStep = () => (
     <div className="space-y-4">
-      <p className="text-sm text-[#6c554b]">各設問について、いまの気持ちに最も近い数字を選んでください。</p>
+      <p className="text-sm text-[#6c554b]">各設問について、いまの気持ちに最も近い選択肢をタップしてください。</p>
       <div className="space-y-4">
         {testQuestions?.map((question, index) => (
           <Card key={question.id} className="border-[#f5e6dd] bg-white">
-            <CardContent className="space-y-2 p-4">
+            <CardContent className="space-y-3 p-4">
               <p className="text-xs font-semibold text-rose-400">Q{index + 1}</p>
               <p className="text-sm text-[#5a473f]">{question.text}</p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {[1, 2, 3, 4, 5].map((value) => (
+              <div className="space-y-2">
+                {SELF_ESTEEM_SCALE_OPTIONS.map((option) => (
                   <Button
-                    key={value}
+                    key={`${question.id}-${option.value}`}
                     type="button"
-                    size="sm"
-                    variant={testAnswers[question.id] === value ? "default" : "outline"}
+                    variant={testAnswers[question.id] === option.value ? "default" : "outline"}
                     className={cn(
-                      "rounded-full",
-                      testAnswers[question.id] === value ? "bg-tape-pink text-white" : "border-rose-100 text-[#5a473f]"
+                      "w-full justify-start rounded-2xl text-left text-sm",
+                      testAnswers[question.id] === option.value
+                        ? "bg-tape-pink text-white"
+                        : "border-rose-100 text-[#5a473f]"
                     )}
                     onClick={() =>
                       setTestAnswers((prev) => ({
                         ...prev,
-                        [question.id]: value
+                        [question.id]: option.value
                       }))
                     }
                   >
-                    {value}
+                    {option.label}
                   </Button>
                 ))}
               </div>
