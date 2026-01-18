@@ -1,32 +1,21 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Loader2, MessageCircle, PenLine, Shield, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { MichelleAvatar } from "@/components/michelle/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { EMOTION_OPTIONS, EMOTIONS_REQUIRING_SCORE } from "@/constants/emotions";
 import type { SelfEsteemQuestion } from "@/lib/self-esteem/types";
+import type { AssistantDraftPayload } from "@/server/services/diary-ai-assistant";
 import { cn } from "@/lib/utils";
 
 type Message = {
   id: string;
   role: "michelle" | "user";
   content: string;
-};
-
-type AssistantDraft = {
-  title: string;
-  content: string;
-  eventSummary: string;
-  realization?: string | null;
-  emotionLabel: string | null;
-  journalDate: string;
-  selfEsteemScore?: number | null;
-  worthlessnessScore?: number | null;
-  selfEsteemTestDate?: string | null;
 };
 
 type Step =
@@ -59,13 +48,29 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-const SELF_ESTEEM_SCALE_OPTIONS = [
-  { value: 1, label: "全くそう思わない" },
-  { value: 2, label: "あまりそう思わない" },
-  { value: 3, label: "どちらでもない" },
-  { value: 4, label: "ややそう思う" },
-  { value: 5, label: "とてもそう思う" }
-];
+const DiaryAssistantTestStep = dynamic(
+  () => import("./diary-assistant-test-step").then((mod) => mod.DiaryAssistantTestStep),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4 text-sm text-[#7a6156]">
+          テストを準備しています…
+        </div>
+      </div>
+    )
+  }
+);
+
+const DiaryAssistantPreview = dynamic(
+  () => import("./diary-assistant-preview").then((mod) => mod.DiaryAssistantPreview),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center rounded-3xl border border-dashed border-rose-200 p-6 text-sm text-[#7a6358]">
+        下書きを読み込んでいます…
+      </div>
+    )
+  }
+);
 
 export function DiaryAssistantClient() {
   const router = useRouter();
@@ -80,7 +85,7 @@ export function DiaryAssistantClient() {
   const [selfEsteemTestDate, setSelfEsteemTestDate] = useState<string | null>(null);
   const [testQuestions, setTestQuestions] = useState<SelfEsteemQuestion[] | null>(null);
   const [testAnswers, setTestAnswers] = useState<Record<string, number>>({});
-  const [draft, setDraft] = useState<AssistantDraft | null>(null);
+  const [draft, setDraft] = useState<AssistantDraftPayload | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<{ start?: boolean; send?: boolean; draft?: boolean; save?: boolean; test?: boolean }>(
@@ -274,21 +279,24 @@ export function DiaryAssistantClient() {
     }
   };
 
-  const generateDraftPreview = async (id: string) => {
-    setLoading((prev) => ({ ...prev, draft: true }));
-    setError(null);
-    try {
-      const result = await callAssistant({ action: "generate_draft", sessionId: id });
-      const payload = result.draft as AssistantDraft;
-      setDraft(payload);
-      setStep("preview");
-      setStatus("下書きができました");
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading((prev) => ({ ...prev, draft: false }));
-    }
-  };
+  const generateDraftPreview = useCallback(
+    async (id: string) => {
+      setLoading((prev) => ({ ...prev, draft: true }));
+      setError(null);
+      try {
+        const result = await callAssistant({ action: "generate_draft", sessionId: id });
+        const payload = result.draft as AssistantDraftPayload;
+        setDraft(payload);
+        setStep("preview");
+        setStatus("下書きができました");
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading((prev) => ({ ...prev, draft: false }));
+      }
+    },
+    [callAssistant]
+  );
 
   const handleSaveDraft = async () => {
     if (!sessionId) return;
@@ -310,6 +318,20 @@ export function DiaryAssistantClient() {
     const option = EMOTION_OPTIONS.find((item) => item.label === emotion);
     return option?.description ?? null;
   }, [emotion]);
+
+  const handleSelectTestAnswer = useCallback((questionId: string, value: number) => {
+    setTestAnswers((prev) => ({
+      ...prev,
+      [questionId]: value
+    }));
+  }, []);
+
+  const handleRegenerateDraft = useCallback(() => {
+    if (!sessionId) {
+      return;
+    }
+    void generateDraftPreview(sessionId);
+  }, [generateDraftPreview, sessionId]);
 
   const renderIntro = () => (
     <div className="rounded-3xl border border-[#f5e6dd] bg-white/95 p-6 shadow-sm">
@@ -450,102 +472,6 @@ export function DiaryAssistantClient() {
     </div>
   );
 
-  const renderTestStep = () => (
-    <div className="space-y-4">
-      <p className="text-sm text-[#6c554b]">各設問について、いまの気持ちに最も近い選択肢をタップしてください。</p>
-      <div className="space-y-4">
-        {testQuestions?.map((question, index) => (
-          <Card key={question.id} className="border-[#f5e6dd] bg-white">
-            <CardContent className="space-y-3 p-4">
-              <p className="text-xs font-semibold text-rose-400">Q{index + 1}</p>
-              <p className="text-sm text-[#5a473f]">{question.text}</p>
-              <div className="space-y-2">
-                {SELF_ESTEEM_SCALE_OPTIONS.map((option) => (
-                  <Button
-                    key={`${question.id}-${option.value}`}
-                    type="button"
-                    variant={testAnswers[question.id] === option.value ? "default" : "outline"}
-                    className={cn(
-                      "w-full justify-start rounded-2xl text-left text-sm",
-                      testAnswers[question.id] === option.value
-                        ? "bg-tape-pink text-white"
-                        : "border-rose-100 text-[#5a473f]"
-                    )}
-                    onClick={() =>
-                      setTestAnswers((prev) => ({
-                        ...prev,
-                        [question.id]: option.value
-                      }))
-                    }
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Button onClick={handleSubmitTestAnswers} disabled={loading.test} className="rounded-full bg-tape-pink text-white">
-        {loading.test ? <Loader2 className="h-4 w-4 animate-spin" /> : "スコアを反映する"}
-      </Button>
-    </div>
-  );
-
-  const renderPreview = () => (
-    <div className="space-y-4">
-      {draft ? (
-        <div className="rounded-3xl border border-[#f5e6dd] bg-white/95 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-400">DRAFT</p>
-          <h2 className="mt-1 text-2xl font-bold text-[#5a473f]">{draft.title}</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#5a473f]">
-            {draft.content.split("\n").map((line, index) => (
-              <p key={`${line}-${index}`}>{line}</p>
-            ))}
-          </div>
-          <dl className="mt-4 grid gap-3 text-xs text-[#7a6358] md:grid-cols-2">
-            <div>
-              <dt className="font-semibold">感情</dt>
-              <dd>{draft.emotionLabel ?? "未選択"}</dd>
-            </div>
-            {selfEsteemScore != null && (
-              <div>
-                <dt className="font-semibold">自己肯定感スコア</dt>
-                <dd>
-                  {selfEsteemScore}
-                  {worthlessnessScore != null && ` / 無価値感 ${worthlessnessScore}`}
-                </dd>
-              </div>
-            )}
-          </dl>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button
-              size="lg"
-              className="rounded-full bg-tape-pink text-white"
-              onClick={handleSaveDraft}
-              disabled={loading.save}
-            >
-              {loading.save ? <Loader2 className="h-4 w-4 animate-spin" /> : "日記ページに下書きを送る"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="rounded-full"
-              onClick={() => sessionId && generateDraftPreview(sessionId)}
-              disabled={loading.draft}
-            >
-              {loading.draft ? <Loader2 className="h-4 w-4 animate-spin" /> : "もう一度つくり直す"}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center rounded-3xl border border-dashed border-rose-200 p-6 text-sm text-[#7a6358]">
-          下書き生成中です…
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -564,8 +490,26 @@ export function DiaryAssistantClient() {
           {renderConversation()}
           {step === "emotion" && renderEmotionStep()}
           {step === "score" && renderScoreStep()}
-          {step === "test" && renderTestStep()}
-          {step === "preview" && renderPreview()}
+          {step === "test" && (
+            <DiaryAssistantTestStep
+              questions={testQuestions}
+              answers={testAnswers}
+              onSelectAnswer={handleSelectTestAnswer}
+              onSubmit={handleSubmitTestAnswers}
+              submitting={loading.test}
+            />
+          )}
+          {step === "preview" && (
+            <DiaryAssistantPreview
+              draft={draft}
+              selfEsteemScore={selfEsteemScore}
+              worthlessnessScore={worthlessnessScore}
+              loadingDraft={loading.draft}
+              loadingSave={loading.save}
+              onSave={handleSaveDraft}
+              onRegenerate={handleRegenerateDraft}
+            />
+          )}
           {helperMessage && step !== "preview" && (
             <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4 text-xs text-[#7a6156]">
               {helperMessage}
