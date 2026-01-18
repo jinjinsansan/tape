@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MessageCircle, PenLine, Shield, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -86,10 +86,31 @@ export function DiaryAssistantClient() {
   const [loading, setLoading] = useState<{ start?: boolean; send?: boolean; draft?: boolean; save?: boolean; test?: boolean }>(
     {}
   );
+  const [isMobile, setIsMobile] = useState(false);
+  const inputAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const addMessage = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message]);
   }, []);
+
+  useEffect(() => {
+    const updateMobileState = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    updateMobileState();
+    window.addEventListener("resize", updateMobileState);
+    return () => window.removeEventListener("resize", updateMobileState);
+  }, []);
+
+  const scrollInputIntoView = useCallback((element: HTMLTextAreaElement | null) => {
+    if (!isMobile || !element) {
+      return;
+    }
+    setTimeout(() => {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
+  }, [isMobile]);
 
   const callAssistant = useCallback(async (payload: Record<string, unknown>) => {
     const res = await fetch("/api/diary/assistant", {
@@ -332,11 +353,19 @@ export function DiaryAssistantClient() {
       {(step === "event" || step === "detail") && (
         <div className="rounded-3xl border border-white bg-white/70 p-4 shadow-sm">
           <textarea
+            ref={inputAreaRef}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             rows={3}
             placeholder="ここに気持ちを書き出してください"
-            className="w-full rounded-2xl border border-rose-100 bg-white p-3 text-sm focus:border-rose-300 focus:outline-none"
+            inputMode="text"
+            enterKeyHint="done"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="sentences"
+            spellCheck={false}
+            onFocus={(event) => scrollInputIntoView(event.currentTarget)}
+            className="w-full rounded-2xl border border-rose-100 bg-white p-3 text-base leading-relaxed focus:border-rose-300 focus:outline-none md:text-sm"
           />
           <div className="mt-3 flex justify-end">
             <Button onClick={handleSend} disabled={loading.send || !input.trim()} className="rounded-full bg-tape-pink text-white">
@@ -396,7 +425,11 @@ export function DiaryAssistantClient() {
           max={100}
           value={selfEsteemScore ?? ""}
           onChange={(event) => setSelfEsteemScore(event.target.value ? Number(event.target.value) : null)}
-          className="mt-1 w-full rounded-2xl border border-rose-100 p-3 text-sm"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          enterKeyHint="done"
+          autoComplete="off"
+          className="mt-1 w-full rounded-2xl border border-rose-100 p-3 text-base md:text-sm"
         />
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" className="rounded-full bg-tape-pink text-white" onClick={handleManualScoreSubmit} disabled={loading.send}>
