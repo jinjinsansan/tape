@@ -44,6 +44,7 @@ export function FeedShareButton({
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -75,10 +76,16 @@ export function FeedShareButton({
   const updatePopoverPosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const width = 288; // w-72
-    const padding = 16;
-    const left = Math.min(Math.max(rect.left, padding), window.innerWidth - width - padding);
-    const top = Math.min(rect.bottom + 8, window.innerHeight - 16);
+    const width = popoverRef.current?.offsetWidth ?? 288;
+    const gutter = 16;
+    const viewportWidth = window.innerWidth;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const left = Math.min(
+      Math.max(rect.right + scrollX - width, scrollX + gutter),
+      scrollX + viewportWidth - gutter - width
+    );
+    const top = rect.bottom + 8 + scrollY;
     setPopoverPosition({ top, left });
   }, []);
 
@@ -92,6 +99,24 @@ export function FeedShareButton({
       window.removeEventListener("scroll", updatePopoverPosition, true);
     };
   }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!popoverRef.current || !triggerRef.current) return;
+      if (
+        popoverRef.current.contains(event.target as Node) ||
+        triggerRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
   const clippedPreview = useMemo(() => {
     if (!contentPreview) return "";
@@ -203,13 +228,11 @@ export function FeedShareButton({
       </Button>
       {open && isMounted && popoverPosition &&
         createPortal(
-          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)}>
-            <div className="absolute inset-0" aria-hidden="true" />
-            <div
-              className="absolute w-72 rounded-2xl border border-tape-beige bg-white p-4 text-sm shadow-2xl"
-              style={{ top: popoverPosition.top, left: popoverPosition.left }}
-              onClick={(event) => event.stopPropagation()}
-            >
+          <div
+            ref={popoverRef}
+            className="absolute z-[80] w-72 rounded-2xl border border-tape-beige bg-white p-4 text-sm shadow-xl"
+            style={{ top: popoverPosition.top, left: popoverPosition.left }}
+          >
           <p className="text-xs font-semibold text-tape-light-brown">SNSでシェア</p>
           <div className="mt-2 rounded-2xl border border-tape-beige/60 bg-tape-cream/30 p-3 text-[11px] text-tape-brown">
             <div className="flex items-center justify-between text-[11px] font-semibold text-tape-light-brown">
@@ -271,7 +294,6 @@ export function FeedShareButton({
               ? `クリップボードやSNSに共有すると、シェア回数にカウントされます。Xに投稿する際はテンプレ＋公開リンクをあわせて載せてください。`
               : "Xでシェアしてポイントを獲得するには、マイページでXアカウントを登録してください"}
           </p>
-            </div>
           </div>,
           document.body
         )}
