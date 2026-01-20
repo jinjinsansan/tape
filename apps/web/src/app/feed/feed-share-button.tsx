@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Check, Copy, Link as LinkIcon, Share2, X as XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,13 @@ export function FeedShareButton({
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterUsername, setTwitterUsername] = useState<string | null>(null);
   const [copiedTemplate, setCopiedTemplate] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -63,6 +71,27 @@ export function FeedShareButton({
     };
     loadTwitterProfile();
   }, []);
+
+  const updatePopoverPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const width = 288; // w-72
+    const padding = 16;
+    const left = Math.min(Math.max(rect.left, padding), window.innerWidth - width - padding);
+    const top = Math.min(rect.bottom + 8, window.innerHeight - 16);
+    setPopoverPosition({ top, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
 
   const clippedPreview = useMemo(() => {
     if (!contentPreview) return "";
@@ -166,13 +195,21 @@ export function FeedShareButton({
         size="sm"
         className="flex items-center gap-2 border-tape-beige text-tape-light-brown"
         onClick={() => setOpen((prev) => !prev)}
+        ref={triggerRef}
       >
         <Share2 className="h-4 w-4" />
         シェア
         {count > 0 && <span className="text-[11px] text-tape-brown">({count})</span>}
       </Button>
-      {open && (
-        <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-tape-beige bg-white p-4 text-sm shadow-xl">
+      {open && isMounted && popoverPosition &&
+        createPortal(
+          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)}>
+            <div className="absolute inset-0" aria-hidden="true" />
+            <div
+              className="absolute w-72 rounded-2xl border border-tape-beige bg-white p-4 text-sm shadow-2xl"
+              style={{ top: popoverPosition.top, left: popoverPosition.left }}
+              onClick={(event) => event.stopPropagation()}
+            >
           <p className="text-xs font-semibold text-tape-light-brown">SNSでシェア</p>
           <div className="mt-2 rounded-2xl border border-tape-beige/60 bg-tape-cream/30 p-3 text-[11px] text-tape-brown">
             <div className="flex items-center justify-between text-[11px] font-semibold text-tape-light-brown">
@@ -230,12 +267,14 @@ export function FeedShareButton({
           </div>
           {shareError && <p className="mt-2 text-[11px] text-tape-pink">{shareError}</p>}
           <p className="mt-3 text-[11px] text-tape-light-brown">
-            {twitterUsername 
+            {twitterUsername
               ? `クリップボードやSNSに共有すると、シェア回数にカウントされます。Xに投稿する際はテンプレ＋公開リンクをあわせて載せてください。`
               : "Xでシェアしてポイントを獲得するには、マイページでXアカウントを登録してください"}
           </p>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
