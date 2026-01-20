@@ -147,56 +147,64 @@ export const sendBroadcast = async (params: SendBroadcastParams) => {
 
   for (let index = 0; index < emailChunks.length; index += 1) {
     const chunk = emailChunks[index];
-    const to = chunk.map((item) => item.target.email!);
 
-    if (!to.length) {
+    if (!chunk.length) {
       continue;
     }
 
-    try {
-      const externalRef = await sendNotificationEmail({
-        to,
-        subject: params.subject,
-        html
-      });
+    const deliveryRecords: NotificationDeliveryInsert[] = [];
 
-      if (externalRef) {
-        success += chunk.length;
-        await insertDeliveryRecords(
-          chunk.map((item) => ({
-            notification_id: item.notificationId,
+    for (const entry of chunk) {
+      if (!entry.target.email) {
+        failed += 1;
+        deliveryRecords.push({
+          notification_id: entry.notificationId,
+          channel: "email",
+          status: "skipped",
+          external_reference: null
+        });
+        continue;
+      }
+
+      try {
+        const externalRef = await sendNotificationEmail({
+          to: entry.target.email,
+          subject: params.subject,
+          html
+        });
+
+        if (externalRef) {
+          success += 1;
+          deliveryRecords.push({
+            notification_id: entry.notificationId,
             channel: "email",
             status: "sent",
             external_reference: externalRef
-          }))
-        );
-      } else {
-        failed += chunk.length;
-        await insertDeliveryRecords(
-          chunk.map((item) => ({
-            notification_id: item.notificationId,
+          });
+        } else {
+          failed += 1;
+          deliveryRecords.push({
+            notification_id: entry.notificationId,
             channel: "email",
             status: "skipped",
             external_reference: null
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Failed to send broadcast email batch", error);
-      failed += chunk.length;
-      await insertDeliveryRecords(
-        chunk.map((item) => ({
-          notification_id: item.notificationId,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send broadcast email to", entry.target.email, error);
+        failed += 1;
+        deliveryRecords.push({
+          notification_id: entry.notificationId,
           channel: "email",
           status: "failed",
           external_reference: null
-        }))
-      );
-    }
+        });
+      }
 
-    if (index < emailChunks.length - 1) {
       await sleep(RESEND_REQUEST_INTERVAL_MS);
     }
+
+    await insertDeliveryRecords(deliveryRecords);
   }
 
   const sampleEmails = targets
