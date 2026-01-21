@@ -4,38 +4,41 @@ const envToBoolean = (value: string | undefined, defaultValue: boolean) => {
   return normalized !== "false" && normalized !== "0" && normalized !== "no";
 };
 
-const warnedFlags = new Set<string>();
-
-const warnMissingFlag = (flagName: string, envKeys: string[]) => {
-  if (typeof console === "undefined" || warnedFlags.has(flagName)) {
-    return;
+const warnMissingFlag = (flagName: string) => {
+  if (typeof console !== "undefined") {
+    console.warn(`[FeatureFlags] ${flagName} is disabled because environment variable is not set`);
   }
-  warnedFlags.add(flagName);
-  console.warn(
-    `[FeatureFlags] ${flagName} is disabled because none of ${envKeys.join(", ")} are defined.`
-  );
 };
 
-const resolveBooleanFlag = (flagName: string, envKeys: string[], defaultValue: boolean) => {
-  for (const key of envKeys) {
-    const value = process.env[key];
-    if (value !== undefined) {
-      return envToBoolean(value, defaultValue);
-    }
+/**
+ * Resolves boolean flag from environment variables with static access.
+ * Next.js only replaces process.env.XXX when accessed statically (not process.env[key]).
+ */
+const resolveBooleanFlag = (
+  flagName: string,
+  publicValue: string | undefined,
+  serverValue: string | undefined,
+  defaultValue: boolean
+) => {
+  const value = publicValue ?? serverValue;
+  if (value !== undefined) {
+    return envToBoolean(value, defaultValue);
   }
 
-  warnMissingFlag(flagName, envKeys);
+  warnMissingFlag(flagName);
   return defaultValue;
 };
 
 export const MICHELLE_AI_ENABLED = resolveBooleanFlag(
   "MICHELLE_AI_ENABLED",
-  ["NEXT_PUBLIC_MICHELLE_AI_ENABLED", "MICHELLE_AI_ENABLED"],
+  process.env.NEXT_PUBLIC_MICHELLE_AI_ENABLED,
+  process.env.MICHELLE_AI_ENABLED,
   false
 );
 
 export const MICHELLE_ATTRACTION_AI_ENABLED = resolveBooleanFlag(
   "MICHELLE_ATTRACTION_AI_ENABLED",
-  ["NEXT_PUBLIC_MICHELLE_ATTRACTION_AI_ENABLED", "MICHELLE_ATTRACTION_AI_ENABLED"],
+  process.env.NEXT_PUBLIC_MICHELLE_ATTRACTION_AI_ENABLED,
+  process.env.MICHELLE_ATTRACTION_AI_ENABLED,
   false
 );
