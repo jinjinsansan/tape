@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type OpenAI from "openai";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import { MICHELLE_ATTRACTION_AI_ENABLED } from "@/lib/feature-flags";
 import { getMichelleAttractionAssistantId, getMichelleAttractionOpenAIClient } from "@/lib/michelle-attraction/openai";
@@ -426,10 +426,7 @@ ${message}`;
 
       await new Promise((resolve) => setTimeout(resolve, RUN_COMPLETION_DELAY_MS));
 
-      await supabase
-        .from("michelle_attraction_sessions")
-        .update({ diary_prompt_count: nextDiaryPromptCount })
-        .eq("id", sessionId);
+      await updateAttractionDiaryPromptCount(supabase, sessionId, nextDiaryPromptCount);
 
       return NextResponse.json({
         sessionId,
@@ -490,10 +487,7 @@ ${message}`;
                 });
               }
 
-              await supabase
-                .from("michelle_attraction_sessions")
-                .update({ diary_prompt_count: nextDiaryPromptCount })
-                .eq("id", sessionId);
+              await updateAttractionDiaryPromptCount(supabase, sessionId, nextDiaryPromptCount);
 
               await new Promise((resolve) => setTimeout(resolve, RUN_COMPLETION_DELAY_MS));
 
@@ -531,6 +525,9 @@ const resolveSession = async (
   message: string,
   category: z.infer<typeof requestSchema>["category"]
 ) => {
+  const derivedCategory = category ?? "life";
+  const title = message.trim().slice(0, 60) || "新しい相談";
+
   if (incomingSessionId) {
     const { data, error } = await supabase
       .from("michelle_attraction_sessions")
@@ -538,6 +535,29 @@ const resolveSession = async (
       .eq("id", incomingSessionId)
       .eq("auth_user_id", authUserId)
       .maybeSingle();
+
+    if (error && isAttractionDiaryPromptColumnMissing(error)) {
+      warnAttractionDiaryPromptColumnMissing("select");
+      const fallback = await supabase
+        .from("michelle_attraction_sessions")
+        .select("id, openai_thread_id")
+        .eq("id", incomingSessionId)
+        .eq("auth_user_id", authUserId)
+        .maybeSingle();
+
+      if (fallback.error || !fallback.data) {
+        throw new Error("Session not found");
+      }
+
+      const threadId = await ensureThreadId(supabase, fallback.data.id, fallback.data.openai_thread_id);
+      const diaryPromptCount = await countAttractionAssistantTurns(supabase, fallback.data.id);
+      return {
+        sessionId: fallback.data.id,
+        threadId,
+        isNewSession: false,
+        diaryPromptCount
+      };
+    }
 
     if (error || !data) {
       throw new Error("Session not found");
@@ -552,9 +572,6 @@ const resolveSession = async (
     };
   }
 
-  const derivedCategory = category ?? "life";
-  const title = message.trim().slice(0, 60) || "新しい相談";
-
   const { data, error } = await supabase
     .from("michelle_attraction_sessions")
     .insert({
@@ -566,12 +583,85 @@ const resolveSession = async (
     .select("id, diary_prompt_count")
     .single();
 
+  if (error && isAttractionDiaryPromptColumnMissing(error)) {
+    warnAttractionDiaryPromptColumnMissing("insert");
+    const fallback = await supabase
+      .from("michelle_attraction_sessions")
+      .insert({
+        auth_user_id: authUserId,
+        category: derivedCategory,
+        title
+      })
+      .select("id")
+      .single();
+
+    if (fallback.error || !fallback.data) {
+      throw fallback.error ?? new Error("Failed to create session");
+    }
+
+    const threadId = await ensureThreadId(supabase, fallback.data.id, null);
+    return { sessionId: fallback.data.id, threadId, isNewSession: true, diaryPromptCount: 0 };
+  }
+
   if (error || !data) {
     throw error ?? new Error("Failed to create session");
   }
 
   const threadId = await ensureThreadId(supabase, data.id, null);
   return { sessionId: data.id, threadId, isNewSession: true, diaryPromptCount: data.diary_prompt_count ?? 0 };
+};
+
+const attractionDiaryPromptWarnings = new Set<string>();
+
+const warnAttractionDiaryPromptColumnMissing = (context: string) => {
+  if (!attractionDiaryPromptWarnings.has(context)) {
+    console.warn(
+      `[Michelle Attraction Chat] diary_prompt_count column missing during ${context}. Run migration 20260116_add_diary_prompt_count_to_attraction_sessions.sql to enable diary CTA throttling.`
+    );
+    attractionDiaryPromptWarnings.add(context);
+  }
+};
+
+const isAttractionDiaryPromptColumnMissing = (error?: PostgrestError | null) => {
+  return Boolean(
+    error &&
+    (error.code === "42703" || error.code === "PGRST204") &&
+    error.message?.includes("diary_prompt_count")
+  );
+};
+
+const countAttractionAssistantTurns = async (supabase: SupabaseClient<Database>, sessionId: string) => {
+  const { count, error } = await supabase
+    .from("michelle_attraction_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .eq("role", "assistant");
+
+  if (error) {
+    console.error("[Michelle Attraction Chat] Failed to count assistant messages for diary fallback:", error);
+    return 0;
+  }
+
+  return count ?? 0;
+};
+
+const updateAttractionDiaryPromptCount = async (
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  nextValue: number
+) => {
+  const { error } = await supabase
+    .from("michelle_attraction_sessions")
+    .update({ diary_prompt_count: nextValue })
+    .eq("id", sessionId);
+
+  if (error) {
+    if (isAttractionDiaryPromptColumnMissing(error)) {
+      warnAttractionDiaryPromptColumnMissing("update");
+      return;
+    }
+    throw error;
+  }
 };
 
 const shouldTriggerDiaryCta = (currentCount: number | null | undefined) => {
