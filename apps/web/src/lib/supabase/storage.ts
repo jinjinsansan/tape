@@ -21,12 +21,19 @@ export const getStoragePublicUrl = (
 /**
  * Convert avatar path to public URL
  * @param supabase Supabase client
- * @param avatarPath Avatar storage path
+ * @param avatarPath Avatar storage path or already public URL
  * @returns Public URL or null
  */
 export const getAvatarPublicUrl = (
   supabase: SupabaseClient,
   avatarPath: string | null
 ): string | null => {
+  if (!avatarPath) return null;
+  
+  // If already a full URL (http/https), return as-is
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return avatarPath;
+  }
+  
   return getStoragePublicUrl(supabase, "profile-avatars", avatarPath);
 };
