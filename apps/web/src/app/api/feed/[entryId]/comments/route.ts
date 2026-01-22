@@ -6,6 +6,7 @@ import { getSupabaseAdminClient } from "@/server/supabase";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { awardPoints } from "@/server/services/points";
 import { fetchDiaryCountsForUsers, fetchDiaryCountForUser } from "@/server/utils/diary-counts";
+import { getAvatarPublicUrl } from "@/lib/supabase/storage";
 
 export async function GET(
   request: NextRequest,
@@ -58,7 +59,7 @@ export async function GET(
         author: {
           id: comment.commenter_user_id,
           displayName: profile?.display_name || "匿名ユーザー",
-          avatarUrl: profile?.avatar_url || null,
+          avatarUrl: getAvatarPublicUrl(adminSupabase, profile?.avatar_url || null),
           role: profile?.role ?? null,
           diaryCount: comment.commenter_user_id ? diaryCountsMap.get(comment.commenter_user_id) ?? 0 : 0
         }
@@ -161,7 +162,7 @@ export async function POST(
       author: {
         id: comment.commenter_user_id,
         displayName: profile?.display_name || "匿名ユーザー",
-        avatarUrl: profile?.avatar_url || null,
+        avatarUrl: getAvatarPublicUrl(adminSupabase, profile?.avatar_url || null),
         role: profile?.role ?? null,
         diaryCount
       }

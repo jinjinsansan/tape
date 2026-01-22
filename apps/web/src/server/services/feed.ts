@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@tape/supabase";
 import { getSupabaseAdminClient } from "@/server/supabase";
 import { fetchDiaryCountsForUsers, fetchDiaryCountForUser } from "@/server/utils/diary-counts";
+import { getAvatarPublicUrl } from "@/lib/supabase/storage";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -144,7 +145,7 @@ export const listPublicFeed = async (params: FeedQueryParams) => {
       author: {
         id: item.user_id,
         displayName: profile?.display_name ?? "匿名ユーザー",
-        avatarUrl: profile?.avatar_url ?? null,
+        avatarUrl: getAvatarPublicUrl(supabase, profile?.avatar_url ?? null),
         role: profile?.role ?? null,
         diaryCount: diaryCountsMap.get(item.user_id) ?? 0
       },
@@ -299,7 +300,7 @@ export const getPublicFeedEntryById = async (entryId: string, viewerId?: string 
     author: {
       id: data.user_id,
       displayName: profileData?.display_name ?? "匿名ユーザー",
-      avatarUrl: profileData?.avatar_url ?? null,
+      avatarUrl: getAvatarPublicUrl(supabase, profileData?.avatar_url ?? null),
       role: profileData?.role ?? null,
       diaryCount
     },
