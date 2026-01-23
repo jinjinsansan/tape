@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
@@ -70,9 +71,13 @@ export function CounselorsListClient() {
           >
           <CardContent className="flex flex-col gap-4 p-5 h-full">
             <div className="flex items-start gap-4">
-              <img
-                src={counselor.avatar_url ?? "https://placehold.co/128x128/F5F2EA/5C554F?text=User"}
+              <Image
+                src={counselor.avatar_url ?? "https://placehold.co/256x256/F5F2EA/5C554F?text=User"}
                 alt={counselor.display_name}
+                width={160}
+                height={160}
+                sizes="80px"
+                quality={95}
                 className="h-20 w-20 rounded-full object-cover border-2 border-[#f0e4d8] flex-shrink-0 bg-[#fff8f2]"
               />
               <div className="flex-1 min-w-0">
