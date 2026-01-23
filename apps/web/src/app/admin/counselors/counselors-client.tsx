@@ -1,19 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, UserCheck, Calendar, BadgeCheck, Edit2, X, Upload, AlertTriangle } from "lucide-react";
-import { COUNSELOR_PLAN_CONFIGS, normalizePlanSelection } from "@/constants/counselor-plans";
+import { RefreshCw, UserCheck, Calendar, BadgeCheck, Edit2, X, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  COUNSELOR_PLAN_CONFIGS,
+  DEFAULT_COUNSELOR_PLAN_SELECTION,
+  CounselorPlanType,
+  CounselorPlanSelection,
+  normalizePlanSelection
+} from "@/constants/counselor-plans";
 
 type Counselor = {
   id: string;
   slug: string;
   display_name: string | null;
   bio: string | null;
+  avatar_url: string | null;
   specialties: string[];
   hourly_rate_cents: number | null;
   profile_metadata: Record<string, unknown> | null;
   is_active: boolean;
   created_at: string;
+  intro_video_url: string | null;
 };
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -36,6 +44,7 @@ export function CounselorsManagementClient() {
     specialties: "",
     intro_video_url: ""
   });
+  const [planSelection, setPlanSelection] = useState<CounselorPlanSelection>({ ...DEFAULT_COUNSELOR_PLAN_SELECTION });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [slugWarning, setSlugWarning] = useState(false);
@@ -81,6 +90,7 @@ export function CounselorsManagementClient() {
       specialties: Array.isArray(counselor.specialties) ? counselor.specialties.join(", ") : "",
       intro_video_url: counselor.intro_video_url ?? ""
     });
+    setPlanSelection(normalizePlanSelection(counselor.profile_metadata));
     setSlugWarning(false);
   };
 
@@ -95,7 +105,17 @@ export function CounselorsManagementClient() {
       specialties: "",
       intro_video_url: ""
     });
+    setPlanSelection({ ...DEFAULT_COUNSELOR_PLAN_SELECTION });
     setSlugWarning(false);
+  };
+
+  const togglePlanSelection = (planId: CounselorPlanType) => {
+    const next = { ...planSelection, [planId]: !planSelection[planId] };
+    if (!next.single_session && !next.monthly_course) {
+      alert("少なくとも1つのプランを有効にしてください");
+      return;
+    }
+    setPlanSelection(next);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,6 +166,11 @@ export function CounselorsManagementClient() {
       return;
     }
 
+    if (!planSelection.single_session && !planSelection.monthly_course) {
+      alert("少なくとも1つのプランを有効にしてください");
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/counselors/${editingCounselor.id}`, {
@@ -159,7 +184,11 @@ export function CounselorsManagementClient() {
           specialties: editForm.specialties
             ? editForm.specialties.split(",").map(s => s.trim()).filter(Boolean)
             : null,
-          intro_video_url: editForm.intro_video_url.trim() || null
+          intro_video_url: editForm.intro_video_url.trim() || null,
+          plan_settings: {
+            single_session: Boolean(planSelection.single_session),
+            monthly_course: Boolean(planSelection.monthly_course)
+          }
         })
       });
 
@@ -397,6 +426,51 @@ export function CounselorsManagementClient() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* 提供プラン */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">提供プラン</label>
+                <p className="text-xs text-slate-500 mb-3">マスター管理者として単発/継続プランの提供可否を切り替えられます。</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {Object.values(COUNSELOR_PLAN_CONFIGS).map((plan) => {
+                    const active = planSelection[plan.id];
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => togglePlanSelection(plan.id)}
+                        className={`text-left rounded-2xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${
+                          active
+                            ? "border-purple-300 bg-purple-50"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{plan.title}</p>
+                            <p className="text-xs text-slate-500">{plan.subtitle}</p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              active ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            {active ? "提供中" : "停止中"}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm font-bold text-slate-900">¥{plan.priceYen.toLocaleString()}</p>
+                        <ul className="mt-2 text-xs text-slate-500 list-disc pl-4 space-y-1">
+                          {plan.highlights.map((point) => (
+                            <li key={point}>{point}</li>
+                          ))}
+                        </ul>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-slate-500">※ 少なくとも1つのプランは提供状態にする必要があります。</p>
               </div>
 
               {/* アバター画像 */}

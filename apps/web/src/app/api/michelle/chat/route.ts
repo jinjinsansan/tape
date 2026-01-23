@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type OpenAI from "openai";
 import { z } from "zod";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import { MICHELLE_AI_ENABLED } from "@/lib/feature-flags";
 import { getMichelleAssistantId, getOpenAIApiKey } from "@/lib/env";
@@ -152,10 +153,7 @@ export async function POST(request: Request) {
       console.log("[Michelle Chat] Assistant message saved to database");
     }
 
-    await supabase
-      .from("michelle_sessions")
-      .update({ diary_prompt_count: nextDiaryPromptCount })
-      .eq("id", sessionId);
+    await updateDiaryPromptCount(supabase, sessionId, nextDiaryPromptCount);
 
       console.log("[Michelle Chat] Chat completion successful");
       return NextResponse.json({
@@ -176,13 +174,15 @@ export async function POST(request: Request) {
  * セッションを解決（既存セッション取得 or 新規作成）
  */
 const resolveSession = async (
-  supabase: ReturnType<typeof createSupabaseRouteClient<Database>>,
+  supabase: SupabaseClient<Database>,
   userId: string,
   sessionId: string | undefined,
   message: string,
   category: z.infer<typeof requestSchema>["category"]
 ) => {
-  // 既存セッションがある場合は取得
+  const derivedCategory = category ?? "life";
+  const title = message.trim().slice(0, 60) || "新しい相談";
+
   if (sessionId) {
     console.log(`[Michelle Chat] Resolving existing session: ${sessionId}`);
     const { data, error } = await supabase
@@ -191,6 +191,25 @@ const resolveSession = async (
       .eq("id", sessionId)
       .eq("auth_user_id", userId)
       .maybeSingle();
+
+    if (error && isDiaryPromptColumnMissing(error)) {
+      warnDiaryPromptColumnMissing("select");
+      const fallback = await supabase
+        .from("michelle_sessions")
+        .select("id, openai_thread_id")
+        .eq("id", sessionId)
+        .eq("auth_user_id", userId)
+        .maybeSingle();
+
+      if (fallback.error || !fallback.data) {
+        console.error("[Michelle Chat] Fallback session lookup failed:", fallback.error);
+        throw new Error("Session not found");
+      }
+
+      const threadId = await ensureThreadId(supabase, fallback.data.id, fallback.data.openai_thread_id);
+      const diaryPromptCount = await countAssistantTurns(supabase, fallback.data.id);
+      return { sessionId: fallback.data.id, threadId, diaryPromptCount };
+    }
 
     if (error || !data) {
       console.error("[Michelle Chat] Session not found:", error);
@@ -202,18 +221,39 @@ const resolveSession = async (
     return { sessionId: data.id, threadId, diaryPromptCount: data.diary_prompt_count ?? 0 };
   }
 
-  // 新規セッションを作成
-  console.log(`[Michelle Chat] Creating new session for user ${userId}, category: ${category ?? "life"}`);
+  console.log(`[Michelle Chat] Creating new session for user ${userId}, category: ${derivedCategory}`);
   const { data, error } = await supabase
     .from("michelle_sessions")
     .insert({
       auth_user_id: userId,
-      category: category ?? "life",
-      title: message.trim().slice(0, 60) || "新しい相談",
+      category: derivedCategory,
+      title,
       diary_prompt_count: 0
     })
     .select("id, diary_prompt_count")
     .single();
+
+  if (error && isDiaryPromptColumnMissing(error)) {
+    warnDiaryPromptColumnMissing("insert");
+    const fallback = await supabase
+      .from("michelle_sessions")
+      .insert({
+        auth_user_id: userId,
+        category: derivedCategory,
+        title
+      })
+      .select("id")
+      .single();
+
+    if (fallback.error || !fallback.data) {
+      console.error("[Michelle Chat] Fallback session creation failed:", fallback.error);
+      throw fallback.error ?? new Error("Failed to create session");
+    }
+
+    const threadId = await ensureThreadId(supabase, fallback.data.id, null);
+    console.log(`[Michelle Chat] Created new session ${fallback.data.id} with thread ${threadId}`);
+    return { sessionId: fallback.data.id, threadId, diaryPromptCount: 0 };
+  }
 
   if (error || !data) {
     console.error("[Michelle Chat] Failed to create session:", error);
@@ -282,6 +322,52 @@ const runBufferedCompletion = async (threads: OpenAIThreads, threadId: string) =
   });
 
   return fullReply;
+};
+
+const warnedDiaryPromptContexts = new Set<string>();
+
+const warnDiaryPromptColumnMissing = (context: string) => {
+  if (!warnedDiaryPromptContexts.has(context)) {
+    console.warn(
+      `[Michelle Chat] diary_prompt_count column missing during ${context}. Run migration 20260115_michelle_diary_prompt_counter.sql to enable diary CTA throttling.`
+    );
+    warnedDiaryPromptContexts.add(context);
+  }
+};
+
+const isDiaryPromptColumnMissing = (error?: PostgrestError | null) => {
+  return Boolean(error && error.code === "42703" && error.message?.includes("diary_prompt_count"));
+};
+
+const countAssistantTurns = async (supabase: SupabaseClient<Database>, sessionId: string) => {
+  const { count, error } = await supabase
+    .from("michelle_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .eq("role", "assistant");
+
+  if (error) {
+    console.error("[Michelle Chat] Failed to count assistant messages for diary fallback:", error);
+    return 0;
+  }
+
+  return count ?? 0;
+};
+
+const updateDiaryPromptCount = async (supabase: SupabaseClient<Database>, sessionId: string, nextValue: number) => {
+  const { error } = await supabase
+    .from("michelle_sessions")
+    .update({ diary_prompt_count: nextValue })
+    .eq("id", sessionId);
+
+  if (error) {
+    if (isDiaryPromptColumnMissing(error)) {
+      warnDiaryPromptColumnMissing("update");
+      return;
+    }
+
+    throw error;
+  }
 };
 
 const shouldTriggerDiaryCta = (currentCount: number) => {

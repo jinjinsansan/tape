@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ensureAdmin } from "@/app/api/admin/_lib/ensure-admin";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -17,6 +18,7 @@ export async function POST(request: Request, context: { params: { counselorId: s
   const supabase = createSupabaseRouteClient(cookieStore);
   const { response } = await ensureAdmin(supabase, "Admin upload counselor avatar");
   if (response) return response;
+  const adminSupabase = createSupabaseAdminClient();
 
   try {
     const formData = await request.formData();
@@ -49,7 +51,7 @@ export async function POST(request: Request, context: { params: { counselorId: s
     const buffer = Buffer.from(arrayBuffer);
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { data, error } = await adminSupabase.storage
       .from("profile-avatars")
       .upload(filePath, buffer, {
         contentType: file.type,
@@ -62,7 +64,7 @@ export async function POST(request: Request, context: { params: { counselorId: s
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = adminSupabase.storage
       .from("profile-avatars")
       .getPublicUrl(filePath);
 
