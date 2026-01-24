@@ -96,11 +96,15 @@ export const TreeCanvas = ({
   const leafNodes = createLeafNodes(stageConfig.leafClusters, leafVariant ?? 0);
   const trunkWidth = 12 + (shapeVariant ?? 0) % 6;
   const canopyRadius = stageConfig.canopy + ((shapeVariant ?? 0) % 6);
+  const isLarge = STAGE_ORDER.indexOf(stage) >= 3;
 
   return (
     <svg
       viewBox="0 0 160 200"
-      className={cn("w-full max-w-full", className)}
+      className={cn(
+        "w-full max-w-full overflow-visible transition-transform duration-500 hover:scale-105 cursor-pointer",
+        className
+      )}
       role="img"
       aria-label={`Mind tree stage ${stage}`}
     >
@@ -117,32 +121,70 @@ export const TreeCanvas = ({
           <stop offset="0%" stopColor={secondaryColor} stopOpacity={canopyOpacity + 0.1} />
           <stop offset="100%" stopColor={secondaryColor} stopOpacity={canopyOpacity} />
         </radialGradient>
+        <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
-      <rect width="160" height="200" rx="32" fill="url(#mind-tree-bg)" />
-
-      <ellipse cx="80" cy="175" rx="45" ry="14" fill="#000" opacity={0.07} />
-
-      <path
-        d={`M ${80 - trunkWidth / 2} ${180} L ${80 - trunkWidth / 2} ${180 - stageConfig.trunkHeight} Q 80 ${180 - stageConfig.trunkHeight - 18} ${80 + trunkWidth / 2} ${180 - stageConfig.trunkHeight} L ${80 + trunkWidth / 2} ${180}`}
-        fill="url(#mind-tree-trunk)"
+      <rect 
+        width="160" 
+        height="200" 
+        rx="32" 
+        fill="url(#mind-tree-bg)" 
+        className="transition-colors duration-1000" 
       />
 
-      <circle cx="80" cy={110 - stageConfig.trunkHeight / 4} r={canopyRadius} fill="url(#mind-tree-canopy)" />
+      <ellipse cx="80" cy="175" rx="45" ry="14" fill="#000" opacity={0.07} className="animate-pulse" />
 
-      {leafNodes.map((leaf, index) => (
-        <circle
-          key={`${leaf.cx}-${index}`}
-          cx={leaf.cx}
-          cy={leaf.cy}
-          r={6 * leaf.scale}
-          fill={secondaryColor}
-          opacity={0.4 + (index % 4) * 0.08}
+      <g className={cn("origin-bottom", isLarge ? "animate-sway-slow" : "animate-sway-medium")}>
+        <path
+          d={`M ${80 - trunkWidth / 2} ${180} 
+              Q ${80} ${180 - stageConfig.trunkHeight * 0.5} ${80} ${180 - stageConfig.trunkHeight} 
+              Q ${80} ${180 - stageConfig.trunkHeight - 18} ${80 + trunkWidth / 2} ${180 - stageConfig.trunkHeight} 
+              Q ${80 + trunkWidth * 0.2} ${180 - stageConfig.trunkHeight * 0.5} ${80 + trunkWidth / 2} ${180} Z`}
+          fill="url(#mind-tree-trunk)"
+          className="transition-all duration-1000 ease-out hover:brightness-110"
         />
-      ))}
 
-      {STAGE_ORDER.indexOf(stage) >= 3 && (
-        <circle cx="80" cy="90" r={canopyRadius + 6} fill={secondaryColor} opacity={stageConfig.glow} />
+        <g className="animate-leaf-breathe origin-center group">
+          <circle 
+            cx="80" 
+            cy={180 - stageConfig.trunkHeight} 
+            r={canopyRadius} 
+            fill="url(#mind-tree-canopy)" 
+            className="transition-all duration-1000 ease-out group-hover:brightness-105"
+            filter={isLarge ? "url(#glow-filter)" : undefined}
+          />
+
+          {leafNodes.map((leaf, index) => (
+            <circle
+              key={`${leaf.cx}-${index}`}
+              cx={leaf.cx}
+              cy={leaf.cy}
+              r={6 * leaf.scale}
+              fill={secondaryColor}
+              opacity={0.4 + (index % 4) * 0.08}
+              className="animate-leaf-breathe transition-transform hover:scale-110 duration-300"
+              style={{ animationDelay: `${index * 0.2}s` }}
+            />
+          ))}
+        </g>
+      </g>
+
+      {isLarge && (
+        <circle 
+          cx="80" 
+          cy="90" 
+          r={canopyRadius + 6} 
+          fill={secondaryColor} 
+          opacity={stageConfig.glow} 
+          className="animate-glow"
+          filter="url(#glow-filter)"
+        />
       )}
 
       <StageSparkles stage={stage} />

@@ -155,8 +155,10 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
           </p>
         </header>
 
-        <section className="rounded-3xl border border-[#f0e4d8] bg-white/90 p-8 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-12">
-          <div className="mx-auto max-w-sm">
+        <section className="relative overflow-hidden rounded-3xl border border-[#f0e4d8] bg-white/90 shadow-[0_18px_38px_rgba(81,67,60,0.04)]">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-[#fdf8f4]/50 pointer-events-none" />
+          
+          <div className="relative mx-auto max-w-sm px-8 pt-8 md:pt-12">
             <TreeCanvas
               stage={tree.stage}
               primaryColor={tree.primary_color}
@@ -164,21 +166,22 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
               backgroundVariant={tree.background_variant}
               shapeVariant={tree.shape_variant}
               leafVariant={tree.leaf_variant}
-              className="w-full"
+              className="w-full drop-shadow-xl"
             />
           </div>
 
-          <div className="mt-8 space-y-4 text-center">
+          <div className="relative space-y-4 px-6 pb-8 pt-4 text-center md:px-12 md:pb-12">
             <div>
-              <div className="mb-2 inline-block rounded-full bg-gradient-to-r from-[#f0f9f4] to-[#f9f3ff] px-6 py-2">
-                <p className="text-sm font-medium text-[#2d9061]">現在の成長段階</p>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f0f9f4] to-[#f9f3ff] px-4 py-1.5 shadow-sm">
+                <span className="h-2 w-2 rounded-full bg-[#2d9061] animate-pulse" />
+                <p className="text-xs font-medium text-[#2d9061] tracking-wide">現在の成長段階</p>
               </div>
-              <h2 className={cn("text-2xl text-[#51433c] md:text-3xl", SITE_TITLE_FONT_CLASS)}>
+              <h2 className={cn("text-3xl text-[#51433c] md:text-4xl", SITE_TITLE_FONT_CLASS)}>
                 {STAGE_LABELS[tree.stage]}
               </h2>
             </div>
 
-            <p className="mx-auto max-w-lg text-base leading-relaxed text-[#8b7a71]">
+            <p className="mx-auto max-w-lg text-sm leading-relaxed text-[#8b7a71] md:text-base">
               {STAGE_DESCRIPTIONS[tree.stage]}
             </p>
           </div>
