@@ -12,7 +12,7 @@ const STAGE_LABELS: Record<MindTreeStage, string> = {
   sapling: "Sapling",
   blooming: "Bloom",
   fruit_bearing: "Fruit",
-  guardian: "Guardian"
+  guardian: "Goal Tree"
 };
 
 type MindTreeBadgeProps = {

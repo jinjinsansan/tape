@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TreeCanvas } from "@/components/mind-tree";
+import { STAGE_THEMES } from "@/components/mind-tree/theme";
 import { cn } from "@/lib/utils";
 import { SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import { SiteFooter } from "@/components/site-footer";
@@ -36,7 +37,7 @@ const STAGE_LABELS: Record<MindTreeStage, string> = {
   sapling: "若木",
   blooming: "開花",
   fruit_bearing: "実り",
-  guardian: "守護樹"
+  guardian: "ゴールの木"
 };
 
 const STAGE_DESCRIPTIONS: Record<MindTreeStage, string> = {
@@ -45,7 +46,7 @@ const STAGE_DESCRIPTIONS: Record<MindTreeStage, string> = {
   sapling: "しっかりとした若木へと成長しました。あなたの内面理解が深まってきています。",
   blooming: "美しい花が咲き始めました。感情を大切に扱う力が花開いています。",
   fruit_bearing: "豊かな実りの時です。あなたの感情との対話が、人生に実りをもたらしています。",
-  guardian: "立派な守護樹へと成長しました。あなたの心を守り、支える大きな存在です。"
+  guardian: "心を支える大きな存在へ。自分自身を信じる力が満ちています。"
 };
 
 const STAGE_THRESHOLDS = [0, 50, 150, 400, 800, 1500] as const;
@@ -142,22 +143,49 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
   }
 
   const nextStageInfo = getNextStageInfo(tree.stage, tree.growth_points);
+  const stageTheme = STAGE_THEMES[tree.stage];
+  const heroBackground = `radial-gradient(circle at 20% 20%, ${stageTheme.hero[0]}, transparent 45%), linear-gradient(180deg, ${stageTheme.hero[0]}, ${stageTheme.hero[1]}, ${stageTheme.hero[2]})`;
+  const accentColor = stageTheme.accent;
+  const cardBackground = stageTheme.card;
+  const softCardBackground = stageTheme.cardSoft;
+  const borderColor = stageTheme.border;
+  const textColor = stageTheme.text;
+  const mutedTextColor = stageTheme.mutedText;
+  const seasonCards = STAGE_ORDER.map((seasonStage) => ({
+    stage: seasonStage,
+    label: STAGE_LABELS[seasonStage],
+    description: STAGE_DESCRIPTIONS[seasonStage],
+    theme: STAGE_THEMES[seasonStage],
+    active: seasonStage === tree.stage
+  }));
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#fffaf4] via-[#f9f3ff] to-[#f2fbff]">
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ background: heroBackground }}
+    >
       <main className="mx-auto w-full max-w-4xl flex-1 space-y-8 px-4 pb-12 pt-6 md:px-8">
         <header className="space-y-2 text-center">
-          <h1 className={cn("text-3xl text-[#51433c] md:text-4xl", SITE_TITLE_FONT_CLASS)}>
+          <h1
+            className={cn("text-3xl md:text-4xl", SITE_TITLE_FONT_CLASS)}
+            style={{ color: textColor }}
+          >
             あなたの感情の木
           </h1>
-          <p className="text-sm text-[#8b7a71]">
+          <p className="text-sm" style={{ color: mutedTextColor }}>
             日記を書くたびに、この木は成長していきます
           </p>
         </header>
 
-        <section className="relative overflow-hidden rounded-3xl border border-[#f0e4d8] bg-white/90 shadow-[0_18px_38px_rgba(81,67,60,0.04)]">
-          <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-[#fdf8f4]/50 pointer-events-none" />
-          
+        <section
+          className="relative overflow-hidden rounded-3xl border shadow-[0_18px_38px_rgba(81,67,60,0.08)]"
+          style={{
+            borderColor,
+            background: `linear-gradient(135deg, ${softCardBackground}, ${cardBackground})`
+          }}
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: stageTheme.glow }} />
+
           <div className="relative mx-auto max-w-sm px-8 pt-8 md:pt-12">
             <TreeCanvas
               stage={tree.stage}
@@ -172,41 +200,66 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
 
           <div className="relative space-y-4 px-6 pb-8 pt-4 text-center md:px-12 md:pb-12">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f0f9f4] to-[#f9f3ff] px-4 py-1.5 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-[#2d9061] animate-pulse" />
-                <p className="text-xs font-medium text-[#2d9061] tracking-wide">現在の成長段階</p>
+              <div
+                className="mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5 shadow-sm"
+                style={{
+                  background: `linear-gradient(90deg, ${accentColor}22, ${accentColor}11)`
+                }}
+              >
+                <span
+                  className="h-2 w-2 animate-pulse rounded-full"
+                  style={{ backgroundColor: accentColor }}
+                />
+                <p className="text-xs font-medium tracking-wide" style={{ color: accentColor }}>
+                  現在の成長段階
+                </p>
               </div>
-              <h2 className={cn("text-3xl text-[#51433c] md:text-4xl", SITE_TITLE_FONT_CLASS)}>
+              <h2
+                className={cn("text-3xl md:text-4xl", SITE_TITLE_FONT_CLASS)}
+                style={{ color: textColor }}
+              >
                 {STAGE_LABELS[tree.stage]}
               </h2>
             </div>
 
-            <p className="mx-auto max-w-lg text-sm leading-relaxed text-[#8b7a71] md:text-base">
+            <p
+              className="mx-auto max-w-lg text-sm leading-relaxed md:text-base"
+              style={{ color: mutedTextColor }}
+            >
               {STAGE_DESCRIPTIONS[tree.stage]}
             </p>
           </div>
         </section>
 
         {nextStageInfo && (
-          <section className="rounded-3xl border border-[#e3f2e8] bg-gradient-to-br from-[#f0f9f4] to-white p-6 shadow-lg md:p-8">
+          <section
+            className="rounded-3xl border p-6 shadow-lg md:p-8"
+            style={{
+              borderColor,
+              background: `linear-gradient(135deg, ${cardBackground}, ${softCardBackground})`
+            }}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#51433c]">
+                <h3 className="text-lg font-semibold" style={{ color: textColor }}>
                   次の成長段階まで
                 </h3>
-                <span className="text-2xl font-bold text-[#2d9061]">
+                <span className="text-2xl font-bold" style={{ color: accentColor }}>
                   あと{nextStageInfo.pointsNeeded}
                 </span>
               </div>
 
               <div className="space-y-2">
-                <div className="h-3 w-full overflow-hidden rounded-full bg-white/80">
+                <div className="h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${stageTheme.hero[0]}55` }}>
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#2d9061] to-[#4db884] transition-all duration-500"
-                    style={{ width: `${Math.min(nextStageInfo.progress, 100)}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(nextStageInfo.progress, 100)}%`,
+                      background: `linear-gradient(90deg, ${accentColor}, ${stageTheme.aura})`
+                    }}
                   />
                 </div>
-                <p className="text-sm text-[#8b7a71]">
+                <p className="text-sm" style={{ color: mutedTextColor }}>
                   次の段階「{STAGE_LABELS[nextStageInfo.nextStage]}」へ
                 </p>
               </div>
@@ -214,25 +267,79 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
           </section>
         )}
 
+        <section
+          className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
+          style={{ borderColor, background: cardBackground }}
+        >
+          <div className="mb-4 text-center">
+            <h3 className="text-lg font-semibold" style={{ color: textColor }}>
+              成長シーズンの彩り
+            </h3>
+            <p className="text-xs md:text-sm" style={{ color: mutedTextColor }}>
+              段階ごとに木の世界も色を変えていきます。
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {seasonCards.map((season) => (
+              <div
+                key={season.stage}
+                className="rounded-2xl border p-4 transition-shadow"
+                style={{
+                  borderColor: season.active ? season.theme.accent : `${season.theme.border}`,
+                  background: `linear-gradient(140deg, ${season.theme.hero[0]}, ${season.theme.hero[1]})`,
+                  boxShadow: season.active ? `0 12px 28px ${season.theme.glow}` : undefined,
+                  color: season.theme.text
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-semibold tracking-wide">
+                    {season.label}シーズン
+                  </span>
+                  {season.active && (
+                    <span
+                      className="rounded-full px-3 py-0.5 text-xs font-semibold"
+                      style={{ backgroundColor: `${season.theme.accent}22`, color: season.theme.text }}
+                    >
+                      NOW
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs leading-relaxed opacity-90">
+                  {season.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {tree.stage === "guardian" && (
-          <section className="rounded-3xl border border-[#f0e4d8] bg-gradient-to-br from-[#fff9f5] via-white to-[#f9f3ff] p-6 text-center shadow-lg md:p-8">
+          <section
+            className="rounded-3xl border p-6 text-center shadow-lg md:p-8"
+            style={{
+              borderColor,
+              background: `linear-gradient(135deg, ${softCardBackground}, ${cardBackground})`
+            }}
+          >
             <div className="space-y-3">
               <p className="text-2xl">🌟</p>
-              <h3 className="text-xl font-bold text-[#51433c]">
-                最高段階に到達しました
+              <h3 className="text-xl font-bold" style={{ color: textColor }}>
+                ゴールの木に到達しました
               </h3>
-              <p className="text-sm leading-relaxed text-[#8b7a71]">
-                これからも日記を書き続けることで、この木はさらに深く、豊かに育ち続けます。
+              <p className="text-sm leading-relaxed" style={{ color: mutedTextColor }}>
+                これからは色や光で変化を楽しみながら、より深い心の旅を続けましょう。
               </p>
             </div>
           </section>
         )}
 
-        <section className="rounded-3xl border border-[#f0e4d8] bg-white/90 p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8">
-          <h3 className="mb-4 text-center text-lg font-semibold text-[#51433c]">
+        <section
+          className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
+          style={{ borderColor, background: cardBackground }}
+        >
+          <h3 className="mb-4 text-center text-lg font-semibold" style={{ color: textColor }}>
             木の成長について
           </h3>
-          <div className="space-y-3 text-sm leading-relaxed text-[#8b7a71]">
+          <div className="space-y-3 text-sm leading-relaxed" style={{ color: mutedTextColor }}>
             <p>
               この木は、あなたが感情日記を書くたびに成長します。
             </p>
@@ -242,27 +349,34 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
             <p>
               木の色や形は、あなただけのものです。誰一人として同じ木は存在しません。
             </p>
-            <p className="pt-2 font-medium text-[#51433c]">
+            <p className="pt-2 font-medium" style={{ color: textColor }}>
               あなたの感情と向き合い続けることが、この木を育てる唯一の方法です。
             </p>
           </div>
         </section>
 
         {tree.emotions && tree.emotions.length > 0 && (
-          <section className="rounded-3xl border border-[#f0e4d8] bg-white/90 p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8">
-            <h3 className="mb-4 text-center text-lg font-semibold text-[#51433c]">
+          <section
+            className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
+            style={{ borderColor, background: cardBackground }}
+          >
+            <h3 className="mb-4 text-center text-lg font-semibold" style={{ color: textColor }}>
               よく記録する感情
             </h3>
             <div className="flex flex-wrap justify-center gap-3">
               {tree.emotions.slice(0, 10).map((emotion) => (
                 <div
                   key={emotion.emotion_key}
-                  className="rounded-full border border-[#f0e4d8] bg-gradient-to-r from-[#fef6ff] to-[#f9f3ff] px-4 py-2 text-sm"
+                  className="rounded-full border px-4 py-2 text-sm"
+                  style={{
+                    borderColor,
+                    background: `linear-gradient(120deg, ${softCardBackground}, ${cardBackground})`
+                  }}
                 >
-                  <span className="font-medium text-[#51433c]">
+                  <span className="font-medium" style={{ color: textColor }}>
                     {emotion.emotion_key}
                   </span>
-                  <span className="ml-2 text-xs text-[#8b7a71]">
+                  <span className="ml-2 text-xs" style={{ color: mutedTextColor }}>
                     ×{emotion.entry_count}
                   </span>
                 </div>
