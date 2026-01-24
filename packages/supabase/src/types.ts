@@ -1168,6 +1168,101 @@ export interface Database {
           created_at?: string;
         };
       };
+      mind_trees: {
+        Row: {
+          user_id: string;
+          stage: Database["public"]["Enums"]["mind_tree_stage"];
+          growth_points: number;
+          primary_color: string;
+          secondary_color: string;
+          shape_variant: number;
+          leaf_variant: number;
+          background_variant: number;
+          weather_state: string | null;
+          emotion_diversity_score: number;
+          last_event_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          stage?: Database["public"]["Enums"]["mind_tree_stage"];
+          growth_points?: number;
+          primary_color?: string;
+          secondary_color?: string;
+          shape_variant?: number;
+          leaf_variant?: number;
+          background_variant?: number;
+          weather_state?: string | null;
+          emotion_diversity_score?: number;
+          last_event_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          stage?: Database["public"]["Enums"]["mind_tree_stage"];
+          growth_points?: number;
+          primary_color?: string;
+          secondary_color?: string;
+          shape_variant?: number;
+          leaf_variant?: number;
+          background_variant?: number;
+          weather_state?: string | null;
+          emotion_diversity_score?: number;
+          last_event_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      mind_tree_emotions: {
+        Row: {
+          user_id: string;
+          emotion_key: string;
+          entry_count: number;
+          total_intensity: number;
+          last_entry_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          emotion_key: string;
+          entry_count?: number;
+          total_intensity?: number;
+          last_entry_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          entry_count?: number;
+          total_intensity?: number;
+          last_entry_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      mind_tree_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_type: Database["public"]["Enums"]["mind_tree_event_type"];
+          payload: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_type: Database["public"]["Enums"]["mind_tree_event_type"];
+          payload?: Json;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          event_type?: Database["public"]["Enums"]["mind_tree_event_type"];
+          payload?: Json;
+          created_at?: string;
+        };
+      };
       learning_courses: {
         Row: {
           id: string;
@@ -1919,6 +2014,8 @@ export interface Database {
       point_redemption_status: PointRedemptionStatus;
       counselor_plan_type: CounselorPlanType;
       counselor_review_status: CounselorReviewStatus;
+      mind_tree_stage: "seed" | "sprout" | "sapling" | "blooming" | "fruit_bearing" | "guardian";
+      mind_tree_event_type: "growth_stage_up" | "new_branch" | "weather_shift" | "stat_rebuild";
     };
   };
 }

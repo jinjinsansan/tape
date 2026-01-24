@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 import {
   BookHeart,
@@ -23,10 +23,12 @@ import {
   Youtube
 } from "lucide-react";
 
+import { MindTreeBadge } from "@/components/mind-tree";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE_NAME_EN, SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import type { NamisapoNewsItem } from "@/lib/namisapo";
 import { cn } from "@/lib/utils";
+import type { Database } from "@tape/supabase";
 
 type ShortcutCategory = "primary" | "social" | "admin";
 type PrivilegedRole = "admin" | "counselor";
@@ -49,6 +51,15 @@ type AppShortcut = {
 type HomeContentProps = {
   newsItems: NamisapoNewsItem[];
   viewerRole: string | null;
+};
+
+type MindTreeResponse = {
+  stage: Database["public"]["Enums"]["mind_tree_stage"];
+  primary_color: string;
+  secondary_color: string;
+  background_variant: number;
+  shape_variant: number;
+  leaf_variant: number;
 };
 
 const APP_SHORTCUTS: AppShortcut[] = [
@@ -228,6 +239,46 @@ const canAccessShortcut = (shortcut: AppShortcut, role: PrivilegedRole | null) =
 
 export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
   const privilegedRole = normalizePrivilegedRole(viewerRole);
+  const [mindTree, setMindTree] = useState<MindTreeResponse | null>(null);
+  const [mindTreeLoaded, setMindTreeLoaded] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadMindTree = async () => {
+      try {
+        const res = await fetch("/api/mind-tree", { cache: "no-store" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            return;
+          }
+          throw new Error("Failed to load mind tree");
+        }
+        const data = (await res.json()) as { tree?: MindTreeResponse };
+        if (!mounted) return;
+        if (data.tree) {
+          setMindTree({
+            stage: data.tree.stage,
+            primary_color: data.tree.primary_color,
+            secondary_color: data.tree.secondary_color,
+            background_variant: data.tree.background_variant ?? 0,
+            shape_variant: data.tree.shape_variant ?? 0,
+            leaf_variant: data.tree.leaf_variant ?? 0
+          });
+        }
+      } catch (error) {
+        console.warn("Mind tree fetch failed", error);
+      } finally {
+        if (mounted) {
+          setMindTreeLoaded(true);
+        }
+      }
+    };
+
+    loadMindTree();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#fffaf4] via-[#f9f4ff] to-[#f2fbff]">
@@ -236,6 +287,19 @@ export function HomeContent({ newsItems, viewerRole }: HomeContentProps) {
           <p className="font-sans text-sm font-medium tracking-[0.4em] text-[#b29f95]">{SITE_NAME_EN}</p>
           <h1 className={cn("text-4xl md:text-5xl text-[#51433c]", SITE_TITLE_FONT_CLASS)}>{SITE_NAME_JP}</h1>
         </header>
+
+        {mindTreeLoaded && mindTree && (
+          <div className="flex justify-center">
+            <MindTreeBadge
+              stage={mindTree.stage}
+              primaryColor={mindTree.primary_color}
+              secondaryColor={mindTree.secondary_color}
+              backgroundVariant={mindTree.background_variant}
+              shapeVariant={mindTree.shape_variant}
+              leafVariant={mindTree.leaf_variant}
+            />
+          </div>
+        )}
 
         <div className="space-y-8 text-left">
           {SHORTCUT_SECTIONS.map((section) => {

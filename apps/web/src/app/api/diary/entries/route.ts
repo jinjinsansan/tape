@@ -13,6 +13,7 @@ import { markResultPostedForDate } from "@/server/services/self-esteem-test";
 import { scheduleDiaryAiCommentJob } from "@/server/services/diary-ai-comments";
 import { awardPoints } from "@/server/services/points";
 import { recordReferralDiaryDay } from "@/server/services/referrals";
+import { updateMindTree } from "@/server/services/mind-tree";
 import { entrySchema, scopeSchema } from "./_schemas";
 
 const handleAuthError = (error: unknown) => {
@@ -134,6 +135,17 @@ export async function POST(request: Request) {
         await awardPoints({ userId: user!.id, action: "diary_post", referenceId: entry.id });
       } catch (awardError) {
         console.error("Failed to award diary points", awardError);
+      }
+
+      try {
+        await updateMindTree(user!.id, {
+          emotion_key: entry.emotion_label,
+          emotion_intensity: null,
+          self_esteem_delta: entry.self_esteem_score ?? null,
+          is_ai_assisted: Boolean(data.selfEsteemTestDate)
+        });
+      } catch (mindTreeError) {
+        console.error("Failed to update mind tree", mindTreeError);
       }
 
       if (entry.journal_date) {

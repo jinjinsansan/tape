@@ -725,7 +725,7 @@ export function DiaryDashboard() {
         self_esteem_score: createdEntry.self_esteem_score ?? selfEsteemScore
       });
       resetComposer(form.visibility, { clearTestDraft: true });
-      showToast("success", "日記を保存しました");
+      showToast("success", "🌱 あなたの木が成長しました！日記を保存しました。");
     } catch (err) {
       console.error(err);
       setSaveError("保存に失敗しました");
