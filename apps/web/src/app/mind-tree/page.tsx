@@ -5,8 +5,8 @@ import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 import { getRouteUser } from "@/lib/supabase/auth-helpers";
 
 export const metadata = {
-  title: "感情の木 - Tape",
-  description: "日記を書くたびに、あなただけの木が成長します"
+  title: "ゴールの木 - Tape",
+  description: "日記を書くたびに色を変えながら成長していく、あなただけのゴールの木"
 };
 
 export default async function MindTreePage() {

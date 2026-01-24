@@ -47,7 +47,8 @@ const ensureMindTree = async (userId: string, client: SupabaseClient<Database>) 
       secondary_color: `var(--tape-palette-${secondaryIndex})`,
       shape_variant: pickVariant(userId, "shape", 12),
       leaf_variant: pickVariant(userId, "leaf", 8),
-      background_variant: pickVariant(userId, "background", 16)
+      background_variant: pickVariant(userId, "background", 16),
+      color_cycle_index: 0
     })
     .select("*")
     .single();
@@ -132,6 +133,7 @@ export const updateMindTree = async (userId: string, entry: EntryData) => {
   const growthGain = calculateGrowthPoints(entry);
   const newPoints = tree.growth_points + growthGain;
   const newStage = determineStage(newPoints);
+  const nextColorCycle = tree.color_cycle_index + 1;
 
   const { data, error } = await supabaseAdmin
     .from("mind_trees")
@@ -139,7 +141,8 @@ export const updateMindTree = async (userId: string, entry: EntryData) => {
       growth_points: newPoints,
       stage: newStage,
       emotion_diversity_score: Math.min(1000, tree.emotion_diversity_score + (entry.emotion_key ? 5 : 0)),
-      last_event_at: new Date().toISOString()
+      last_event_at: new Date().toISOString(),
+      color_cycle_index: nextColorCycle
     })
     .eq("user_id", userId)
     .select("*")

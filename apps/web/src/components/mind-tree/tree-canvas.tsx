@@ -23,6 +23,7 @@ type TreeCanvasProps = {
   backgroundVariant?: number;
   shapeVariant?: number;
   leafVariant?: number;
+  colorCycle?: number;
   className?: string;
 };
 
@@ -66,15 +67,17 @@ export function TreeCanvas({
   backgroundVariant = 0,
   shapeVariant = 0,
   leafVariant = 0,
+  colorCycle = 0,
   className
 }: TreeCanvasProps) {
   const stageIndex = getStageIndex(stage);
   const theme = STAGE_THEMES[stage];
-  const shape = getShapeVariant(shapeVariant);
-  const leafShape = getLeafVariant(leafVariant);
-  const skyPalette = getRotatedSky(stage, backgroundVariant);
+  const shape = getShapeVariant(shapeVariant + colorCycle);
+  const leafShape = getLeafVariant(leafVariant + colorCycle);
+  const skyPalette = getRotatedSky(stage, backgroundVariant + colorCycle);
   const trunkColor = resolveColor(primaryColor, theme.accent);
   const canopyColor = resolveColor(secondaryColor, theme.aura);
+  const hueShift = (colorCycle % 24) * 5;
 
   const branches = useMemo(() => {
     if (stageIndex < 2) {
@@ -199,7 +202,10 @@ export function TreeCanvas({
   const trunkHeight = stageConfig.trunk[stageIndex];
 
   return (
-    <div className={cn("relative aspect-[4/5] w-full overflow-hidden rounded-[32px]", className)}>
+    <div
+      className={cn("relative aspect-[4/5] w-full overflow-hidden rounded-[32px]", className)}
+      style={{ filter: `hue-rotate(${hueShift}deg)` }}
+    >
       <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="emotion-tree-sky" x1="0%" y1="0%" x2="0%" y2="100%">

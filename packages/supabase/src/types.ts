@@ -1181,6 +1181,7 @@ export interface Database {
           weather_state: string | null;
           emotion_diversity_score: number;
           last_event_at: string | null;
+          color_cycle_index: number;
           created_at: string;
           updated_at: string;
         };
@@ -1196,6 +1197,7 @@ export interface Database {
           weather_state?: string | null;
           emotion_diversity_score?: number;
           last_event_at?: string | null;
+          color_cycle_index?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1210,6 +1212,7 @@ export interface Database {
           weather_state?: string | null;
           emotion_diversity_score?: number;
           last_event_at?: string | null;
+          color_cycle_index?: number;
           created_at?: string;
           updated_at?: string;
         };

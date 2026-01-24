@@ -101,8 +101,8 @@ const APP_SHORTCUTS: AppShortcut[] = [
     category: "primary"
   },
   {
-    title: "感情の木",
-    subtitle: "日記で木が育つ",
+    title: "ゴールの木",
+    subtitle: "日記で色が変わる木",
     href: "/mind-tree",
     icon: TreePine,
     bubbleClass: "bg-[#f0f9f4] text-[#2d9061]",

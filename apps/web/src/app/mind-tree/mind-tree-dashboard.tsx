@@ -18,6 +18,7 @@ type MindTreeData = {
   shape_variant: number;
   leaf_variant: number;
   background_variant: number;
+  color_cycle_index: number;
   emotion_diversity_score: number;
   last_event_at: string | null;
   emotions: {
@@ -50,6 +51,21 @@ const STAGE_DESCRIPTIONS: Record<MindTreeStage, string> = {
 };
 
 const STAGE_THRESHOLDS = [0, 50, 150, 400, 800, 1500] as const;
+
+const rotateArray = <T,>(values: T[], shift: number) => {
+  if (values.length === 0) return values;
+  const offset = ((shift % values.length) + values.length) % values.length;
+  return [...values.slice(offset), ...values.slice(0, offset)];
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized.length === 3 ? normalized.repeat(2) : normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 const STAGE_ORDER: MindTreeStage[] = [
   "seed",
   "sprout",
@@ -144,10 +160,17 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
 
   const nextStageInfo = getNextStageInfo(tree.stage, tree.growth_points);
   const stageTheme = STAGE_THEMES[tree.stage];
-  const heroBackground = `radial-gradient(circle at 20% 20%, ${stageTheme.hero[0]}, transparent 45%), linear-gradient(180deg, ${stageTheme.hero[0]}, ${stageTheme.hero[1]}, ${stageTheme.hero[2]})`;
+  const colorCycle = tree.color_cycle_index ?? 0;
+  const heroColors = rotateArray(stageTheme.hero, colorCycle);
+  const heroBackground = `radial-gradient(circle at 20% 20%, ${heroColors[0]}, transparent 45%), linear-gradient(180deg, ${heroColors[0]}, ${heroColors[1]}, ${heroColors[2]})`;
   const accentColor = stageTheme.accent;
+  const cardTintAlpha = 0.12 + (colorCycle % 6) * 0.02;
+  const cardTint = hexToRgba(accentColor, cardTintAlpha);
   const cardBackground = stageTheme.card;
   const softCardBackground = stageTheme.cardSoft;
+  const dynamicCardBackground = `linear-gradient(135deg, ${cardTint}, ${cardBackground})`;
+  const dynamicSoftCardBackground = `linear-gradient(135deg, ${hexToRgba(accentColor, cardTintAlpha * 0.8)}, ${softCardBackground})`;
+  const glowOverlay = hexToRgba(accentColor, 0.2 + (colorCycle % 5) * 0.03);
   const borderColor = stageTheme.border;
   const textColor = stageTheme.text;
   const mutedTextColor = stageTheme.mutedText;
@@ -170,10 +193,10 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
             className={cn("text-3xl md:text-4xl", SITE_TITLE_FONT_CLASS)}
             style={{ color: textColor }}
           >
-            あなたの感情の木
+            あなたのゴールの木
           </h1>
           <p className="text-sm" style={{ color: mutedTextColor }}>
-            日記を書くたびに、この木は成長していきます
+            日記を書くたびに少しずつ色合いを変えながら、あなたの内面を映し出します
           </p>
         </header>
 
@@ -181,10 +204,10 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
           className="relative overflow-hidden rounded-3xl border shadow-[0_18px_38px_rgba(81,67,60,0.08)]"
           style={{
             borderColor,
-            background: `linear-gradient(135deg, ${softCardBackground}, ${cardBackground})`
+            background: dynamicSoftCardBackground
           }}
         >
-          <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: stageTheme.glow }} />
+          <div className="pointer-events-none absolute inset-0" style={{ background: glowOverlay }} />
 
           <div className="relative mx-auto max-w-sm px-8 pt-8 md:pt-12">
             <TreeCanvas
@@ -194,6 +217,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
               backgroundVariant={tree.background_variant}
               shapeVariant={tree.shape_variant}
               leafVariant={tree.leaf_variant}
+              colorCycle={colorCycle}
               className="w-full drop-shadow-xl"
             />
           </div>
@@ -236,7 +260,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
             className="rounded-3xl border p-6 shadow-lg md:p-8"
             style={{
               borderColor,
-              background: `linear-gradient(135deg, ${cardBackground}, ${softCardBackground})`
+              background: dynamicCardBackground
             }}
           >
             <div className="space-y-4">
@@ -269,7 +293,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
 
         <section
           className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
-          style={{ borderColor, background: cardBackground }}
+          style={{ borderColor, background: dynamicCardBackground }}
         >
           <div className="mb-4 text-center">
             <h3 className="text-lg font-semibold" style={{ color: textColor }}>
@@ -317,7 +341,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
             className="rounded-3xl border p-6 text-center shadow-lg md:p-8"
             style={{
               borderColor,
-              background: `linear-gradient(135deg, ${softCardBackground}, ${cardBackground})`
+              background: dynamicSoftCardBackground
             }}
           >
             <div className="space-y-3">
@@ -334,7 +358,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
 
         <section
           className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
-          style={{ borderColor, background: cardBackground }}
+          style={{ borderColor, background: dynamicCardBackground }}
         >
           <h3 className="mb-4 text-center text-lg font-semibold" style={{ color: textColor }}>
             木の成長について
@@ -345,6 +369,9 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
             </p>
             <p>
               感情を選んだり、自己肯定感テストの結果を記録したりすることで、より多く成長します。
+            </p>
+            <p>
+              同じシーズンの中でも、日記を書くたびに空や光の色合いが少しずつ変化し、今日の心模様を映してくれます。
             </p>
             <p>
               木の色や形は、あなただけのものです。誰一人として同じ木は存在しません。
@@ -358,7 +385,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
         {tree.emotions && tree.emotions.length > 0 && (
           <section
             className="rounded-3xl border p-6 shadow-[0_18px_38px_rgba(81,67,60,0.04)] md:p-8"
-            style={{ borderColor, background: cardBackground }}
+            style={{ borderColor, background: dynamicCardBackground }}
           >
             <h3 className="mb-4 text-center text-lg font-semibold" style={{ color: textColor }}>
               よく記録する感情
@@ -370,7 +397,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
                   className="rounded-full border px-4 py-2 text-sm"
                   style={{
                     borderColor,
-                    background: `linear-gradient(120deg, ${softCardBackground}, ${cardBackground})`
+                    background: `linear-gradient(120deg, ${hexToRgba(accentColor, cardTintAlpha * 0.6)}, ${cardBackground})`
                   }}
                 >
                   <span className="font-medium" style={{ color: textColor }}>
