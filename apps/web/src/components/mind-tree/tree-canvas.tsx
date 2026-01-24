@@ -72,8 +72,8 @@ export function TreeCanvas({
 }: TreeCanvasProps) {
   const stageIndex = getStageIndex(stage);
   const theme = STAGE_THEMES[stage];
-  const shape = getShapeVariant(shapeVariant + colorCycle);
-  const leafShape = getLeafVariant(leafVariant + colorCycle);
+  const shape = getShapeVariant(shapeVariant ?? 0);
+  const leafShape = getLeafVariant(leafVariant ?? 0);
   const skyPalette = getRotatedSky(stage, backgroundVariant + colorCycle);
   const trunkColor = resolveColor(primaryColor, theme.accent);
   const canopyColor = resolveColor(secondaryColor, theme.aura);
