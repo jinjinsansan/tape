@@ -447,7 +447,7 @@ export function CourseManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  YouTube動画URL（埋め込み形式）
+                  動画URL（YouTube / Vimeo の埋め込み形式）
                 </label>
                 <input
                   type="text"
@@ -456,10 +456,13 @@ export function CourseManagement() {
                     setLessonForm({ ...lessonForm, video_url: e.target.value })
                   }
                   className="w-full rounded-lg border border-slate-300 p-2 text-base md:text-sm"
-                  placeholder="https://www.youtube.com/embed/VIDEO_ID"
+                  placeholder="https://www.youtube.com/embed/VIDEO_ID または https://player.vimeo.com/video/VIDEO_ID"
                 />
                 <p className="text-xs text-slate-500 mt-1">
                   例: https://www.youtube.com/embed/eFRN-AR09Mo
+                </p>
+                <p className="text-xs text-slate-500">
+                  Vimeo の場合: https://player.vimeo.com/video/123456789
                 </p>
               </div>
 

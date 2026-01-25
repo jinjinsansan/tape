@@ -104,13 +104,43 @@ const resolveYoutubeId = (url: string): string | null => {
   return null;
 };
 
-const buildVideoSource = (url: string | null | undefined) => {
-  if (!url) return { type: "none" as const, src: null };
+const resolveVimeoId = (url: string): string | null => {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    const segments = parsed.pathname.split("/").filter(Boolean);
+
+    if (host === "vimeo.com" && segments[0]) {
+      return segments[0];
+    }
+
+    if (host === "player.vimeo.com" && segments[0] === "video" && segments[1]) {
+      return segments[1];
+    }
+  } catch (error) {
+    console.warn("Failed to parse Vimeo url", error);
+  }
+  return null;
+};
+
+type LessonVideoSource =
+  | { type: "none"; src: null }
+  | { type: "youtube" | "vimeo" | "file"; src: string };
+
+const buildVideoSource = (url: string | null | undefined): LessonVideoSource => {
+  if (!url) return { type: "none", src: null };
+
   const youtubeId = resolveYoutubeId(url);
   if (youtubeId) {
-    return { type: "youtube" as const, src: `https://www.youtube.com/embed/${youtubeId}` };
+    return { type: "youtube", src: `https://www.youtube.com/embed/${youtubeId}` };
   }
-  return { type: "file" as const, src: url };
+
+  const vimeoId = resolveVimeoId(url);
+  if (vimeoId) {
+    return { type: "vimeo", src: `https://player.vimeo.com/video/${vimeoId}` };
+  }
+
+  return { type: "file", src: url };
 };
 
 const splitTextIntoPoints = (value: string): string[] =>
@@ -445,6 +475,14 @@ export function CourseLearnClient({ slug }: { slug: string }) {
                         src={activeLessonVideo.src}
                         className="h-full w-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={activeLesson.title}
+                      />
+                    ) : activeLessonVideo.type === "vimeo" && activeLessonVideo.src ? (
+                      <iframe
+                        src={activeLessonVideo.src}
+                        className="h-full w-full"
+                        allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
                         title={activeLesson.title}
                       />
