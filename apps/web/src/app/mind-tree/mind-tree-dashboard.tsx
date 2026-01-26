@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TreeCanvas } from "@/components/mind-tree";
 import { STAGE_THEMES } from "@/components/mind-tree/theme";
 import { cn } from "@/lib/utils";
 import { SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import { SiteFooter } from "@/components/site-footer";
 import type { Database } from "@tape/supabase";
+import { createSupabaseBrowserClient } from "@tape/supabase";
 
 type MindTreeStage = Database["public"]["Enums"]["mind_tree_stage"];
 
@@ -97,10 +98,53 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
   const [tree, setTree] = useState<MindTreeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) {
+          setAccessToken(data.session?.access_token ?? null);
+          setSessionChecked(true);
+        }
+      } catch (err) {
+        console.error("Failed to initialize auth session for mind tree", err);
+        if (!cancelled) {
+          setAccessToken(null);
+          setSessionChecked(true);
+        }
+      }
+    };
+
+    initSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled) {
+        setAccessToken(session?.access_token ?? null);
+        setSessionChecked(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     if (!userId) {
       setLoading(false);
+      setTree(null);
+      setError(null);
+      return;
+    }
+
+    if (!sessionChecked) {
       return;
     }
 
@@ -108,7 +152,11 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
 
     const loadTree = async () => {
       try {
-        const res = await fetch("/api/mind-tree", { cache: "no-store" });
+        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
+        const res = await fetch("/api/mind-tree", {
+          cache: "no-store",
+          headers
+        });
         if (!res.ok) {
           throw new Error("読み込みに失敗しました");
         }
@@ -133,7 +181,7 @@ export function MindTreeDashboard({ userId }: MindTreeDashboardProps) {
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [userId, accessToken, sessionChecked]);
 
   if (loading) {
     return (
