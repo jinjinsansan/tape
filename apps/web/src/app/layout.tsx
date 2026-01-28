@@ -7,22 +7,10 @@ import { SITE_NAME_JP } from "@/lib/branding";
 
 const zenMaru = localFont({
   src: [
-    { path: "../fonts/zen-maru-gothic-300.woff2", weight: "300", style: "normal" },
     { path: "../fonts/zen-maru-gothic-400.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/zen-maru-gothic-500.woff2", weight: "500", style: "normal" },
     { path: "../fonts/zen-maru-gothic-700.woff2", weight: "700", style: "normal" }
   ],
   variable: "--font-zen-maru",
-  display: "swap"
-});
-
-const shipporiMincho = localFont({
-  src: [
-    { path: "../fonts/shippori-mincho-400.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/shippori-mincho-600.woff2", weight: "600", style: "normal" },
-    { path: "../fonts/shippori-mincho-700.woff2", weight: "700", style: "normal" }
-  ],
-  variable: "--font-shippori",
   display: "swap"
 });
 
@@ -56,8 +44,7 @@ export default function RootLayout({
       <body
         className={cn(
           "min-h-screen font-sans text-tape-brown antialiased flex flex-col",
-          zenMaru.variable,
-          shipporiMincho.variable
+          zenMaru.variable
         )}
       >
         <SiteHeader />

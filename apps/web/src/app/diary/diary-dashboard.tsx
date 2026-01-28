@@ -15,6 +15,10 @@ import type { DiaryVisibility, DiaryAiCommentStatus } from "@tape/supabase";
 
 type DiaryTab = "mine" | "public";
 
+type DiaryDashboardProps = {
+  initialEntries?: DiaryEntry[];
+};
+
 type DiaryEntry = {
   id: string;
   user_id: string;
@@ -148,13 +152,13 @@ const derivePreviousScoreFromEntries = (entries: DiaryEntry[]): PreviousScoreInf
   };
 };
 
-export function DiaryDashboard() {
+export function DiaryDashboard({ initialEntries = [] }: DiaryDashboardProps) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftToken = searchParams?.get("draftToken");
   const [activeTab, setActiveTab] = useState<DiaryTab>("mine");
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [entries, setEntries] = useState<DiaryEntry[]>(initialEntries);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);

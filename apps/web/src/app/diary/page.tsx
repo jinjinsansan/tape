@@ -1,11 +1,14 @@
-"use client";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 import { ChevronLeft, BookOpenCheck, Sparkles } from "lucide-react";
 
 import { DiaryDashboard } from "./diary-dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth-gate";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
+import { getRouteUser } from "@/lib/supabase/auth-helpers";
 import { cn } from "@/lib/utils";
 
 const resourceLinks = [
@@ -29,9 +32,29 @@ const resourceLinks = [
   }
 ];
 
-export default function DiaryPage() {
+export default async function DiaryPage() {
+  const cookieStore = cookies();
+  const supabase = createSupabaseRouteClient(cookieStore);
+  let user: User | null = null;
+  let initialEntries = [];
+
+  try {
+    user = await getRouteUser(supabase, "Diary page");
+    if (user) {
+      const { data } = await supabase
+        .from("emotion_diary_entries")
+        .select("id,title,content,mood_score,mood_label,mood_color,energy_level,emotion_label,event_summary,realization,self_esteem_score,worthlessness_score,visibility,ai_comment_status,ai_comment,ai_comment_generated_at,counselor_memo,counselor_name,is_visible_to_user,is_ai_comment_public,is_counselor_comment_public,is_shareable,share_count,published_at,journal_date,created_at,user_id")
+        .eq("user_id", user.id)
+        .order("journal_date", { ascending: false })
+        .limit(5);
+      initialEntries = data ?? [];
+    }
+  } catch (error) {
+    console.error("Failed to get user for diary page", error);
+  }
+
   return (
-    <AuthGate>
+    <AuthGate initialUser={user}>
       <div className="min-h-screen p-4 pb-20 md:p-8">
       <header className="mx-auto mb-8 max-w-4xl space-y-4 text-center">
         <Link href="/" className="inline-block">
@@ -91,7 +114,7 @@ export default function DiaryPage() {
           })}
         </section>
 
-        <DiaryDashboard />
+        <DiaryDashboard initialEntries={initialEntries} />
       </main>
     </div>
     </AuthGate>

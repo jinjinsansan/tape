@@ -1,32 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@tape/supabase";
 import { SimpleAuth } from "./simple-auth";
 import { SITE_NAME_EN, SITE_NAME_JP, SITE_TITLE_FONT_CLASS } from "@/lib/branding";
 import { SiteFooter } from "@/components/site-footer";
 import { cn } from "@/lib/utils";
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+type AuthGateProps = {
+  children: React.ReactNode;
+  initialUser?: User | null;
+};
+
+export function AuthGate({ children, initialUser = null }: AuthGateProps) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  const [sessionResolved, setSessionResolved] = useState(Boolean(initialUser));
 
   useEffect(() => {
+    let cancelled = false;
     const supabase = createSupabaseBrowserClient();
-    
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+
+    const resolveSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        setUser(data.session?.user ?? null);
+      } finally {
+        if (!cancelled) {
+          setSessionResolved(true);
+        }
+      }
+    };
+
+    resolveSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
       setUser(session?.user ?? null);
+      setSessionResolved(true);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (loading) {
+  if (!sessionResolved) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-gray-500">読み込み中...</p>
