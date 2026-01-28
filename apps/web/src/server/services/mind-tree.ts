@@ -44,11 +44,20 @@ const isColorCycleSchemaError = (error: unknown): error is PostgrestError => {
     return false;
   }
   const pgError = error as PostgrestError;
-  return (
-    pgError.code === "PGRST204" &&
-    typeof pgError.message === "string" &&
-    pgError.message.includes("color_cycle_index")
-  );
+
+  const messageIncludesColumn = typeof pgError.message === "string" && pgError.message.includes("color_cycle_index");
+  const detailsIncludesColumn = typeof pgError.details === "string" && pgError.details.includes("color_cycle_index");
+  const hintIncludesColumn = typeof pgError.hint === "string" && pgError.hint.includes("color_cycle_index");
+
+  if (pgError.code === "PGRST204" && messageIncludesColumn) {
+    return true;
+  }
+
+  if (pgError.code === "42703" && (messageIncludesColumn || detailsIncludesColumn || hintIncludesColumn)) {
+    return true;
+  }
+
+  return false;
 };
 
 const handleColorCycleSchemaError = (error: unknown) => {
