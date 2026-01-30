@@ -11,17 +11,30 @@ import { Flag, MessageCircle, Sparkles } from "lucide-react";
 
 import { FeedShareButton } from "./feed-share-button";
 
+type FeedCommentAuthor = {
+  id: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  role: string | null;
+  diaryCount: number;
+};
+
 type FeedComment = {
   id: string;
   content: string;
   createdAt: string;
-  author: {
-    id: string;
-    displayName: string;
-    avatarUrl: string | null;
-    role: string | null;
-    diaryCount: number;
-  };
+  parentId: string | null;
+  author: FeedCommentAuthor;
+  replies: FeedComment[];
+};
+
+type FeedCommentPayload = Omit<FeedComment, "replies"> & {
+  replies?: FeedCommentPayload[];
+};
+
+type ReplyFormState = {
+  value: string;
+  submitting: boolean;
 };
 
 type FeedEntry = {
@@ -59,6 +72,7 @@ type FeedEntry = {
   submittingComment?: boolean;
   commentsError?: string;
   commentsLoading?: boolean;
+  replyForms?: Record<string, ReplyFormState>;
 };
 
 type FeedResponse = {
@@ -103,14 +117,52 @@ const getAvatarBorderStyle = (role: string | null | undefined, diaryCount: numbe
   borderColor: getDiaryBorderColor(role, diaryCount ?? 0)
 });
 
-const normalizeComment = (comment: FeedComment): FeedComment => ({
+const normalizeComment = (comment: FeedCommentPayload): FeedComment => ({
   ...comment,
+  parentId: comment.parentId ?? null,
   author: {
-    ...comment.author,
-    role: comment.author.role ?? null,
-    diaryCount: comment.author.diaryCount ?? 0
-  }
+    id: comment.author?.id ?? null,
+    displayName: comment.author?.displayName || "匿名ユーザー",
+    avatarUrl: comment.author?.avatarUrl ?? null,
+    role: comment.author?.role ?? null,
+    diaryCount: comment.author?.diaryCount ?? 0
+  },
+  replies: (comment.replies ?? []).map((child) => normalizeComment(child))
 });
+
+const countComments = (comments: FeedComment[] | undefined): number => {
+  if (!comments) return 0;
+  return comments.reduce((total, comment) => total + 1 + countComments(comment.replies), 0);
+};
+
+const insertIntoTree = (nodes: FeedComment[], newComment: FeedComment): [FeedComment[], boolean] => {
+  let inserted = false;
+  const nextNodes = nodes.map((node) => {
+    if (node.id === newComment.parentId) {
+      inserted = true;
+      return { ...node, replies: [...node.replies, newComment] };
+    }
+    const [childReplies, childInserted] = insertIntoTree(node.replies, newComment);
+    if (childInserted) {
+      inserted = true;
+      return { ...node, replies: childReplies };
+    }
+    return node;
+  });
+  return [nextNodes, inserted];
+};
+
+const addCommentToTree = (comments: FeedComment[] | undefined, newComment: FeedComment): FeedComment[] => {
+  const current = comments ?? [];
+  if (!newComment.parentId) {
+    return [...current, newComment];
+  }
+  const [updated, inserted] = insertIntoTree(current, newComment);
+  if (!inserted) {
+    return [...updated, newComment];
+  }
+  return updated;
+};
 
 export function FeedPageClient() {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
@@ -253,12 +305,19 @@ export function FeedPageClient() {
     try {
       const res = await fetch(`/api/feed/${entryId}/comments`);
       if (!res.ok) throw new Error("Failed to load comments");
-      const data = (await res.json()) as { comments?: FeedComment[] };
+      const data = (await res.json()) as { comments?: FeedCommentPayload[] };
       const normalized = (data.comments ?? []).map((comment) => normalizeComment(comment));
+      const total = countComments(normalized);
       setEntries((prev) =>
         prev.map((entry) =>
           entry.id === entryId
-            ? { ...entry, comments: normalized, commentsError: undefined, commentsLoading: false }
+            ? {
+                ...entry,
+                comments: normalized,
+                commentCount: total,
+                commentsError: undefined,
+                commentsLoading: false
+              }
             : entry
         )
       );
@@ -272,6 +331,21 @@ export function FeedPageClient() {
         )
       );
     }
+  }, []);
+
+  const postComment = useCallback(async (entryId: string, content: string, parentId?: string | null) => {
+    const res = await fetch(`/api/feed/${entryId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, parentId })
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to post comment");
+    }
+
+    const data = (await res.json()) as { comment: FeedCommentPayload };
+    return normalizeComment(data.comment);
   }, []);
 
   useEffect(() => {
@@ -294,22 +368,14 @@ export function FeedPageClient() {
     );
 
     try {
-      const res = await fetch(`/api/feed/${entryId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: commentInput })
-      });
-
-      if (!res.ok) throw new Error("Failed to post comment");
-      const data = (await res.json()) as { comment: FeedComment };
-      const normalizedComment = normalizeComment(data.comment);
+      const newComment = await postComment(entryId, commentInput);
 
       setEntries((prev) =>
         prev.map((e) => {
           if (e.id !== entryId) return e;
           return {
             ...e,
-            comments: [...(e.comments || []), normalizedComment],
+            comments: addCommentToTree(e.comments, newComment),
             commentInput: "",
             submittingComment: false,
             commentCount: e.commentCount + 1,
@@ -328,6 +394,82 @@ export function FeedPageClient() {
     }
   };
 
+  const toggleReplyForm = (entryId: string, commentId: string) => {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        const forms = { ...(entry.replyForms ?? {}) };
+        if (forms[commentId]) {
+          delete forms[commentId];
+        } else {
+          forms[commentId] = { value: "", submitting: false };
+        }
+        const hasForms = Object.keys(forms).length > 0;
+        return { ...entry, replyForms: hasForms ? forms : undefined };
+      })
+    );
+  };
+
+  const handleReplyInputChange = (entryId: string, commentId: string, value: string) => {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        const forms = { ...(entry.replyForms ?? {}) };
+        const existing = forms[commentId] ?? { value: "", submitting: false };
+        forms[commentId] = { ...existing, value };
+        return { ...entry, replyForms: forms };
+      })
+    );
+  };
+
+  const handleReplySubmit = async (entryId: string, commentId: string) => {
+    const entry = entries.find((item) => item.id === entryId);
+    const draft = entry?.replyForms?.[commentId];
+    const replyContent = draft?.value.trim();
+    if (!replyContent) return;
+
+    setEntries((prev) =>
+      prev.map((item) => {
+        if (item.id !== entryId) return item;
+        const forms = { ...(item.replyForms ?? {}) };
+        const existing = forms[commentId] ?? { value: "", submitting: false };
+        forms[commentId] = { ...existing, submitting: true };
+        return { ...item, replyForms: forms };
+      })
+    );
+
+    try {
+      const newComment = await postComment(entryId, replyContent, commentId);
+      setEntries((prev) =>
+        prev.map((item) => {
+          if (item.id !== entryId) return item;
+          const forms = { ...(item.replyForms ?? {}) };
+          delete forms[commentId];
+          const hasForms = Object.keys(forms).length > 0;
+          return {
+            ...item,
+            comments: addCommentToTree(item.comments, newComment),
+            commentCount: item.commentCount + 1,
+            replyForms: hasForms ? forms : undefined
+          };
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      alert("コメントの投稿に失敗しました");
+      setEntries((prev) =>
+        prev.map((item) => {
+          if (item.id !== entryId) return item;
+          const forms = { ...(item.replyForms ?? {}) };
+          if (forms[commentId]) {
+            forms[commentId] = { ...forms[commentId], submitting: false };
+          }
+          return { ...item, replyForms: forms };
+        })
+      );
+    }
+  };
+
   const handleDeleteComment = async (entryId: string, commentId: string) => {
     if (!confirm("このコメントを削除しますか？")) return;
 
@@ -337,22 +479,79 @@ export function FeedPageClient() {
       });
 
       if (!res.ok) throw new Error("Failed to delete comment");
-
-      setEntries((prev) =>
-        prev.map((e) => {
-          if (e.id !== entryId) return e;
-          const updatedComments = (e.comments || []).filter((c) => c.id !== commentId);
-          return {
-            ...e,
-            comments: updatedComments,
-            commentCount: Math.max(e.commentCount - 1, 0)
-          };
-        })
-      );
+      await loadComments(entryId);
     } catch (err) {
       console.error(err);
       alert("コメントの削除に失敗しました");
     }
+  };
+
+  const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): JSX.Element[] => {
+    return comments.map((comment) => {
+      const replyForm = entry.replyForms?.[comment.id];
+      return (
+        <div
+          key={comment.id}
+          id={`comment-${comment.id}`}
+          className={cn(
+            "rounded-lg bg-tape-cream/50 p-3",
+            depth > 0 && "ml-6 border-l-2 border-tape-beige"
+          )}
+        >
+          <div className="flex items-start gap-2">
+            <img
+              src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
+              alt={comment.author.displayName}
+              className="h-8 w-8 rounded-full object-cover border bg-[#fff8f2]"
+              style={getAvatarBorderStyle(comment.author.role, comment.author.diaryCount)}
+            />
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold text-tape-brown">{comment.author.displayName}</p>
+                  <p className="text-[11px] text-tape-light-brown">
+                    {new Date(comment.createdAt).toLocaleString("ja-JP")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-tape-pink">
+                  <button onClick={() => toggleReplyForm(entry.id, comment.id)} className="hover:underline">
+                    {replyForm ? "返信を閉じる" : "返信する"}
+                  </button>
+                  <button onClick={() => handleDeleteComment(entry.id, comment.id)} className="hover:underline">
+                    削除
+                  </button>
+                </div>
+              </div>
+              <p className="mt-2 text-sm text-tape-brown whitespace-pre-wrap">{comment.content}</p>
+              {replyForm && (
+                <div className="mt-3 flex gap-2">
+                  <textarea
+                    value={replyForm.value}
+                    onChange={(e) => handleReplyInputChange(entry.id, comment.id, e.target.value)}
+                    rows={2}
+                    className="flex-1 rounded-lg border border-tape-beige bg-white px-2 py-1 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                    placeholder="返信を入力..."
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
+                    disabled={!replyForm.value.trim() || replyForm.submitting}
+                    onClick={() => handleReplySubmit(entry.id, comment.id)}
+                  >
+                    {replyForm.submitting ? "送信中..." : "返信"}
+                  </Button>
+                </div>
+              )}
+              {comment.replies && comment.replies.length > 0 && (
+                <div className="mt-3 space-y-3">
+                  {renderComments(entry, comment.replies, depth + 1)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    });
   };
 
   const timeline = useMemo(() => entries, [entries]);
@@ -475,7 +674,7 @@ export function FeedPageClient() {
                     className="flex items-center gap-1 rounded-full border border-tape-beige px-3 py-1 text-xs text-tape-light-brown hover:bg-tape-cream"
                   >
                     <MessageCircle className="h-3 w-3" />
-                    コメント {entry.comments && entry.comments.length > 0 ? `(${entry.comments.length})` : ""}
+                    コメント {entry.commentCount > 0 ? `(${entry.commentCount})` : ""}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
                     {entry.isShareable && (
@@ -531,33 +730,7 @@ export function FeedPageClient() {
                       </div>
                     ) : entry.comments && entry.comments.length > 0 ? (
                       <div className="space-y-3">
-                        {entry.comments.map((comment) => (
-                          <div key={comment.id} className="rounded-lg bg-tape-cream/50 p-3">
-                            <div className="flex items-start gap-2">
-                              <img
-                                src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
-                                alt={comment.author.displayName}
-                                className="h-8 w-8 rounded-full object-cover border bg-[#fff8f2]"
-                                style={getAvatarBorderStyle(comment.author.role, comment.author.diaryCount)}
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-bold text-tape-brown">{comment.author.displayName}</p>
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs text-tape-light-brown">{new Date(comment.createdAt).toLocaleString("ja-JP")}</p>
-                                    <button
-                                      onClick={() => handleDeleteComment(entry.id, comment.id)}
-                                      className="text-xs text-tape-pink hover:underline"
-                                    >
-                                      削除
-                                    </button>
-                                  </div>
-                                </div>
-                                <p className="mt-1 text-sm text-tape-brown whitespace-pre-wrap">{comment.content}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                        {renderComments(entry, entry.comments)}
                       </div>
                     ) : (
                       <p className="text-xs text-tape-light-brown">まだコメントがありません</p>

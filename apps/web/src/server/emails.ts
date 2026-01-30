@@ -3,6 +3,19 @@ import { isResendEnabled } from "@/lib/env";
 
 const SENDER_EMAIL = "TAPE <no-reply@namisapo.app>";
 
+const truncate = (value: string, length = 200) => {
+  if (!value) return "";
+  return value.length <= length ? value : `${value.slice(0, length - 1)}…`;
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 type SendEmailParams = {
   to: string;
   subject: string;
@@ -113,6 +126,58 @@ export const sendBookingCancelledEmail = async (
     <p><strong>日時:</strong> ${dateTime}</p>
     <hr>
     <p>ポイントは返還されました。</p>
+  `;
+  await sendEmail({ to, subject, html });
+};
+
+type DiaryCommentEmailParams = {
+  to: string;
+  entryTitle: string;
+  commenterName: string;
+  commentSnippet: string;
+  entryUrl: string;
+};
+
+export const sendDiaryCommentNotificationEmail = async ({
+  to,
+  entryTitle,
+  commenterName,
+  commentSnippet,
+  entryUrl
+}: DiaryCommentEmailParams) => {
+  const safeTitle = escapeHtml(entryTitle);
+  const safeName = escapeHtml(commenterName);
+  const safeSnippet = escapeHtml(truncate(commentSnippet, 280)).replace(/\n/g, "<br>");
+  const subject = "【TAPE】あなたの公開日記に新しいコメントが届きました";
+  const html = `
+    <p>あなたの公開日記「${safeTitle}」に <strong>${safeName}</strong> さんから新しいコメントが届きました。</p>
+    <blockquote style="border-left:4px solid #f5ccd8;padding-left:12px;margin:16px 0;font-style:italic;color:#6b4a3f;">
+      ${safeSnippet}
+    </blockquote>
+    <p>下記のリンクからコメントを確認できます。</p>
+    <p><a href="${entryUrl}" style="color:#d59da9;text-decoration:underline;">コメントを確認する</a></p>
+  `;
+  await sendEmail({ to, subject, html });
+};
+
+export const sendDiaryCommentReplyEmail = async ({
+  to,
+  entryTitle,
+  commenterName,
+  commentSnippet,
+  entryUrl
+}: DiaryCommentEmailParams) => {
+  const safeTitle = escapeHtml(entryTitle);
+  const safeName = escapeHtml(commenterName);
+  const safeSnippet = escapeHtml(truncate(commentSnippet, 280)).replace(/\n/g, "<br>");
+  const subject = "【TAPE】あなたのコメントに返信が届きました";
+  const html = `
+    <p>あなたがコメントした公開日記「${safeTitle}」に <strong>${safeName}</strong> さんから返信が届きました。</p>
+    <blockquote style="border-left:4px solid #f5ccd8;padding-left:12px;margin:16px 0;font-style:italic;color:#6b4a3f;">
+      ${safeSnippet}
+    </blockquote>
+    <p>下記からスレッドを確認して、やりとりを続けられます。</p>
+    <p><a href="${entryUrl}" style="color:#d59da9;text-decoration:underline;">返信を確認する</a></p>
   `;
   await sendEmail({ to, subject, html });
 };

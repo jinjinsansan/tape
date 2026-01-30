@@ -1013,6 +1013,7 @@ export interface Database {
           id: string;
           entry_id: string;
           commenter_user_id: string | null;
+          parent_id: string | null;
           source: DiaryCommentSource;
           content: string;
           metadata: Json;
@@ -1022,6 +1023,7 @@ export interface Database {
           id?: string;
           entry_id: string;
           commenter_user_id?: string | null;
+          parent_id?: string | null;
           source?: DiaryCommentSource;
           content: string;
           metadata?: Json;
@@ -1030,6 +1032,7 @@ export interface Database {
         Update: {
           entry_id?: string;
           commenter_user_id?: string | null;
+          parent_id?: string | null;
           source?: DiaryCommentSource;
           content?: string;
           metadata?: Json;
