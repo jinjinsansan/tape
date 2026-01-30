@@ -495,7 +495,7 @@ export function FeedPageClient() {
           id={`comment-${comment.id}`}
           className={cn(
             "rounded-lg bg-tape-cream/50 p-3",
-            depth > 0 && "ml-6 border-l-2 border-tape-beige"
+            depth > 0 && "border-l-2 border-tape-beige/70 pl-4 sm:pl-6"
           )}
         >
           <div className="flex items-start gap-2">
