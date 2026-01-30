@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -486,73 +486,84 @@ export function FeedPageClient() {
     }
   };
 
-  const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): JSX.Element[] => {
-    return comments.map((comment) => {
-      const replyForm = entry.replyForms?.[comment.id];
-      return (
-        <div
-          key={comment.id}
-          id={`comment-${comment.id}`}
-          className={cn(
-            "rounded-lg bg-tape-cream/50 p-3",
-            depth > 0 && "border-l-2 border-tape-beige/70 pl-4 sm:pl-6"
-          )}
-        >
-          <div className="flex items-start gap-2">
-            <img
-              src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
-              alt={comment.author.displayName}
-              className="h-8 w-8 rounded-full object-cover border bg-[#fff8f2]"
-              style={getAvatarBorderStyle(comment.author.role, comment.author.diaryCount)}
-            />
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-bold text-tape-brown">{comment.author.displayName}</p>
-                  <p className="text-[11px] text-tape-light-brown">
-                    {new Date(comment.createdAt).toLocaleString("ja-JP")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] text-tape-pink">
-                  <button onClick={() => toggleReplyForm(entry.id, comment.id)} className="hover:underline">
-                    {replyForm ? "返信を閉じる" : "返信する"}
-                  </button>
-                  <button onClick={() => handleDeleteComment(entry.id, comment.id)} className="hover:underline">
-                    削除
-                  </button>
-                </div>
-              </div>
-              <p className="mt-2 text-sm text-tape-brown whitespace-pre-wrap">{comment.content}</p>
-              {replyForm && (
-                <div className="mt-3 flex gap-2">
-                  <textarea
-                    value={replyForm.value}
-                    onChange={(e) => handleReplyInputChange(entry.id, comment.id, e.target.value)}
-                    rows={2}
-                    className="flex-1 rounded-lg border border-tape-beige bg-white px-2 py-1 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
-                    placeholder="返信を入力..."
-                  />
-                  <Button
-                    size="sm"
-                    className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
-                    disabled={!replyForm.value.trim() || replyForm.submitting}
-                    onClick={() => handleReplySubmit(entry.id, comment.id)}
-                  >
-                    {replyForm.submitting ? "送信中..." : "返信"}
-                  </Button>
-                </div>
-              )}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-3 space-y-3">
-                  {renderComments(entry, comment.replies, depth + 1)}
-                </div>
-              )}
+const MAX_THREAD_INDENT = 6;
+const THREAD_INDENT_PX = 28;
+
+const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): JSX.Element[] => {
+  return comments.flatMap((comment) => {
+    const replyForm = entry.replyForms?.[comment.id];
+    const indentLevel = Math.min(depth, MAX_THREAD_INDENT);
+    const indentStyle: CSSProperties | undefined = indentLevel
+      ? { marginLeft: `${indentLevel * THREAD_INDENT_PX}px` }
+      : undefined;
+
+    const commentNode = (
+      <div
+        key={comment.id}
+        id={`comment-${comment.id}`}
+        style={indentStyle}
+        className="relative flex gap-2 rounded-2xl border border-[#f5ded0] bg-white px-3 py-3 shadow-[0_6px_18px_rgba(81,67,60,0.05)]"
+      >
+        {indentLevel > 0 && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -left-5 top-2 bottom-2 hidden sm:block w-px bg-[#f4cdbd]"
+          />
+        )}
+        <img
+          src={comment.author.avatarUrl ?? "https://placehold.co/32x32/F5F2EA/5C554F?text=User"}
+          alt={comment.author.displayName}
+          className="h-8 w-8 rounded-full object-cover border bg-[#fff8f2]"
+          style={getAvatarBorderStyle(comment.author.role, comment.author.diaryCount)}
+        />
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-tape-brown">{comment.author.displayName}</p>
+              <p className="text-[11px] text-tape-light-brown">
+                {new Date(comment.createdAt).toLocaleString("ja-JP")}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-tape-pink">
+              <button onClick={() => toggleReplyForm(entry.id, comment.id)} className="hover:underline">
+                {replyForm ? "返信を閉じる" : "返信する"}
+              </button>
+              <button onClick={() => handleDeleteComment(entry.id, comment.id)} className="hover:underline">
+                削除
+              </button>
             </div>
           </div>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-tape-brown">{comment.content}</p>
+          {replyForm && (
+            <div className="mt-3 flex gap-2">
+              <textarea
+                value={replyForm.value}
+                onChange={(e) => handleReplyInputChange(entry.id, comment.id, e.target.value)}
+                rows={2}
+                className="flex-1 rounded-lg border border-tape-beige bg-white px-2 py-1 text-sm text-tape-brown focus:border-tape-pink focus:outline-none focus:ring-1 focus:ring-tape-pink"
+                placeholder="返信を入力..."
+              />
+              <Button
+                size="sm"
+                className="bg-tape-pink text-tape-brown hover:bg-tape-pink/90"
+                disabled={!replyForm.value.trim() || replyForm.submitting}
+                onClick={() => handleReplySubmit(entry.id, comment.id)}
+              >
+                {replyForm.submitting ? "送信中..." : "返信"}
+              </Button>
+            </div>
+          )}
         </div>
-      );
-    });
-  };
+      </div>
+    );
+
+    const childNodes = comment.replies && comment.replies.length > 0
+      ? renderComments(entry, comment.replies, depth + 1)
+      : [];
+
+    return [commentNode, ...childNodes];
+  });
+};
 
   const timeline = useMemo(() => entries, [entries]);
 
