@@ -486,7 +486,7 @@ export function FeedPageClient() {
     }
   };
 
-const MAX_THREAD_INDENT = 6;
+const MAX_THREAD_INDENT = 1;
 const THREAD_INDENT_PX = 28;
 
 const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): JSX.Element[] => {
