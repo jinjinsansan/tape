@@ -67,6 +67,7 @@ type FeedEntry = {
   shareCount: number;
   commentCount: number;
   comments?: FeedComment[];
+  commentsCollapsed?: boolean;
   showComments?: boolean;
   commentInput?: string;
   submittingComment?: boolean;
@@ -87,6 +88,64 @@ const reactionOptions = [
   { id: "insight", label: "💡" },
   { id: "support", label: "🤝" }
 ];
+
+const COMMENT_COLLAPSE_THRESHOLD = 10;
+
+type FlattenedComment = {
+  comment: FeedComment;
+  depth: number;
+};
+
+const flattenComments = (comments: FeedComment[], depth = 0): FlattenedComment[] => {
+  return comments.flatMap((comment) => [
+    { comment, depth },
+    ...flattenComments(comment.replies, depth + 1)
+  ]);
+};
+
+const buildParentMap = (
+  comments: FeedComment[],
+  parentId: string | null = null,
+  map = new Map<string, string | null>()
+): Map<string, string | null> => {
+  comments.forEach((comment) => {
+    map.set(comment.id, parentId);
+    buildParentMap(comment.replies, comment.id, map);
+  });
+  return map;
+};
+
+const computeVisibleComments = (
+  comments: FeedComment[] | undefined,
+  collapsed: boolean
+): { visible: FlattenedComment[]; hiddenCount: number } => {
+  if (!comments) return { visible: [], hiddenCount: 0 };
+
+  const flattened = flattenComments(comments);
+  if (!collapsed || flattened.length <= COMMENT_COLLAPSE_THRESHOLD) {
+    return { visible: flattened, hiddenCount: 0 };
+  }
+
+  const startIndex = Math.max(flattened.length - COMMENT_COLLAPSE_THRESHOLD, 0);
+  const visibleIds = new Set(flattened.slice(startIndex).map(({ comment }) => comment.id));
+  const parentMap = buildParentMap(comments);
+
+  const addAncestors = (commentId: string) => {
+    let current = parentMap.get(commentId);
+    while (current) {
+      if (!visibleIds.has(current)) {
+        visibleIds.add(current);
+      }
+      current = parentMap.get(current) ?? null;
+    }
+  };
+
+  [...visibleIds].forEach((id) => addAncestors(id));
+
+  const visible = flattened.filter(({ comment }) => visibleIds.has(comment.id));
+  const hiddenCount = flattened.length - visible.length;
+  return { visible, hiddenCount };
+};
 
 const formatDateTime = (value: string | null) => {
   if (!value) return "";
@@ -315,6 +374,7 @@ export function FeedPageClient() {
                 ...entry,
                 comments: normalized,
                 commentCount: total,
+                commentsCollapsed: entry.commentsCollapsed ?? total > COMMENT_COLLAPSE_THRESHOLD,
                 commentsError: undefined,
                 commentsLoading: false
               }
@@ -373,13 +433,16 @@ export function FeedPageClient() {
       setEntries((prev) =>
         prev.map((e) => {
           if (e.id !== entryId) return e;
+          const newCount = e.commentCount + 1;
+          const wasCollapsed = e.commentsCollapsed ?? (e.commentCount > COMMENT_COLLAPSE_THRESHOLD);
           return {
             ...e,
             comments: addCommentToTree(e.comments, newComment),
             commentInput: "",
             submittingComment: false,
-            commentCount: e.commentCount + 1,
-            showComments: true
+            commentCount: newCount,
+            showComments: true,
+            commentsCollapsed: newCount > COMMENT_COLLAPSE_THRESHOLD ? wasCollapsed : false
           };
         })
       );
@@ -446,11 +509,14 @@ export function FeedPageClient() {
           const forms = { ...(item.replyForms ?? {}) };
           delete forms[commentId];
           const hasForms = Object.keys(forms).length > 0;
+          const newCount = item.commentCount + 1;
+          const wasCollapsed = item.commentsCollapsed ?? (item.commentCount > COMMENT_COLLAPSE_THRESHOLD);
           return {
             ...item,
             comments: addCommentToTree(item.comments, newComment),
-            commentCount: item.commentCount + 1,
-            replyForms: hasForms ? forms : undefined
+            commentCount: newCount,
+            replyForms: hasForms ? forms : undefined,
+            commentsCollapsed: newCount > COMMENT_COLLAPSE_THRESHOLD ? wasCollapsed : false
           };
         })
       );
@@ -486,18 +552,29 @@ export function FeedPageClient() {
     }
   };
 
+  const handleToggleCommentCollapse = (entryId: string) => {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        const total = countComments(entry.comments) || entry.commentCount;
+        const current = entry.commentsCollapsed ?? (total > COMMENT_COLLAPSE_THRESHOLD);
+        return { ...entry, commentsCollapsed: !current };
+      })
+    );
+  };
+
 const MAX_THREAD_INDENT = 1;
 const THREAD_INDENT_PX = 28;
 
-const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): JSX.Element[] => {
-  return comments.flatMap((comment) => {
+const renderCommentList = (entry: FeedEntry, items: FlattenedComment[]): JSX.Element[] => {
+  return items.map(({ comment, depth }) => {
     const replyForm = entry.replyForms?.[comment.id];
     const indentLevel = Math.min(depth, MAX_THREAD_INDENT);
     const indentStyle: CSSProperties | undefined = indentLevel
       ? { marginLeft: `${indentLevel * THREAD_INDENT_PX}px` }
       : undefined;
 
-    const commentNode = (
+    return (
       <div
         key={comment.id}
         id={`comment-${comment.id}`}
@@ -556,12 +633,6 @@ const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): J
         </div>
       </div>
     );
-
-    const childNodes = comment.replies && comment.replies.length > 0
-      ? renderComments(entry, comment.replies, depth + 1)
-      : [];
-
-    return [commentNode, ...childNodes];
   });
 };
 
@@ -740,9 +811,27 @@ const renderComments = (entry: FeedEntry, comments: FeedComment[], depth = 0): J
                         コメントを読み込み中です...
                       </div>
                     ) : entry.comments && entry.comments.length > 0 ? (
-                      <div className="space-y-3">
-                        {renderComments(entry, entry.comments)}
-                      </div>
+                      (() => {
+                        const isCollapsed = entry.commentsCollapsed ?? (entry.commentCount > COMMENT_COLLAPSE_THRESHOLD);
+                        const { visible, hiddenCount } = computeVisibleComments(entry.comments, isCollapsed);
+
+                        return (
+                          <div className="space-y-3">
+                            {hiddenCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCommentCollapse(entry.id)}
+                                className="flex w-full items-center justify-center rounded-lg border border-dashed border-tape-beige bg-tape-cream/40 px-3 py-2 text-xs text-tape-light-brown hover:bg-tape-cream/70"
+                              >
+                                {isCollapsed
+                                  ? `過去のコメント ${hiddenCount}件を表示`
+                                  : "最新10件だけ表示"}
+                              </button>
+                            )}
+                            {renderCommentList(entry, visible)}
+                          </div>
+                        );
+                      })()
                     ) : (
                       <p className="text-xs text-tape-light-brown">まだコメントがありません</p>
                     )}
