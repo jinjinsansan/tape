@@ -304,7 +304,7 @@ export function CounselorPage({ slug }: { slug: string }) {
         throw new Error(payload?.error ?? "レビューの投稿に失敗しました");
       }
       setReviewForm({ rating: 5, comment: "" });
-      setReviewMessage("レビューを投稿しました（審査中です）");
+      setReviewMessage("レビューを投稿しました");
       await loadReviews("initial");
     } catch (err) {
       setReviewMessage(err instanceof Error ? err.message : "レビューの投稿に失敗しました");
@@ -345,7 +345,7 @@ export function CounselorPage({ slug }: { slug: string }) {
     );
   }
 
-  if (!counselor || error && !booking) {
+  if (!counselor || (error && !booking)) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-tape-pink">
         {error ?? "カウンセラー情報が見つかりませんでした。"}

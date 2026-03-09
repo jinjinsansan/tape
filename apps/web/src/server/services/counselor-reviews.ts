@@ -199,7 +199,7 @@ export const createCounselorReview = async ({ slug, rating, comment, userId }: R
       booking_id: eligibility.eligibleBookingId,
       rating,
       comment,
-      status: "pending"
+      status: "approved"
     })
     .select("id, rating, comment, status, created_at")
     .single();
