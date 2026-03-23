@@ -67,11 +67,22 @@ function SubscribeContent() {
           </p>
         </div>
 
+        {/* 7日間無料バナー */}
+        <div className="rounded-2xl bg-gradient-to-r from-[#d59da9] to-[#e8b4bc] p-5 text-center text-white shadow-md">
+          <p className="text-lg font-bold">7日間完全無料でお試しいただけます</p>
+          <p className="mt-1 text-sm opacity-90">
+            無料期間中はすべての機能が使い放題。期間内のキャンセルで料金は一切かかりません。
+          </p>
+        </div>
+
         {/* プラン説明 */}
         <div className="rounded-2xl border border-[#f0e4d8] bg-white p-6 shadow-sm space-y-4">
-          <div className="flex items-baseline justify-center gap-1">
-            <span className="text-3xl font-bold text-[#51433c]">¥1,980</span>
-            <span className="text-[#a1928b]">/ 月</span>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-[#d59da9]">7日間無料 → その後</p>
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-3xl font-bold text-[#51433c]">¥1,980</span>
+              <span className="text-[#a1928b]">/ 月（税込）</span>
+            </div>
           </div>
           <ul className="space-y-2 text-sm text-[#5a4a42]">
             <li className="flex items-center gap-2">
@@ -142,9 +153,16 @@ function SubscribeContent() {
           )}
         </div>
 
-        <p className="text-center text-xs text-[#a1928b]">
-          PayPalアカウントまたはクレジットカードでお支払いいただけます
-        </p>
+        <div className="text-center space-y-2">
+          <p className="text-xs text-[#a1928b]">
+            PayPalアカウントまたはクレジットカードでお支払いいただけます
+          </p>
+          <p className="text-xs text-[#a1928b]">
+            最初の7日間は無料です。無料期間中にキャンセルすれば料金はかかりません。
+            <br />
+            8日目以降、月額¥1,980が自動的に課金されます。
+          </p>
+        </div>
       </div>
     </div>
   );
