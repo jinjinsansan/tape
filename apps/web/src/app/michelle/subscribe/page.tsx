@@ -2,9 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 export default function MichelleSubscribePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p>読み込み中...</p></div>}>
+      <SubscribeContent />
+    </Suspense>
+  );
+}
+
+function SubscribeContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sid");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
