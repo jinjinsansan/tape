@@ -10,17 +10,17 @@ export interface PostResult {
 }
 
 export async function postToX(text: string): Promise<PostResult> {
-  const consumerKey = process.env.X_API_KEY;
-  const consumerSecret = process.env.X_API_SECRET;
-  const accessToken = process.env.X_ACCESS_TOKEN;
-  const tokenSecret = process.env.X_ACCESS_TOKEN_SECRET;
+  const consumerKey = process.env.X_API_KEY?.trim();
+  const consumerSecret = process.env.X_API_SECRET?.trim();
+  const accessToken = process.env.X_ACCESS_TOKEN?.trim();
+  const tokenSecret = process.env.X_ACCESS_TOKEN_SECRET?.trim();
 
   if (!consumerKey || !consumerSecret || !accessToken || !tokenSecret) {
     return { success: false, error: "X API credentials not configured" };
   }
 
   try {
-    console.log(`[X API] Token starts with: ${accessToken.substring(0, 20)}...`);
+    console.log(`[X API] consumerKey length: ${consumerKey.length}, accessToken length: ${accessToken.length}, tokenSecret length: ${tokenSecret.length}`);
 
     const oauth = new OAuth({
       consumer: { key: consumerKey, secret: consumerSecret },
