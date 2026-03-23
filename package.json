@@ -29,8 +29,7 @@
     "@paypal/react-paypal-js": "^8.9.2",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
-    "tailwind-merge": "^3.4.0",
-    "twitter-api-v2": "^1.29.0"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@bubblewrap/cli": "^1.24.1",
