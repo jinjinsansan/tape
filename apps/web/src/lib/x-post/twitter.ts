@@ -19,6 +19,9 @@ export async function postToX(text: string): Promise<PostResult> {
   }
 
   try {
+    // デバッグ: トークンの先頭数文字を確認
+    console.log(`[X API] Token starts with: ${accessToken.substring(0, 20)}...`);
+
     const url = "https://api.twitter.com/2/tweets";
     const method = "POST";
 

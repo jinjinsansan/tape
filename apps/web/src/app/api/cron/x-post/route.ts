@@ -28,9 +28,14 @@ function getCronSlot(): "morning" | "noon" | "night" {
 export async function GET(request: Request) {
   // Vercel Cron認証
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    console.log(`[X Auto Post] Auth failed. Header: "${authHeader?.substring(0, 20)}...", CRON_SECRET set: ${!!cronSecret}`);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // X API環境変数の確認ログ
+  console.log(`[X Auto Post] X_API_KEY set: ${!!process.env.X_API_KEY}, X_ACCESS_TOKEN set: ${!!process.env.X_ACCESS_TOKEN}`);
 
   const slot = getCronSlot();
   console.log(`[X Auto Post] Cron triggered: slot=${slot}`);
