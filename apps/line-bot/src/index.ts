@@ -89,46 +89,47 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
 
     // ── 「仁さんに連絡したい」トリガー ──
     if (userMessage === "仁さんに連絡したい") {
-      // プレミアムプラン or トライアル中のみ利用可能
+      const { supabase: sb } = await import("./supabase.js");
       const access = await checkAccess(session.id);
-      const { data: sub } = await (await import("./supabase.js")).supabase
+      const { data: sub } = await sb
         .from("line_bot_subscriptions")
         .select("plan_amount, status")
         .eq("session_id", session.id)
         .maybeSingle();
 
-      const isPremium = sub?.plan_amount === 1980 && sub?.status === "active";
+      const planAmount = sub?.plan_amount ?? 0;
+      const isPremiumOrHigher = (planAmount >= 1980) && sub?.status === "active";
       const isTrial = access.status === "trial";
 
-      if (!isPremium && !isTrial) {
+      if (!isPremiumOrHigher && !isTrial) {
         await client.replyMessage({
           replyToken,
           messages: [{
             type: "text",
-            text: "「仁さんに相談」はプレミアムプラン（月額1,980円）限定の機能です 🌸\n\nプレミアムプランにアップグレードすると、仁さんに直接相談できます（月20回まで）。\n\n→ https://namisapo.app/michelle/subscribe" + (session.id ? `?sid=${session.id}` : ""),
+            text: "「仁さんに相談」はスタンダードプラン以上の機能です 🌸\n\n・スタンダード（¥1,980/月）→ 月10回\n・プレミアム（¥2,980/月）→ 月20回\n\n→ https://namisapo.app/michelle/subscribe" + (session.id ? `?sid=${session.id}` : ""),
           }],
         });
         return;
       }
 
-      // 月20回制限チェック（プレミアムの場合）
-      if (isPremium) {
+      // 月間上限チェック
+      if (isPremiumOrHigher) {
+        const maxTurns = planAmount >= 2980 ? 20 : 10;
         const thisMonth = new Date();
         thisMonth.setDate(1);
         thisMonth.setHours(0, 0, 0, 0);
-        const { count } = await (await import("./supabase.js")).supabase
-          .from("line_bot_messages")
+        const { count } = await sb
+          .from("line_contact_tickets")
           .select("id", { count: "exact", head: true })
           .eq("session_id", session.id)
-          .eq("content", "【仁さんへの連絡】")
           .gte("created_at", thisMonth.toISOString());
 
-        if ((count ?? 0) >= 20) {
+        if ((count ?? 0) >= maxTurns) {
           await client.replyMessage({
             replyToken,
             messages: [{
               type: "text",
-              text: "今月の仁さんへの相談回数（20回）に達しました。来月またご利用いただけます 🌸",
+              text: `今月の仁さんへの相談回数（${maxTurns}回）に達しました。来月またご利用いただけます 🌸`,
             }],
           });
           return;
@@ -158,32 +159,100 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
         return;
       }
 
-      // 回数カウント用マーカーを保存
-      const { saveMessage: saveLMsg } = await import("./session.js");
-      await saveLMsg(session.id, "system", "【仁さんへの連絡】");
+      const { supabase: sb } = await import("./supabase.js");
 
-      // Telegramに転送
+      // チケット作成（連番ID）
+      const { data: ticket } = await sb
+        .from("line_contact_tickets")
+        .insert({
+          session_id: session.id,
+          line_user_id: userId,
+          display_name: displayName ?? null,
+          message: userMessage,
+        })
+        .select("id")
+        .single();
+
+      const ticketId = ticket?.id ?? "?";
+
+      // ユーザーカルテ取得（メモリ）
+      const { data: memories } = await sb
+        .from("telegram_bot_user_memories")
+        .select("category, content, metadata")
+        .eq("session_id", session.id)
+        .order("importance", { ascending: false })
+        .limit(20);
+
+      const { data: summaryData } = await sb
+        .from("telegram_bot_user_summaries")
+        .select("summary, person_map")
+        .eq("session_id", session.id)
+        .maybeSingle();
+
+      // カルテ構築
+      const persons = (memories ?? []).filter((m: any) => m.category === "person");
+      const tapes = (memories ?? []).filter((m: any) => m.category === "duct_tape");
+      const episodes = (memories ?? []).filter((m: any) => m.category === "episode").slice(0, 3);
+
+      let carte = "";
+      if (summaryData?.summary) {
+        carte += `\n📋 <b>サマリー:</b> ${summaryData.summary}`;
+      }
+      if (persons.length > 0) {
+        carte += `\n👥 <b>人物MAP:</b>`;
+        for (const p of persons) {
+          const meta = p.metadata as any;
+          const label = meta?.name ? `${meta.name}(${meta.relationship ?? ""})` : "";
+          carte += `\n  ・${label}: ${p.content.substring(0, 50)}`;
+        }
+      }
+      if (tapes.length > 0) {
+        carte += `\n🏷 <b>ガムテープ:</b>`;
+        for (const t of tapes) {
+          carte += `\n  ・${t.content.substring(0, 50)}`;
+        }
+      }
+      if (episodes.length > 0) {
+        carte += `\n📝 <b>直近の出来事:</b>`;
+        for (const e of episodes) {
+          carte += `\n  ・${e.content.substring(0, 50)}`;
+        }
+      }
+
+      // Telegram通知（カルテ付き）
       const name = displayName ?? "不明";
       const telegramMsg =
-        `📩 <b>LINEユーザーからのお問い合わせ</b>\n\n` +
-        `👤 ${name}\n` +
-        `🆔 <code>${userId}</code>\n\n` +
-        `💬 ${userMessage}\n\n` +
-        `返信: <code>/reply ${userId} 返信テキスト</code>`;
+        `📩 <b>新規相談 #${ticketId}</b>\n\n` +
+        `👤 ${name}` +
+        carte +
+        `\n\n💬 「${userMessage}」\n\n` +
+        `/resolve ${ticketId} ここに返信テキスト\n` +
+        `/history ${ticketId}`;
 
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID;
       if (botToken && chatId) {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: telegramMsg, parse_mode: "HTML" }),
-        }).catch(() => {});
+        for (let i = 0; i < 3; i++) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: telegramMsg, parse_mode: "HTML" }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            break;
+          } catch {
+            if (i < 2) await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
       }
 
       await client.replyMessage({
         replyToken,
-        messages: [{ type: "text", text: `仁さんにメッセージを送りました ✨\nお返事をお待ちくださいね。` }],
+        messages: [{ type: "text", text: `仁さんにメッセージを送りました（相談 #${ticketId}）✨\nお返事をお待ちくださいね。` }],
       });
       return;
     }

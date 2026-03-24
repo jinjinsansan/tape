@@ -3,6 +3,7 @@ import { Bot, GrammyError, HttpError } from "grammy";
 import { env } from "./env.js";
 import { ensureSession, updateDisplayName, clearHistory } from "./session.js";
 import { chat } from "./michelle.js";
+import { startXPostCron } from "./x-post.js";
 
 const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
@@ -64,6 +65,152 @@ bot.command("reset", async (ctx) => {
   await ctx.reply("会話をリセットしました 🌸\n新しい気持ちで話しかけてね！");
 });
 
+// ── /resolve — チケット番号で返信 ────────────────────────
+bot.command("resolve", async (ctx) => {
+  const text = ctx.match?.trim();
+  if (!text) {
+    await ctx.reply("使い方: /resolve チケット番号 返信テキスト\n\n例: /resolve 1 お気持ちわかります。");
+    return;
+  }
+
+  const spaceIdx = text.indexOf(" ");
+  if (spaceIdx === -1) {
+    await ctx.reply("返信テキストを入力してください。\n/resolve 1 返信テキスト");
+    return;
+  }
+
+  const ticketId = parseInt(text.substring(0, spaceIdx).trim(), 10);
+  const replyMessage = text.substring(spaceIdx + 1).trim();
+
+  if (isNaN(ticketId) || !replyMessage) {
+    await ctx.reply("チケット番号と返信テキストが必要です。\n/resolve 1 返信テキスト");
+    return;
+  }
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    // チケット取得
+    const { data: ticket } = await sb
+      .from("line_contact_tickets")
+      .select("id, line_user_id, display_name, status")
+      .eq("id", ticketId)
+      .single();
+
+    if (!ticket) {
+      await ctx.reply(`❌ チケット #${ticketId} が見つかりません。`);
+      return;
+    }
+
+    if (ticket.status === "resolved") {
+      await ctx.reply(`⚠️ チケット #${ticketId} は既に対応済みです。`);
+      return;
+    }
+
+    // LINE Botの返信APIを呼ぶ
+    const lineApiSecret = process.env.INTERNAL_API_SECRET ?? "michelle-internal";
+    const lineApiUrl = process.env.LINE_BOT_API_URL ?? "http://localhost:3001";
+
+    const res = await fetch(`${lineApiUrl}/reply-to-line`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: ticket.line_user_id,
+        message: replyMessage,
+        secret: lineApiSecret,
+      }),
+    });
+
+    if (res.ok) {
+      // チケットを resolved に更新
+      await sb
+        .from("line_contact_tickets")
+        .update({
+          status: "resolved",
+          resolved_message: replyMessage,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq("id", ticketId);
+
+      await ctx.reply(
+        `✅ #${ticketId} ${ticket.display_name ?? ""}さんに返信しました。\n\n送信: ${replyMessage.substring(0, 100)}`,
+      );
+    } else {
+      await ctx.reply(`❌ 送信失敗: ${await res.text()}`);
+    }
+  } catch (error) {
+    await ctx.reply(`❌ エラー: ${error instanceof Error ? error.message : "Unknown"}`);
+  }
+});
+
+// ── /history — ユーザーの直近会話履歴を表示 ─────────────
+bot.command("history", async (ctx) => {
+  const text = ctx.match?.trim();
+  if (!text) {
+    await ctx.reply("使い方: /history チケット番号\n\n例: /history 1");
+    return;
+  }
+
+  const ticketId = parseInt(text, 10);
+  if (isNaN(ticketId)) {
+    await ctx.reply("チケット番号を入力してください。\n/history 1");
+    return;
+  }
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    // チケットからセッションIDを取得
+    const { data: ticket } = await sb
+      .from("line_contact_tickets")
+      .select("id, session_id, display_name, message, created_at")
+      .eq("id", ticketId)
+      .single();
+
+    if (!ticket) {
+      await ctx.reply(`❌ チケット #${ticketId} が見つかりません。`);
+      return;
+    }
+
+    // 直近の会話履歴を取得
+    const { data: messages } = await sb
+      .from("line_bot_messages")
+      .select("role, content, created_at")
+      .eq("session_id", ticket.session_id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (!messages || messages.length === 0) {
+      await ctx.reply(`#${ticketId} ${ticket.display_name ?? ""}さんの会話履歴はありません。`);
+      return;
+    }
+
+    let history = `📜 #${ticketId} ${ticket.display_name ?? ""}さんの直近会話:\n\n`;
+    for (const m of messages.reverse()) {
+      const role = m.role === "user" ? "👤" : m.role === "assistant" ? "🌸" : "⚙️";
+      const content = m.content.substring(0, 100);
+      history += `${role} ${content}\n\n`;
+    }
+
+    // 長すぎる場合は分割
+    if (history.length > 4000) {
+      history = history.substring(0, 4000) + "\n\n...（省略）";
+    }
+
+    await ctx.reply(history);
+  } catch (error) {
+    await ctx.reply(`❌ エラー: ${error instanceof Error ? error.message : "Unknown"}`);
+  }
+});
+
 // ── メッセージハンドラ ────────────────────────────────────
 bot.on("message:text", async (ctx) => {
   const telegramChatId = ctx.chat.id;
@@ -117,6 +264,7 @@ bot.catch((err) => {
 
 // ── Start ──────────────────────────────────────────────
 console.log("🌸 Michelle Telegram Bot starting...");
+startXPostCron();
 bot.start({
   onStart: () => console.log("✨ Michelle is online!"),
 });

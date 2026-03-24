@@ -13,7 +13,54 @@ export default function MichelleSubscribePage() {
   );
 }
 
-type PlanType = "light" | "premium" | null;
+type PlanType = "light" | "standard" | "premium" | null;
+
+const PLANS: Record<Exclude<PlanType, null>, {
+  name: string;
+  price: string;
+  amount: number;
+  envKey: string;
+  features: { text: string; included: boolean }[];
+  badge?: string;
+}> = {
+  light: {
+    name: "ライト",
+    price: "¥980",
+    amount: 980,
+    envKey: "NEXT_PUBLIC_MICHELLE_PLAN_ID",
+    features: [
+      { text: "ミシェルAI相談し放題", included: true },
+      { text: "あなた専用の記憶", included: true },
+      { text: "人物MAP", included: true },
+      { text: "仁さんに相談", included: false },
+    ],
+  },
+  standard: {
+    name: "スタンダード",
+    price: "¥1,980",
+    amount: 1980,
+    envKey: "NEXT_PUBLIC_MICHELLE_STANDARD_PLAN_ID",
+    badge: "人気",
+    features: [
+      { text: "ミシェルAI相談し放題", included: true },
+      { text: "あなた専用の記憶", included: true },
+      { text: "人物MAP", included: true },
+      { text: "仁さんに相談（月10回）", included: true },
+    ],
+  },
+  premium: {
+    name: "プレミアム",
+    price: "¥2,980",
+    amount: 2980,
+    envKey: "NEXT_PUBLIC_MICHELLE_PREMIUM_PLAN_ID",
+    features: [
+      { text: "ミシェルAI相談し放題", included: true },
+      { text: "あなた専用の記憶", included: true },
+      { text: "人物MAP", included: true },
+      { text: "仁さんに相談（月20回）", included: true },
+    ],
+  },
+};
 
 function SubscribeContent() {
   const searchParams = useSearchParams();
@@ -22,8 +69,11 @@ function SubscribeContent() {
   const [selectedPlan, setSelectedPlan] = useState<PlanType>(null);
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-  const lightPlanId = process.env.NEXT_PUBLIC_MICHELLE_PLAN_ID;
-  const premiumPlanId = process.env.NEXT_PUBLIC_MICHELLE_PREMIUM_PLAN_ID;
+  const planIds: Record<string, string | undefined> = {
+    light: process.env.NEXT_PUBLIC_MICHELLE_PLAN_ID,
+    standard: process.env.NEXT_PUBLIC_MICHELLE_STANDARD_PLAN_ID,
+    premium: process.env.NEXT_PUBLIC_MICHELLE_PREMIUM_PLAN_ID,
+  };
 
   if (!paypalClientId) {
     return (
@@ -42,9 +92,7 @@ function SubscribeContent() {
           <p className="text-[#5a4a42]">
             サブスクリプションが有効になりました。
             <br />
-            LINEでミシェルに話しかけてみてください。
-            <br />
-            あなた専用の心理カウンセラーとして、ずっとそばにいます ✨
+            LINEでミシェルに話しかけてみてください ✨
           </p>
           <p className="text-sm text-[#a1928b]">このページは閉じて大丈夫です</p>
         </div>
@@ -52,11 +100,11 @@ function SubscribeContent() {
     );
   }
 
-  const activePlanId = selectedPlan === "premium" ? premiumPlanId : lightPlanId;
+  const activePlanId = selectedPlan ? planIds[selectedPlan] : undefined;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="mx-auto max-w-lg space-y-8">
+      <div className="mx-auto max-w-2xl space-y-8">
         {/* ヘッダー */}
         <div className="text-center space-y-4">
           <Image src="/michelle-icon.png" alt="ミシェル" width={96} height={96} className="mx-auto rounded-full shadow-md" />
@@ -92,88 +140,53 @@ function SubscribeContent() {
           </div>
         </a>
 
-        {/* プラン比較 */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* ライトプラン */}
-          <button
-            onClick={() => setSelectedPlan("light")}
-            className={`rounded-2xl border-2 p-5 text-left transition-all ${
-              selectedPlan === "light"
-                ? "border-[#d59da9] bg-[#FFF8F0] shadow-md"
-                : "border-[#f0e4d8] bg-white hover:border-[#d59da9]/50"
-            }`}
-          >
-            <p className="text-xs font-medium text-[#d59da9]">7日間無料</p>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-[#51433c]">¥980</span>
-              <span className="text-xs text-[#a1928b]">/月</span>
-            </div>
-            <p className="mt-2 text-sm font-semibold text-[#51433c]">ライトプラン</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-[#5a4a42]">
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>ミシェルAI相談し放題</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>あなた専用の記憶</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>人物MAP</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#a1928b] mt-0.5">—</span>
-                <span className="text-[#a1928b]">仁さんに相談</span>
-              </li>
-            </ul>
-          </button>
-
-          {/* プレミアムプラン */}
-          <button
-            onClick={() => setSelectedPlan("premium")}
-            className={`relative rounded-2xl border-2 p-5 text-left transition-all ${
-              selectedPlan === "premium"
-                ? "border-[#5a4a42] bg-[#FFF8F0] shadow-md"
-                : "border-[#f0e4d8] bg-white hover:border-[#5a4a42]/50"
-            }`}
-          >
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#5a4a42] px-3 py-0.5 text-[10px] font-bold text-white">
-              おすすめ
-            </span>
-            <p className="text-xs font-medium text-[#5a4a42]">7日間無料</p>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-[#51433c]">¥1,980</span>
-              <span className="text-xs text-[#a1928b]">/月</span>
-            </div>
-            <p className="mt-2 text-sm font-semibold text-[#51433c]">プレミアムプラン</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-[#5a4a42]">
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>ミシェルAI相談し放題</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>あなた専用の記憶</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span>人物MAP</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-[#d59da9] mt-0.5">✓</span>
-                <span className="font-semibold">仁さんに相談（月20回）</span>
-              </li>
-            </ul>
-          </button>
+        {/* 3プラン比較 */}
+        <div className="grid grid-cols-3 gap-3">
+          {(["light", "standard", "premium"] as const).map((key) => {
+            const plan = PLANS[key];
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedPlan(key)}
+                className={`relative rounded-2xl border-2 p-4 text-left transition-all ${
+                  selectedPlan === key
+                    ? "border-[#d59da9] bg-[#FFF8F0] shadow-md"
+                    : "border-[#f0e4d8] bg-white hover:border-[#d59da9]/50"
+                }`}
+              >
+                {plan.badge && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[#d59da9] px-3 py-0.5 text-[10px] font-bold text-white whitespace-nowrap">
+                    {plan.badge}
+                  </span>
+                )}
+                <p className="text-[10px] font-medium text-[#d59da9]">7日間無料</p>
+                <div className="mt-1 flex items-baseline gap-0.5">
+                  <span className="text-xl font-bold text-[#51433c]">{plan.price}</span>
+                  <span className="text-[10px] text-[#a1928b]">/月</span>
+                </div>
+                <p className="mt-1 text-xs font-semibold text-[#51433c]">{plan.name}</p>
+                <ul className="mt-2 space-y-1">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-1 text-[10px]">
+                      <span className={f.included ? "text-[#d59da9]" : "text-[#ccc]"}>
+                        {f.included ? "✓" : "—"}
+                      </span>
+                      <span className={f.included ? "text-[#5a4a42]" : "text-[#bbb]"}>
+                        {f.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            );
+          })}
         </div>
 
         {/* PayPal ボタン */}
         {selectedPlan && activePlanId && (
           <div className="rounded-2xl border border-[#f0e4d8] bg-white p-6 space-y-3">
             <p className="text-center text-sm font-medium text-[#51433c]">
-              {selectedPlan === "premium" ? "プレミアムプラン ¥1,980/月" : "ライトプラン ¥980/月"}
-              で申し込む
+              {PLANS[selectedPlan].name}プラン {PLANS[selectedPlan].price}/月 で申し込む
             </p>
             <PayPalScriptProvider
               options={{
@@ -201,6 +214,7 @@ function SubscribeContent() {
                         subscriptionId: data.subscriptionID,
                         sessionId,
                         plan: selectedPlan,
+                        amount: PLANS[selectedPlan].amount,
                       }),
                     });
                     setStatus("success");
@@ -211,19 +225,14 @@ function SubscribeContent() {
                 onError={() => setStatus("error")}
               />
             </PayPalScriptProvider>
-
             {status === "error" && (
-              <p className="text-center text-sm text-red-500">
-                決済に失敗しました。もう一度お試しください。
-              </p>
+              <p className="text-center text-sm text-red-500">決済に失敗しました。もう一度お試しください。</p>
             )}
           </div>
         )}
 
         {!selectedPlan && (
-          <p className="text-center text-sm text-[#a1928b]">
-            プランを選択してください
-          </p>
+          <p className="text-center text-sm text-[#a1928b]">プランを選択してください</p>
         )}
 
         <div className="text-center space-y-2">
@@ -232,6 +241,9 @@ function SubscribeContent() {
           </p>
           <p className="text-xs text-[#a1928b]">
             最初の7日間は無料です。無料期間中にキャンセルすれば料金はかかりません。
+          </p>
+          <p className="text-xs text-[#a1928b]">
+            ※ 仁さんへの相談回数は上限であり、必ずしもすべてのターンへの返信をお約束するものではございません。
           </p>
         </div>
       </div>

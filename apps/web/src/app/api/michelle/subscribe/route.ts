@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   const subscriptionId = body?.subscriptionId as string | undefined;
   const sessionId = body?.sessionId as string | undefined;
   const plan = (body?.plan as string) ?? "light";
+  const amount = (body?.amount as number) ?? 980;
 
   if (!subscriptionId) {
     return NextResponse.json(
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-    const planAmount = plan === "premium" ? 1980 : 980;
+    const planAmount = amount;
 
     const { error: updateError } = await supabase
       .from("line_bot_subscriptions")
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID;
     if (botToken && chatId) {
-      const planLabel = plan === "premium" ? "プレミアム ¥1,980" : "ライト ¥980";
+      const planNames: Record<string, string> = { light: "ライト", standard: "スタンダード", premium: "プレミアム" };
+      const planLabel = `${planNames[plan] ?? plan} ¥${amount.toLocaleString()}`;
       const msg = `💰 <b>新規サブスクリプション</b>\n\nプラン: ${planLabel}\nSession: ${targetSessionId?.substring(0, 8)}...\nPayPal: ${subscriptionId}`;
       await fetch(
         `https://api.telegram.org/bot${botToken}/sendMessage`,
