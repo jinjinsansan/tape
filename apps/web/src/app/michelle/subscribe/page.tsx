@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { Suspense, useState } from "react";
+import Image from "next/image";
 
 export default function MichelleSubscribePage() {
   return (
@@ -56,7 +57,13 @@ function SubscribeContent() {
       <div className="mx-auto max-w-md space-y-8">
         {/* ヘッダー */}
         <div className="text-center space-y-4">
-          <div className="text-5xl">🌸</div>
+          <Image
+            src="/michelle-icon.png"
+            alt="ミシェル"
+            width={96}
+            height={96}
+            className="mx-auto rounded-full shadow-md"
+          />
           <h1 className="text-2xl font-bold text-[#51433c]">
             ミシェル心理カウンセラー
           </h1>
