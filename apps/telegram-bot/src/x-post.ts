@@ -142,14 +142,23 @@ async function notifyTelegram(message: string): Promise<void> {
   const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID;
   if (!botToken || !chatId) return;
 
-  try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" }),
-    });
-  } catch (e) {
-    console.error("[X Post Notify] Failed:", e);
+  // リトライ付き（VPSからTelegram APIへの接続が不安定なため）
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return;
+    } catch (e) {
+      if (attempt === 2) console.error("[X Post Notify] Failed after 3 attempts:", e);
+      else await new Promise((r) => setTimeout(r, 2000));
+    }
   }
 }
 
@@ -235,8 +244,95 @@ export function startXPostCron(): void {
     executeXPost();
   });
 
+  // ── 1時間ごとのユーザーレポート（毎時00分） ──
+  cron.schedule("0 * * * *", () => {
+    console.log("[Report] Hourly report cron fired");
+    sendHourlyReport();
+  });
+
   console.log("📮 X Auto Post cron scheduled (7:00/12:00/21:00 JST)");
+  console.log("📊 Hourly user report scheduled");
+}
+
+// ── ユーザーレポート ─────────────────────────────
+
+async function sendHourlyReport(): Promise<void> {
+  try {
+    const now = new Date();
+    const jstHour = (now.getUTCHours() + 9) % 24;
+
+    // 深夜帯（0-6時）はレポート不要
+    if (jstHour >= 0 && jstHour < 7) return;
+
+    const today = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+      .toISOString().split("T")[0];
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    // LINE Bot統計
+    const { count: lineTotalUsers } = await supabase
+      .from("line_bot_sessions")
+      .select("id", { count: "exact", head: true });
+
+    const { count: lineActiveToday } = await supabase
+      .from("line_bot_messages")
+      .select("session_id", { count: "exact", head: true })
+      .gte("created_at", today + "T00:00:00+09:00")
+      .eq("role", "user");
+
+    const { count: lineActiveLastHour } = await supabase
+      .from("line_bot_messages")
+      .select("session_id", { count: "exact", head: true })
+      .gte("created_at", oneHourAgo)
+      .eq("role", "user");
+
+    // Telegram Bot統計
+    const { count: tgTotalUsers } = await supabase
+      .from("telegram_bot_sessions")
+      .select("id", { count: "exact", head: true });
+
+    const { count: tgActiveToday } = await supabase
+      .from("telegram_bot_messages")
+      .select("session_id", { count: "exact", head: true })
+      .gte("created_at", today + "T00:00:00+09:00")
+      .eq("role", "user");
+
+    // サブスク統計
+    const { count: trialUsers } = await supabase
+      .from("line_bot_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "trial");
+
+    const { count: activeSubscribers } = await supabase
+      .from("line_bot_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active");
+
+    // メモリ統計
+    const { count: totalMemories } = await supabase
+      .from("telegram_bot_user_memories")
+      .select("id", { count: "exact", head: true });
+
+    const msg =
+      `📊 <b>ミシェル利用レポート</b> ${jstHour}:00 JST\n\n` +
+      `<b>LINE Bot</b>\n` +
+      `├ 総ユーザー: ${lineTotalUsers ?? 0}人\n` +
+      `├ 本日アクティブ: ${lineActiveToday ?? 0}メッセージ\n` +
+      `└ 直近1時間: ${lineActiveLastHour ?? 0}メッセージ\n\n` +
+      `<b>Telegram Bot</b>\n` +
+      `├ 総ユーザー: ${tgTotalUsers ?? 0}人\n` +
+      `└ 本日アクティブ: ${tgActiveToday ?? 0}メッセージ\n\n` +
+      `<b>サブスクリプション</b>\n` +
+      `├ トライアル中: ${trialUsers ?? 0}人\n` +
+      `└ 有料会員: ${activeSubscribers ?? 0}人\n\n` +
+      `<b>メモリ</b>\n` +
+      `└ 総記憶数: ${totalMemories ?? 0}件`;
+
+    await notifyTelegram(msg);
+  } catch (error) {
+    console.error("[Report] Failed:", error);
+  }
 }
 
 // テスト用エクスポート
-export { executeXPost };
+export { executeXPost, sendHourlyReport };
