@@ -80,7 +80,7 @@ function SubscribeContent() {
           <div className="text-center space-y-1">
             <p className="text-sm font-medium text-[#d59da9]">7日間無料 → その後</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-3xl font-bold text-[#51433c]">¥1,980</span>
+              <span className="text-3xl font-bold text-[#51433c]">¥980</span>
               <span className="text-[#a1928b]">/ 月（税込）</span>
             </div>
           </div>
@@ -160,7 +160,7 @@ function SubscribeContent() {
           <p className="text-xs text-[#a1928b]">
             最初の7日間は無料です。無料期間中にキャンセルすれば料金はかかりません。
             <br />
-            8日目以降、月額¥1,980が自動的に課金されます。
+            8日目以降、月額¥980が自動的に課金されます。
           </p>
         </div>
       </div>

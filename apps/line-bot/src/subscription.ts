@@ -59,7 +59,7 @@ export function buildTrialNotice(
   if (remainingDays === 1) {
     return (
       `${name}さん、無料体験期間が明日で終了します 🌸\n\n` +
-      `ミシェルとの会話を続けたい場合は、月額1,980円のサブスクリプションをご検討ください。\n\n` +
+      `ミシェルとの会話を続けたい場合は、月額980円のサブスクリプションをご検討ください。\n\n` +
       `→ ${env.SUBSCRIBE_URL}`
     );
   }
@@ -75,7 +75,7 @@ export function buildExpiredMessage(
     `${name}さん、無料体験期間が終了しました。\n\n` +
     `ミシェルは${name}さんのことを覚えています。\n` +
     `これからも${name}さん専用の心理カウンセラーとして、ずっとそばにいたいです 🌸\n\n` +
-    `月額1,980円で、いつでも好きなだけ相談できます。\n\n` +
+    `月額980円で、いつでも好きなだけ相談できます。\n\n` +
     `→ ${env.SUBSCRIBE_URL}?sid=${sessionId}`
   );
 }

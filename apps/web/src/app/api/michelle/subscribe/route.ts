@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID;
     if (botToken && chatId) {
-      const msg = `💰 <b>新規サブスクリプション</b>\n\nSession: ${targetSessionId?.substring(0, 8)}...\nPayPal: ${subscriptionId}\n月額: ¥1,980`;
+      const msg = `💰 <b>新規サブスクリプション</b>\n\nSession: ${targetSessionId?.substring(0, 8)}...\nPayPal: ${subscriptionId}\n月額: ¥980`;
       await fetch(
         `https://api.telegram.org/bot${botToken}/sendMessage`,
         {
