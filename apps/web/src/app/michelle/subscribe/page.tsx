@@ -202,7 +202,9 @@ function SubscribeContent() {
                 createSubscription={(_data, actions) => {
                   return actions.subscription.create({
                     plan_id: activePlanId,
-                    custom_id: sessionId ? `${sessionId}:${selectedPlan}` : undefined,
+                    // Used by PayPal webhooks to map the subscription back to the user's session.
+                    // Keep it as the raw sessionId (uuid) so server-side filters can match `session_id` directly.
+                    custom_id: sessionId ?? undefined,
                   });
                 }}
                 onApprove={async (data) => {

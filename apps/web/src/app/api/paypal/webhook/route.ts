@@ -24,7 +24,9 @@ export async function POST(request: Request) {
       // サブスクリプション有効化
       case "BILLING.SUBSCRIPTION.ACTIVATED": {
         const subscriptionId = resource.id as string;
-        const customId = resource.custom_id as string | undefined;
+        const customIdRaw = resource.custom_id as string | undefined;
+        // We store session_id as UUID; some clients historically sent `${sessionId}:${plan}`.
+        const sessionIdFromCustomId = customIdRaw?.split(":")[0];
         if (subscriptionId) {
           const now = new Date();
           const periodEnd = new Date(now);
@@ -39,8 +41,8 @@ export async function POST(request: Request) {
               current_period_end: periodEnd.toISOString(),
             })
             .or(
-              customId
-                ? `session_id.eq.${customId},paypal_subscription_id.eq.${subscriptionId}`
+              sessionIdFromCustomId
+                ? `session_id.eq.${sessionIdFromCustomId},paypal_subscription_id.eq.${subscriptionId}`
                 : `paypal_subscription_id.eq.${subscriptionId}`,
             );
 

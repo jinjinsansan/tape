@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "echo 'No tests for line-bot yet'"
   },
   "dependencies": {
     "@line/bot-sdk": "^9.7.0",

@@ -37,11 +37,15 @@ export async function POST(request: Request) {
     // session_id を特定
     let targetSessionId = sessionId;
 
+    // Allow recovering sessionId from PayPal custom_id (e.g. `${sessionId}` or historical `${sessionId}:${plan}`)
     if (!targetSessionId) {
-      return NextResponse.json(
-        { error: "sessionId is required" },
-        { status: 400 },
-      );
+      const customIdRaw = (subscription as any)?.custom_id as string | undefined;
+      const recovered = customIdRaw?.split(":")[0];
+      targetSessionId = recovered;
+    }
+
+    if (!targetSessionId) {
+      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
 
     // サブスクリプションを有効化
