@@ -1,8 +1,7 @@
 /** NAMIDAサポート協会 LINE公式アカウント — AI応答ハンドラー
  *
- * 役割:
- *   ① 苦しみの吐き出し → 受け止め + ミシェルAI LP へ誘導
- *   ② 業務連絡・お問い合わせ → Telegram BOT へチケット転送（/resolve で返信）
+ * 全メッセージにAIが応答 + クイックリプライボタン常時表示
+ * 「お問い合わせ」ボタン → 連絡モード → Telegram転送
  */
 
 import { messagingApi, WebhookEvent } from "@line/bot-sdk";
@@ -23,39 +22,62 @@ export function getNamisapoClient(): messagingApi.MessagingApiClient {
   return client;
 }
 
-// 「お問い合わせ」モード管理
+// 連絡モード管理
 const contactMode = new Map<string, boolean>();
 
 const MICHELLE_LP_URL = "https://namisapo.app/michelle-lp";
+const KANJOU_URL = "https://namisapo.app/diary";
+const LIVE_URL = "https://namisapo.app/live";
 
-const CLASSIFY_PROMPT = `ユーザーのメッセージを分類してください。以下のいずれかで回答してください（1単語のみ）:
-- "business" : 予約・申し込み・キャンセル・料金・住所・営業時間など事務的な質問や業務連絡
-- "talk" : それ以外すべて（挨拶・雑談・悩み・相談・質問・感情吐き出し・テスト送信など）
+// クイックリプライボタン（全返信に付与）
+const QUICK_REPLY_ITEMS: messagingApi.QuickReplyItem[] = [
+  {
+    type: "action",
+    action: { type: "message", label: "🌿 吐き出す", text: "話を聞いてほしい" },
+  },
+  {
+    type: "action",
+    action: { type: "uri", label: "📓 かんじょうにっき", uri: KANJOU_URL },
+  },
+  {
+    type: "action",
+    action: { type: "uri", label: "📺 ライブ勉強会", uri: LIVE_URL },
+  },
+  {
+    type: "action",
+    action: { type: "message", label: "📩 お問い合わせ", text: "お問い合わせ" },
+  },
+];
 
-1単語だけ回答してください。`;
-
-const RESPONSE_PROMPT = `あなたはNAMIDAサポート協会の公式LINEアカウントの応答AIです。
+const SYSTEM_PROMPT = `あなたはNAMIDAサポート協会の公式LINEアカウントの応答AIです。
 名前は「ミシェル」です。テープ式心理学に基づく優しくて温かい対応をします。
 
 【あなたの役割】
 NAMIDAサポート協会の窓口として、訪れた人に温かく寄り添うこと。
-あなたは人間のように自然に会話します。
 
 【応答ルール】
 - ユーザーのメッセージに合わせて自然に会話する
 - 挨拶には挨拶で返す、質問には答える、悩みには共感する
-- 「NAMIDAサポート協会は心に寄り添うケアを提供する一般社団法人です」と必要に応じて紹介する
 - 短く、温かく、2〜4文で返す
 - 堅すぎず、友達のように親しみやすく
 - 感情的な相談・悩みの場合は共感を最優先し、アドバイスはしない
-- 悩みや相談の場合は、もっと深く話したい場合はミシェルAIを案内する一文を自然に添える
 
-【ミシェルAI案内（悩み・相談の場合のみ）】
-もっとゆっくり話したい場合のみ、最後にさりげなく案内する:
-「もしもっとゆっくり話したくなったら、24時間いつでも相談できるミシェルAIもあるよ 🌸
+【NAMIDAサポート協会について聞かれたら】
+- 一般社団法人NAMIDAサポート協会は「テープ式心理学」を使って心に寄り添うケアを提供する団体です
+- 毎週月曜20:00に無料ライブ勉強会をYouTubeで配信しています
+- 「かんじょうにっき」というWebアプリで感情を整理できます
+- 「ミシェルAI」というAI心理カウンセラーがLINEで24時間相談に乗ります
+
+【悩み・相談・吐き出しの場合】
+- まず共感で受け止める（「辛かったね」「それは大変だったね」）
+- 最後に自然にミシェルAIを案内する:
+「もっとゆっくり話したくなったら、ミシェルAIがいつでも相談に乗るよ 🌸
 ${MICHELLE_LP_URL}」
 
-【重要】挨拶や軽い質問にはLP案内は不要。自然に会話するだけでOK。`;
+【お問い合わせについて聞かれたら】
+- 「下のメニューの📩お問い合わせボタンから送れるよ」と案内する
+
+【重要】挨拶や軽い雑談にはLP案内は不要。自然な会話でOK。`;
 
 export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
   if (event.type !== "message" || event.message.type !== "text") return;
@@ -77,7 +99,7 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
     // ローディングアニメーション表示
     await lineClient.showLoadingAnimation({ chatId: userId }).catch(() => {});
 
-    // 「お問い合わせ」トリガー
+    // ── 「お問い合わせ」ボタン → 連絡モード ──
     if (userMessage === "お問い合わせ" || userMessage === "問い合わせ") {
       contactMode.set(userId, true);
       await lineClient.replyMessage({
@@ -85,19 +107,24 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
         messages: [{
           type: "text",
           text: "事務局へのメッセージを入力してください 📩\n（次に送るメッセージが事務局に届きます。キャンセルは「やめる」と送ってね）",
+          quickReply: { items: QUICK_REPLY_ITEMS },
         }],
       });
       return;
     }
 
-    // 連絡モード中 → Telegramへ転送
+    // ── 連絡モード中 → Telegram転送 ──
     if (contactMode.get(userId)) {
       contactMode.delete(userId);
 
       if (userMessage === "やめる" || userMessage === "キャンセル") {
         await lineClient.replyMessage({
           replyToken,
-          messages: [{ type: "text", text: "キャンセルしました 🌸" }],
+          messages: [{
+            type: "text",
+            text: "キャンセルしました 🌸",
+            quickReply: { items: QUICK_REPLY_ITEMS },
+          }],
         });
         return;
       }
@@ -109,31 +136,21 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
         messages: [{
           type: "text",
           text: "事務局にメッセージを送りました 📩\nお返事をお待ちくださいね。",
+          quickReply: { items: QUICK_REPLY_ITEMS },
         }],
       });
       return;
     }
 
-    // メッセージ分類
-    const category = await classifyMessage(userMessage);
-
-    if (category === "business") {
-      await forwardToTelegram(userId, displayName ?? "不明", userMessage, "namisapo");
-      await lineClient.replyMessage({
-        replyToken,
-        messages: [{
-          type: "text",
-          text: "お問い合わせありがとうございます 🌸\n事務局に伝えましたので、お返事をお待ちくださいね。",
-        }],
-      });
-      return;
-    }
-
-    // talk → AIが自然に応答
+    // ── 全メッセージ → AI応答 ──
     const reply = await generateResponse(userMessage);
     await lineClient.replyMessage({
       replyToken,
-      messages: [{ type: "text", text: reply }],
+      messages: [{
+        type: "text",
+        text: reply,
+        quickReply: { items: QUICK_REPLY_ITEMS },
+      }],
     });
   } catch (error) {
     console.error("[NAMISAPO Bot] Error:", error);
@@ -143,29 +160,10 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
         messages: [{
           type: "text",
           text: "申し訳ございません、少しエラーが起きてしまいました 💦\nもう一度お試しください。",
+          quickReply: { items: QUICK_REPLY_ITEMS },
         }],
       });
     } catch { /* replyToken expired */ }
-  }
-}
-
-async function classifyMessage(message: string): Promise<"business" | "talk"> {
-  const openai = getOpenAI();
-  try {
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: CLASSIFY_PROMPT },
-        { role: "user", content: message },
-      ],
-      max_tokens: 10,
-      temperature: 0,
-    });
-    const raw = res.choices[0]?.message?.content?.trim().toLowerCase() ?? "";
-    if (raw.includes("business")) return "business";
-    return "talk";
-  } catch {
-    return "talk";
   }
 }
 
@@ -174,7 +172,7 @@ async function generateResponse(userMessage: string): Promise<string> {
   const res = await openai.chat.completions.create({
     model: env.MICHELLE_MODEL,
     messages: [
-      { role: "system", content: RESPONSE_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userMessage },
     ],
     max_tokens: 400,
@@ -236,6 +234,9 @@ export async function replyToNamisapoUser(userId: string, message: string): Prom
   const lineClient = getNamisapoClient();
   await lineClient.pushMessage({
     to: userId,
-    messages: [{ type: "text", text: `📩 事務局からの返信:\n\n${message}` }],
+    messages: [{
+      type: "text",
+      text: `📩 事務局からの返信:\n\n${message}`,
+    }],
   });
 }
