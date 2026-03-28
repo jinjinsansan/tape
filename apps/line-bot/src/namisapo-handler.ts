@@ -68,6 +68,9 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
       displayName = profile.displayName;
     } catch { /* ignore */ }
 
+    // ローディングアニメーション表示
+    await lineClient.showLoadingAnimation({ chatId: userId }).catch(() => {});
+
     // 「お問い合わせ」トリガー
     if (userMessage === "お問い合わせ" || userMessage === "問い合わせ") {
       contactMode.set(userId, true);
@@ -133,7 +136,6 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
     }
 
     // emotional → 受け止め + LP誘導
-    await lineClient.showLoadingAnimation({ chatId: userId }).catch(() => {});
     const reply = await generateEmpathyReply(userMessage);
     await lineClient.replyMessage({
       replyToken,
