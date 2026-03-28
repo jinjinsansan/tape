@@ -147,6 +147,85 @@ bot.command("resolve", async (ctx) => {
   }
 });
 
+// ── /resolve_namisapo — NAMIDAサポート協会チケットに返信 ──
+bot.command("resolve_namisapo", async (ctx) => {
+  const text = ctx.match?.trim();
+  if (!text) {
+    await ctx.reply("使い方: /resolve_namisapo チケット番号 返信テキスト\n\n例: /resolve_namisapo 3 ご連絡ありがとうございます。");
+    return;
+  }
+
+  const spaceIdx = text.indexOf(" ");
+  if (spaceIdx === -1) {
+    await ctx.reply("返信テキストを入力してください。\n/resolve_namisapo 3 返信テキスト");
+    return;
+  }
+
+  const ticketId = parseInt(text.substring(0, spaceIdx).trim(), 10);
+  const replyMessage = text.substring(spaceIdx + 1).trim();
+
+  if (isNaN(ticketId) || !replyMessage) {
+    await ctx.reply("チケット番号と返信テキストが必要です。\n/resolve_namisapo 3 返信テキスト");
+    return;
+  }
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    const { data: ticket } = await sb
+      .from("line_contact_tickets")
+      .select("id, line_user_id, display_name, status, source")
+      .eq("id", ticketId)
+      .single();
+
+    if (!ticket) {
+      await ctx.reply(`❌ チケット #${ticketId} が見つかりません。`);
+      return;
+    }
+
+    if (ticket.status === "resolved") {
+      await ctx.reply(`⚠️ チケット #${ticketId} は既に対応済みです。`);
+      return;
+    }
+
+    const lineApiSecret = process.env.INTERNAL_API_SECRET ?? "michelle-internal";
+    const lineApiUrl = process.env.LINE_BOT_API_URL ?? "http://localhost:3001";
+
+    const res = await fetch(`${lineApiUrl}/reply-to-namisapo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: ticket.line_user_id,
+        message: replyMessage,
+        secret: lineApiSecret,
+      }),
+    });
+
+    if (res.ok) {
+      await sb
+        .from("line_contact_tickets")
+        .update({
+          status: "resolved",
+          resolved_message: replyMessage,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq("id", ticketId);
+
+      await ctx.reply(
+        `✅ [NAMISAPO] #${ticketId} ${ticket.display_name ?? ""}さんに返信しました。\n\n送信: ${replyMessage.substring(0, 100)}`,
+      );
+    } else {
+      await ctx.reply(`❌ 送信失敗: ${await res.text()}`);
+    }
+  } catch (error) {
+    await ctx.reply(`❌ エラー: ${error instanceof Error ? error.message : "Unknown"}`);
+  }
+});
+
 // ── /history — ユーザーの直近会話履歴を表示 ─────────────
 bot.command("history", async (ctx) => {
   const text = ctx.match?.trim();
