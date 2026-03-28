@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ForBusinessClient } from "./lp-client";
+import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
   title: "AIカウンセリングシステム導入支援 | かんじょうにっき",
@@ -20,5 +21,10 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ForBusinessClient />;
+  return (
+    <>
+      <ForBusinessClient />
+      <SiteFooter />
+    </>
+  );
 }

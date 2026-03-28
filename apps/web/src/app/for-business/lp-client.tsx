@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
 import { ArrowRight, Clock, TrendingDown, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -163,69 +162,12 @@ export function ForBusinessClient() {
       `}</style>
 
       <div className="btob-page">
-        {/* ── NAV ── */}
-        <nav
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            background: "rgba(248,247,244,0.92)",
-            backdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(26,26,46,0.1)",
-            height: 64,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 24px",
-          }}
-        >
-          <span className="font-heading" style={{ fontSize: "1rem", color: "var(--text)" }}>
-            AI Counseling <span style={{ color: "var(--teal)" }}>Platform</span>
-          </span>
-          <div className="hidden items-center gap-6 md:flex">
-            {[
-              { label: "システム", href: "#solution" },
-              { label: "パッケージ", href: "#package" },
-              { label: "導入フロー", href: "#flow" },
-              { label: "対象", href: "#who" },
-            ].map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                style={{ fontSize: "0.8rem", color: "var(--text-muted)", textDecoration: "none" }}
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <a
-            href="https://lin.ee/ykOLfBH"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: "8px 20px",
-              background: "var(--ink)",
-              color: "white",
-              fontSize: "0.8rem",
-              fontWeight: 500,
-              textDecoration: "none",
-              borderRadius: 4,
-              transition: "background 0.2s",
-            }}
-          >
-            まずは相談する
-          </a>
-        </nav>
-
         {/* ── Hero (Dark) ── */}
         <section
           style={{
             background: "var(--ink-soft)",
             position: "relative",
             overflow: "hidden",
-            paddingTop: 64,
           }}
         >
           <div
@@ -691,17 +633,6 @@ export function ForBusinessClient() {
           </div>
         </section>
 
-        {/* ── Footer ── */}
-        <footer style={{ background: "var(--ink)", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "28px 20px", textAlign: "center" }}>
-          <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16, fontSize: "0.72rem", color: "rgba(255,255,255,0.35)" }}>
-            <span>AI Counseling Platform</span>
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-              <Link href="/terms" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>利用規約</Link>
-              <Link href="/privacy" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>プライバシーポリシー</Link>
-            </div>
-            <span>© 2025 namisapo.app All rights reserved.</span>
-          </div>
-        </footer>
       </div>
 
       <style jsx global>{`
