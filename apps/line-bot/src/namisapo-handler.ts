@@ -29,27 +29,33 @@ const contactMode = new Map<string, boolean>();
 const MICHELLE_LP_URL = "https://namisapo.app/michelle-lp";
 
 const CLASSIFY_PROMPT = `ユーザーのメッセージを分類してください。以下のいずれかで回答してください（1単語のみ）:
-- "emotional" : 苦しみ・悩み・愚痴・感情的な吐き出し・相談・恋愛や人間関係の悩み
-- "business" : 業務連絡・事務的な質問・予約・申し込み・問い合わせ・キャンセル
-- "greeting" : 挨拶・軽い雑談・ありがとう
+- "business" : 予約・申し込み・キャンセル・料金・住所・営業時間など事務的な質問や業務連絡
+- "talk" : それ以外すべて（挨拶・雑談・悩み・相談・質問・感情吐き出し・テスト送信など）
 
 1単語だけ回答してください。`;
 
-const EMPATHY_PROMPT = `あなたはNAMIDAサポート協会の公式LINEアカウントの応答AIです。
-名前は「ミシェル」です。テープ式心理学に基づく優しい対応をします。
+const RESPONSE_PROMPT = `あなたはNAMIDAサポート協会の公式LINEアカウントの応答AIです。
+名前は「ミシェル」です。テープ式心理学に基づく優しくて温かい対応をします。
 
-【最重要ルール】
-- ユーザーの苦しみを受け止めることが最優先
-- 「辛かったですね」「大変でしたね」「よく話してくれましたね」など共感の言葉を必ず入れる
+【あなたの役割】
+NAMIDAサポート協会の窓口として、訪れた人に温かく寄り添うこと。
+あなたは人間のように自然に会話します。
+
+【応答ルール】
+- ユーザーのメッセージに合わせて自然に会話する
+- 挨拶には挨拶で返す、質問には答える、悩みには共感する
+- 「NAMIDAサポート協会は心に寄り添うケアを提供する一般社団法人です」と必要に応じて紹介する
 - 短く、温かく、2〜4文で返す
-- 解決策やアドバイスは言わない
-- 最後に、もっと深く話したい場合はミシェルAIを案内する一文を自然に添える
+- 堅すぎず、友達のように親しみやすく
+- 感情的な相談・悩みの場合は共感を最優先し、アドバイスはしない
+- 悩みや相談の場合は、もっと深く話したい場合はミシェルAIを案内する一文を自然に添える
 
-【ミシェルAI案内の例】
-- 「もしもっとゆっくり話したくなったら、24時間いつでも相談できるミシェルAIもあるよ 🌸」
-- 「一人で抱えなくて大丈夫。ミシェルAIならいつでもそばにいるよ」
+【ミシェルAI案内（悩み・相談の場合のみ）】
+もっとゆっくり話したい場合のみ、最後にさりげなく案内する:
+「もしもっとゆっくり話したくなったら、24時間いつでも相談できるミシェルAIもあるよ 🌸
+${MICHELLE_LP_URL}」
 
-案内URLは最後に改行して貼る: ${MICHELLE_LP_URL}`;
+【重要】挨拶や軽い質問にはLP案内は不要。自然に会話するだけでOK。`;
 
 export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
   if (event.type !== "message" || event.message.type !== "text") return;
@@ -112,7 +118,6 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
     const category = await classifyMessage(userMessage);
 
     if (category === "business") {
-      // 業務連絡 → 確認してTelegram転送
       await forwardToTelegram(userId, displayName ?? "不明", userMessage, "namisapo");
       await lineClient.replyMessage({
         replyToken,
@@ -124,19 +129,8 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
       return;
     }
 
-    if (category === "greeting") {
-      await lineClient.replyMessage({
-        replyToken,
-        messages: [{
-          type: "text",
-          text: "こんにちは 🌸 NAMIDAサポート協会です。\n何かお困りのことがあれば、いつでも話してくださいね。",
-        }],
-      });
-      return;
-    }
-
-    // emotional → 受け止め + LP誘導
-    const reply = await generateEmpathyReply(userMessage);
+    // talk → AIが自然に応答
+    const reply = await generateResponse(userMessage);
     await lineClient.replyMessage({
       replyToken,
       messages: [{ type: "text", text: reply }],
@@ -155,7 +149,7 @@ export async function handleNamisapoEvent(event: WebhookEvent): Promise<void> {
   }
 }
 
-async function classifyMessage(message: string): Promise<"emotional" | "business" | "greeting"> {
+async function classifyMessage(message: string): Promise<"business" | "talk"> {
   const openai = getOpenAI();
   try {
     const res = await openai.chat.completions.create({
@@ -169,22 +163,21 @@ async function classifyMessage(message: string): Promise<"emotional" | "business
     });
     const raw = res.choices[0]?.message?.content?.trim().toLowerCase() ?? "";
     if (raw.includes("business")) return "business";
-    if (raw.includes("greeting")) return "greeting";
-    return "emotional";
+    return "talk";
   } catch {
-    return "emotional";
+    return "talk";
   }
 }
 
-async function generateEmpathyReply(userMessage: string): Promise<string> {
+async function generateResponse(userMessage: string): Promise<string> {
   const openai = getOpenAI();
   const res = await openai.chat.completions.create({
     model: env.MICHELLE_MODEL,
     messages: [
-      { role: "system", content: EMPATHY_PROMPT },
+      { role: "system", content: RESPONSE_PROMPT },
       { role: "user", content: userMessage },
     ],
-    max_tokens: 300,
+    max_tokens: 400,
     temperature: 0.7,
   });
   return res.choices[0]?.message?.content?.trim() ?? "お話聞かせてくれてありがとう 🌸";
