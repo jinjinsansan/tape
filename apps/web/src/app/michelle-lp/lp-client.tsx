@@ -278,9 +278,9 @@ export function MichelleLpClient() {
               <video
                 className="aspect-video w-full object-cover"
                 autoPlay muted loop playsInline
-                poster="/michelle-lp/listening.png"
+                poster="/michelle-lp/landscape.png"
               >
-                <source src="/michelle-lp/michelle.mp4" type="video/mp4" />
+                <source src="/michelle-lp/hero-16x9.mp4" type="video/mp4" />
               </video>
               <div className="space-y-2 p-5">
                 <ChatBubble side="left">
