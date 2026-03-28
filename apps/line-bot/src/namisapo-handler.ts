@@ -41,6 +41,10 @@ const QUICK_REPLY_ITEMS: messagingApi.QuickReplyItem[] = [
   },
   {
     type: "action",
+    action: { type: "uri", label: "🌸 ミシェルAI", uri: MICHELLE_LP_URL },
+  },
+  {
+    type: "action",
     action: { type: "uri", label: "📺 ライブ勉強会", uri: LIVE_URL },
   },
   {
