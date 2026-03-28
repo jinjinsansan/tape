@@ -36,6 +36,17 @@ export async function checkAccess(sessionId: string): Promise<AccessResult> {
     return { status: "expired" };
   }
 
+  // キャンセル済み — current_period_end まではアクセス可能
+  if (data.status === "cancelled") {
+    const periodEnd = data.current_period_end
+      ? new Date(data.current_period_end)
+      : null;
+    if (periodEnd && periodEnd > now) {
+      return { status: "active" };
+    }
+    return { status: "expired" };
+  }
+
   // トライアル期間チェック
   if (data.status === "trial") {
     const trialEnds = new Date(data.trial_ends_at);

@@ -88,6 +88,20 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
 
     const session = await ensureSession(userId, displayName);
 
+    // ── 解約・キャンセル案内 ──
+    const cancelKeywords = ["解約", "キャンセル", "退会", "やめたい", "解約したい", "サブスク解約"];
+    if (cancelKeywords.some((kw) => userMessage.includes(kw)) && !contactMode.get(userId)) {
+      const cancelUrl = `https://namisapo.app/michelle/cancel?sid=${session.id}`;
+      await client.replyMessage({
+        replyToken,
+        messages: [{
+          type: "text",
+          text: `解約をご検討中なんだね...。\n寂しいけど、あなたの気持ちを大切にしたいです 🌸\n\n以下のリンクからお手続きいただけます：\n\n→ ${cancelUrl}\n\n解約後も会話の記憶はずっと残してるから、いつでも戻ってきてね。`,
+        }],
+      });
+      return;
+    }
+
     // ── 「仁さんに連絡したい」トリガー ──
     if (userMessage === "仁さんに連絡したい") {
       const { supabase: sb } = await import("./supabase.js");

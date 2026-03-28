@@ -44,6 +44,32 @@ export async function getSubscription(
   return response.json() as Promise<any>;
 }
 
+/** サブスクリプションをキャンセル */
+export async function cancelSubscription(
+  subscriptionId: string,
+  reason?: string,
+): Promise<{ success: boolean; error?: string }> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${PAYPAL_API_BASE}/v1/billing/subscriptions/${subscriptionId}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason: reason ?? "ユーザーによる解約" }),
+    },
+  );
+
+  if (response.status === 204 || response.ok) {
+    return { success: true };
+  }
+
+  const err = await response.text().catch(() => "Unknown error");
+  return { success: false, error: err };
+}
+
 /** Billing Planを作成（初回1回だけ実行） */
 export async function createBillingPlan(): Promise<{
   productId: string;
