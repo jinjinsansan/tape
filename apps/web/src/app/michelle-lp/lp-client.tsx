@@ -460,6 +460,30 @@ export function MichelleLpClient() {
         </div>
       </section>
 
+      {/* BtoB Banner */}
+      <section className="bg-[#1a1a2e] px-4 py-14">
+        <div className="relative mx-auto flex max-w-4xl flex-col items-start gap-5 overflow-hidden rounded-3xl border border-[#c9a84c]/20 bg-white/[0.03] p-6 sm:flex-row sm:items-center sm:justify-between md:p-8">
+          <div className="absolute bottom-0 left-0 top-0 w-[3px] rounded-full bg-gradient-to-b from-[#c9a84c] to-[#2a7a7a]" />
+          <div className="pl-3">
+            <p className="text-[11px] italic tracking-[0.2em] text-[#c9a84c]" style={{ fontFamily: "serif" }}>
+              For Professionals
+            </p>
+            <h3 className={cn("mt-1 text-base text-white", TITLE_FONT)}>
+              このAIシステムを、あなたのサービスにも
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-white/40">
+              占い師・カウンセラー・コーチング事業者向けに、同様のAIシステムを導入支援しています。
+            </p>
+          </div>
+          <Link
+            href="/for-business"
+            className="flex-shrink-0 rounded-full border border-[#c9a84c] px-5 py-2.5 text-xs font-medium tracking-wide text-[#c9a84c] transition hover:bg-[#c9a84c] hover:text-[#0d0d14]"
+          >
+            導入を検討する →
+          </Link>
+        </div>
+      </section>
+
       <SiteFooter />
     </div>
   );
