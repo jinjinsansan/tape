@@ -7,6 +7,7 @@ import { env } from "./env.js";
 import { ensureSession, updateDisplayName, clearHistory } from "./session.js";
 import { chat } from "./michelle.js";
 import { checkAccess, buildExpiredMessage, buildTrialNotice } from "./subscription.js";
+import { handleNamisapoEvent, replyToNamisapoUser } from "./namisapo-handler.js";
 
 const { MessagingApiClient } = messagingApi;
 
@@ -327,6 +328,41 @@ function splitMessage(text: string, maxLength: number): string[] {
     remaining = remaining.slice(maxLength);
   }
   return chunks;
+}
+
+// ── NAMIDAサポート協会 LINE Webhook ──────────────────────
+if (env.NAMISAPO_LINE_CHANNEL_SECRET) {
+  app.post(
+    "/webhook-namisapo",
+    middleware({ channelSecret: env.NAMISAPO_LINE_CHANNEL_SECRET }),
+    async (req: express.Request, res: express.Response) => {
+      const events: WebhookEvent[] = req.body.events;
+      await Promise.all(events.map(handleNamisapoEvent));
+      res.status(200).json({ status: "ok" });
+    },
+  );
+
+  // Telegram → NAMIDAサポート協会LINE 返信API
+  app.post("/reply-to-namisapo", express.json(), async (req, res) => {
+    const { userId, message, secret } = req.body;
+    if (secret !== process.env.INTERNAL_API_SECRET) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (!userId || !message) {
+      res.status(400).json({ error: "userId and message required" });
+      return;
+    }
+    try {
+      await replyToNamisapoUser(userId, message);
+      res.json({ status: "ok" });
+    } catch (error) {
+      console.error("[NAMISAPO Reply] Error:", error);
+      res.status(500).json({ error: "Failed to send" });
+    }
+  });
+
+  console.log("✅ NAMIDAサポート協会 webhook: /webhook-namisapo");
 }
 
 // ── Start ──────────────────────────────────────────────
