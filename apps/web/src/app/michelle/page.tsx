@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 
@@ -23,6 +24,21 @@ const AttractionLanding = dynamic(() => import("@/components/michelle/attraction
 type Variant = "psychology" | "attraction";
 
 export default function MichelleLandingPage() {
+  const router = useRouter();
+
+  // Web版チャットはLINE BOTに移行済み — LPへリダイレクト
+  useEffect(() => {
+    router.replace("/michelle-lp");
+  }, [router]);
+
+  return (
+    <section className="mx-auto max-w-3xl px-6 py-24 text-center">
+      <p className="text-sm text-tape-light-brown">ミシェルAIのページに移動しています...</p>
+    </section>
+  );
+}
+
+function MichelleLandingPageOriginal() {
   const isPsychologyAvailable = MICHELLE_AI_ENABLED;
   const isAttractionAvailable = MICHELLE_ATTRACTION_AI_ENABLED;
 
