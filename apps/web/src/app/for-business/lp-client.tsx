@@ -201,7 +201,7 @@ export function ForBusinessClient() {
             ))}
           </div>
           <a
-            href="https://lin.ee/vhrzGg7"
+            href="https://lin.ee/ykOLfBH"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -661,7 +661,7 @@ export function ForBusinessClient() {
 
             <div style={{ marginTop: 36 }}>
               <a
-                href="https://lin.ee/vhrzGg7"
+                href="https://lin.ee/ykOLfBH"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
