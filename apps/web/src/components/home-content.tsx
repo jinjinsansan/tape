@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from "@tape/supabase";
 import {
   BookHeart,
   Bot,
+  Briefcase,
   CalendarHeart,
   ExternalLink,
   FileText,
@@ -60,14 +61,15 @@ const APP_SHORTCUTS: AppShortcut[] = [
     bubbleClass: "bg-[#fdeef1] text-[#e53564]",
     category: "primary"
   },
-  {
-    title: "日記補助AI",
-    subtitle: "ミシェルが下書きを提案",
-    href: "/diary/assistant",
-    icon: Sparkles,
-    bubbleClass: "bg-[#fff4f8] text-[#d9488b]",
-    category: "primary"
-  },
+  // 日記補助AI — OpenAI停止中のため非表示
+  // {
+  //   title: "日記補助AI",
+  //   subtitle: "ミシェルが下書きを提案",
+  //   href: "/diary/assistant",
+  //   icon: Sparkles,
+  //   bubbleClass: "bg-[#fff4f8] text-[#d9488b]",
+  //   category: "primary"
+  // },
   {
     title: "自己肯定感テスト",
     subtitle: "テープ式スコア診断",
@@ -86,8 +88,8 @@ const APP_SHORTCUTS: AppShortcut[] = [
   },
   {
     title: "ミシェルAI",
-    subtitle: "1分で相談する",
-    href: "/michelle",
+    subtitle: "24時間AI心理カウンセラー",
+    href: "/michelle-lp",
     icon: Bot,
     bubbleClass: "bg-[#eef7f3] text-[#1c8f65]",
     category: "primary"
@@ -138,6 +140,14 @@ const APP_SHORTCUTS: AppShortcut[] = [
     href: "/mypage",
     icon: UserCircle,
     bubbleClass: "bg-[#eef3ff] text-[#3f5fb0]",
+    category: "primary"
+  },
+  {
+    title: "ビジネス向けAI導入",
+    subtitle: "あなた専用AIを構築",
+    href: "/for-business",
+    icon: Briefcase,
+    bubbleClass: "bg-[#f0f5f5] text-[#2a7a7a]",
     category: "primary"
   },
   {
