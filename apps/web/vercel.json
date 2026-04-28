@@ -15,18 +15,6 @@
     {
       "path": "/api/internal/cron/diary-reminder",
       "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api/cron/x-post",
-      "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/cron/x-post",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/x-post",
-      "schedule": "0 12 * * *"
     }
   ],
   "functions": {
