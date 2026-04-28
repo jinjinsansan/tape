@@ -3,7 +3,8 @@ import { Bot, GrammyError, HttpError } from "grammy";
 import { env } from "./env.js";
 import { ensureSession, updateDisplayName, clearHistory } from "./session.js";
 import { chat } from "./michelle.js";
-import { startXPostCron } from "./x-post.js";
+// X自動投稿は停止中（2026-04-28）
+// import { startXPostCron } from "./x-post.js";
 
 const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
@@ -343,7 +344,8 @@ bot.catch((err) => {
 
 // ── Start ──────────────────────────────────────────────
 console.log("🌸 Michelle Telegram Bot starting...");
-startXPostCron();
+// X自動投稿は停止中（2026-04-28）
+// startXPostCron();
 bot.start({
   onStart: () => console.log("✨ Michelle is online!"),
 });
